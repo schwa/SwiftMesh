@@ -30,13 +30,7 @@ private func makeTriangleSegments() -> [Identified<String, LineSegment>] {
     ]
 }
 
-/// Make two adjacent triangles sharing an edge: a "bowtie" or diamond shape.
-/// Triangle 1: (0,0)→(1,0)→(0.5,1)
-/// Triangle 2: (1,0)→(2,0)→(1,1)  (shares no edge — separate)
-/// Actually let's do two triangles sharing edge (1,0)→(0.5,1):
-/// T1: (0,0)→(1,0)→(0.5,1)
-/// T2: (1,0)→(1.5,1)→(0.5,1)  — shares edge differently
-/// Simplest: a square split by a diagonal.
+/// A square split by a diagonal.
 private func makeSquareWithDiagonalSegments() -> [Identified<String, LineSegment>] {
     let p0 = CGPoint(x: 0, y: 0)
     let p1 = CGPoint(x: 1, y: 0)
@@ -51,7 +45,7 @@ private func makeSquareWithDiagonalSegments() -> [Identified<String, LineSegment
     ]
 }
 
-// MARK: - Segment-based construction tests
+// MARK: - Segment-based construction tests (2D / CGPoint)
 
 @Suite("HalfEdgeMesh — Segment Init")
 struct HalfEdgeMeshSegmentTests {
@@ -60,9 +54,7 @@ struct HalfEdgeMeshSegmentTests {
     func triangleCounts() {
         let mesh = HalfEdgeMesh(segments: makeTriangleSegments())
         #expect(mesh.vertices.count == 3)
-        // 3 segments × 2 half-edges each = 6
         #expect(mesh.halfEdges.count == 6)
-        // Should have 2 faces: one interior CCW, one exterior CW
         #expect(mesh.faces.count == 2)
     }
 
@@ -77,7 +69,7 @@ struct HalfEdgeMeshSegmentTests {
         let mesh = HalfEdgeMesh(segments: makeSquareSegments())
         #expect(mesh.vertices.count == 4)
         #expect(mesh.halfEdges.count == 8)
-        #expect(mesh.faces.count == 2) // interior + exterior
+        #expect(mesh.faces.count == 2)
     }
 
     @Test("Square validates")
@@ -90,8 +82,8 @@ struct HalfEdgeMeshSegmentTests {
     func squareWithDiagonalCounts() {
         let mesh = HalfEdgeMesh(segments: makeSquareWithDiagonalSegments())
         #expect(mesh.vertices.count == 4)
-        #expect(mesh.halfEdges.count == 10) // 5 segments × 2
-        #expect(mesh.faces.count == 3) // 2 interior triangles + 1 exterior
+        #expect(mesh.halfEdges.count == 10)
+        #expect(mesh.faces.count == 3)
     }
 
     @Test("Square with diagonal validates")
@@ -154,7 +146,7 @@ struct HalfEdgeMeshSegmentTests {
 
 // MARK: - Face-definition (indexed) construction tests
 
-@Suite("HalfEdgeMesh — Indexed Init")
+@Suite("HalfEdgeMesh — Indexed Init (CGPoint)")
 struct HalfEdgeMeshIndexedTests {
 
     @Test("Single triangle from points/faces")
@@ -169,7 +161,6 @@ struct HalfEdgeMeshIndexedTests {
         ])
         #expect(mesh.vertices.count == 3)
         #expect(mesh.faces.count == 1)
-        // 3 edges in one face loop
         #expect(mesh.halfEdges.count == 3)
         #expect(mesh.validate() == nil)
     }
@@ -188,7 +179,6 @@ struct HalfEdgeMeshIndexedTests {
         ])
         #expect(mesh.vertices.count == 4)
         #expect(mesh.faces.count == 2)
-        // 3 edges per triangle = 6 half-edges, but shared edge has twin linking
         #expect(mesh.halfEdges.count == 6)
         #expect(mesh.validate() == nil)
     }
@@ -212,18 +202,15 @@ struct HalfEdgeMeshIndexedTests {
 
     @Test("Face with hole")
     func faceWithHole() {
-        // Outer square, inner square hole (wound opposite direction)
         let points = [
-            // Outer: CCW
-            CGPoint(x: 0, y: 0),   // 0
-            CGPoint(x: 4, y: 0),   // 1
-            CGPoint(x: 4, y: 4),   // 2
-            CGPoint(x: 0, y: 4),   // 3
-            // Inner hole: CW
-            CGPoint(x: 1, y: 1),   // 4
-            CGPoint(x: 1, y: 3),   // 5
-            CGPoint(x: 3, y: 3),   // 6
-            CGPoint(x: 3, y: 1),   // 7
+            CGPoint(x: 0, y: 0),
+            CGPoint(x: 4, y: 0),
+            CGPoint(x: 4, y: 4),
+            CGPoint(x: 0, y: 4),
+            CGPoint(x: 1, y: 1),
+            CGPoint(x: 1, y: 3),
+            CGPoint(x: 3, y: 3),
+            CGPoint(x: 3, y: 1),
         ]
         let mesh = HalfEdgeMesh(points: points, faces: [
             .init(outer: [0, 1, 2, 3], holes: [[4, 5, 6, 7]])
@@ -246,17 +233,14 @@ struct HalfEdgeMeshIndexedTests {
             .init(outer: [0, 1, 2]),
             .init(outer: [0, 2, 3]),
         ])
-
-        // The shared edge 0→2 and 2→0 should be twins
         var twinCount = 0
         for he in mesh.halfEdges where he.twin != nil {
             twinCount += 1
         }
-        // Exactly 2 half-edges should have twins (the shared edge pair)
         #expect(twinCount == 2)
     }
 
-    @Test("Signed area is computed for indexed faces")
+    @Test("Signed area via method for indexed faces")
     func signedAreaIndexed() {
         let points = [
             CGPoint(x: 0, y: 0),
@@ -267,16 +251,161 @@ struct HalfEdgeMeshIndexedTests {
         let mesh = HalfEdgeMesh(points: points, faces: [
             .init(outer: [0, 1, 2, 3])
         ])
-        // CCW winding → positive signed area = 1.0
-        #expect(mesh.faces[0].signedArea != nil)
-        let area = mesh.faces[0].signedArea!
-        #expect(abs(area - 1.0) < 1e-10)
+        let area = mesh.signedArea(of: mesh.faces[0].id)
+        #expect(area != nil)
+        #expect(abs(area! - 1.0) < 1e-10)
     }
 }
 
-// MARK: - Face query tests
+// MARK: - Indexed Init with SIMD3<Float> (3D)
 
-@Suite("HalfEdgeMesh — Face Queries")
+@Suite("HalfEdgeMesh — Indexed Init (SIMD3<Float>)")
+struct HalfEdgeMeshIndexed3DTests {
+
+    @Test("Single triangle in 3D")
+    func singleTriangle3D() {
+        let points: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0),
+            SIMD3(1, 0, 0),
+            SIMD3(0, 1, 0),
+        ]
+        let mesh = HalfEdgeMesh(points: points, faces: [
+            .init(outer: [0, 1, 2])
+        ])
+        #expect(mesh.vertices.count == 3)
+        #expect(mesh.faces.count == 1)
+        #expect(mesh.halfEdges.count == 3)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("Quad in 3D")
+    func quad3D() {
+        let points: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0),
+            SIMD3(1, 0, 0),
+            SIMD3(1, 1, 0),
+            SIMD3(0, 1, 0),
+        ]
+        let mesh = HalfEdgeMesh(points: points, faces: [
+            .init(outer: [0, 1, 2, 3])
+        ])
+        #expect(mesh.vertices.count == 4)
+        #expect(mesh.faces.count == 1)
+        #expect(mesh.halfEdges.count == 4)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("Two adjacent triangles in 3D with twin linking")
+    func adjacentTriangles3D() {
+        let points: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0),
+            SIMD3(1, 0, 0),
+            SIMD3(1, 1, 0),
+            SIMD3(0, 1, 0),
+        ]
+        let mesh = HalfEdgeMesh(points: points, faces: [
+            .init(outer: [0, 1, 2]),
+            .init(outer: [0, 2, 3]),
+        ])
+        #expect(mesh.vertices.count == 4)
+        #expect(mesh.faces.count == 2)
+        #expect(mesh.halfEdges.count == 6)
+        #expect(mesh.validate() == nil)
+
+        var twinCount = 0
+        for he in mesh.halfEdges where he.twin != nil {
+            twinCount += 1
+        }
+        #expect(twinCount == 2)
+    }
+
+    @Test("Non-planar quad in 3D still works topologically")
+    func nonPlanarQuad3D() {
+        // Intentionally non-planar: fourth vertex off the plane
+        let points: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0),
+            SIMD3(1, 0, 0),
+            SIMD3(1, 1, 0),
+            SIMD3(0, 1, 0.5), // off-plane
+        ]
+        let mesh = HalfEdgeMesh(points: points, faces: [
+            .init(outer: [0, 1, 2, 3])
+        ])
+        #expect(mesh.vertices.count == 4)
+        #expect(mesh.faces.count == 1)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("polygon(for:) returns 3D points")
+    func polygon3D() {
+        let points: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0),
+            SIMD3(1, 0, 0),
+            SIMD3(0.5, 1, 0),
+        ]
+        let mesh = HalfEdgeMesh(points: points, faces: [
+            .init(outer: [0, 1, 2])
+        ])
+        let poly = mesh.polygon(for: mesh.faces[0].id)
+        #expect(poly.count == 3)
+    }
+
+    @Test("vertexLoop in 3D")
+    func vertexLoop3D() {
+        let points: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0),
+            SIMD3(1, 0, 0),
+            SIMD3(0.5, 1, 0),
+        ]
+        let mesh = HalfEdgeMesh(points: points, faces: [
+            .init(outer: [0, 1, 2])
+        ])
+        let loop = mesh.vertexLoop(for: mesh.faces[0].id)
+        #expect(loop.count == 3)
+        let rawIDs = Set(loop.map(\.raw))
+        #expect(rawIDs == [0, 1, 2])
+    }
+
+    @Test("neighborFaces in 3D")
+    func neighborFaces3D() {
+        let points: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0),
+            SIMD3(1, 0, 0),
+            SIMD3(1, 1, 0),
+            SIMD3(0, 1, 0),
+        ]
+        let mesh = HalfEdgeMesh(points: points, faces: [
+            .init(outer: [0, 1, 2]),
+            .init(outer: [0, 2, 3]),
+        ])
+        let neighbors = mesh.neighborFaces(of: mesh.faces[0].id)
+        #expect(neighbors.contains(mesh.faces[1].id))
+    }
+
+    @Test("Face with hole in 3D")
+    func faceWithHole3D() {
+        let points: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0),
+            SIMD3(4, 0, 0),
+            SIMD3(4, 4, 0),
+            SIMD3(0, 4, 0),
+            SIMD3(1, 1, 0),
+            SIMD3(1, 3, 0),
+            SIMD3(3, 3, 0),
+            SIMD3(3, 1, 0),
+        ]
+        let mesh = HalfEdgeMesh(points: points, faces: [
+            .init(outer: [0, 1, 2, 3], holes: [[4, 5, 6, 7]])
+        ])
+        #expect(mesh.faces.count == 1)
+        #expect(mesh.faces[0].holeEdges.count == 1)
+        #expect(mesh.validate() == nil)
+    }
+}
+
+// MARK: - Face query tests (2D-specific)
+
+@Suite("HalfEdgeMesh — Face Queries (2D)")
 struct HalfEdgeMeshFaceQueryTests {
 
     @Test("polygon(for:) returns correct points")
@@ -290,8 +419,7 @@ struct HalfEdgeMeshFaceQueryTests {
         let mesh = HalfEdgeMesh(points: points, faces: [
             .init(outer: [0, 1, 2, 3])
         ])
-        let faceID = mesh.faces[0].id
-        let poly = mesh.polygon(for: faceID)
+        let poly = mesh.polygon(for: mesh.faces[0].id)
         #expect(poly.count == 4)
     }
 
@@ -307,7 +435,6 @@ struct HalfEdgeMeshFaceQueryTests {
         ])
         let loop = mesh.vertexLoop(for: mesh.faces[0].id)
         #expect(loop.count == 3)
-        // Should be the same vertices we put in
         let rawIDs = Set(loop.map(\.raw))
         #expect(rawIDs == [0, 1, 2])
     }
@@ -328,7 +455,6 @@ struct HalfEdgeMeshFaceQueryTests {
 
     @Test("isConvex returns false for non-convex polygon")
     func isConvexLShape() {
-        // An L-shaped polygon (non-convex)
         let points = [
             CGPoint(x: 0, y: 0),
             CGPoint(x: 2, y: 0),
@@ -343,7 +469,7 @@ struct HalfEdgeMeshFaceQueryTests {
         #expect(!mesh.isConvex(mesh.faces[0].id))
     }
 
-    @Test("isHole detects negative signed area")
+    @Test("isHole detects CW winding")
     func isHoleDetection() {
         // CW winding → negative area → hole
         let points = [
@@ -355,11 +481,11 @@ struct HalfEdgeMeshFaceQueryTests {
         let mesh = HalfEdgeMesh(points: points, faces: [
             .init(outer: [0, 1, 2, 3])
         ])
-        let face = mesh.faces[0]
-        if let area = face.signedArea, area < 0 {
-            #expect(mesh.isHole(face.id))
+        let area = mesh.signedArea(of: mesh.faces[0].id)
+        if let area, area < 0 {
+            #expect(mesh.isHole(mesh.faces[0].id))
         } else {
-            #expect(!mesh.isHole(face.id))
+            #expect(!mesh.isHole(mesh.faces[0].id))
         }
     }
 
@@ -439,23 +565,19 @@ struct HalfEdgeMeshEdgeDeletionTests {
     func deleteDiagonalMergesFaces() {
         var mesh = HalfEdgeMesh(segments: makeSquareWithDiagonalSegments())
         let faceCountBefore = mesh.faces.filter { $0.edge != nil }.count
-        #expect(faceCountBefore == 3) // 2 interior + 1 exterior
+        #expect(faceCountBefore == 3)
 
         mesh.deleteEdge(segmentID: "diagonal")
 
-        // After deleting the diagonal, the two interior triangles should merge
         let activeFaces = mesh.faces.filter { $0.edge != nil }
-        #expect(activeFaces.count == 2) // 1 merged interior + 1 exterior
+        #expect(activeFaces.count == 2)
     }
 
     @Test("Delete boundary edge")
     func deleteBoundaryEdge() {
-        // For segment-based mesh, all edges have twins, so this tests
-        // deleting an edge on the outer boundary
         var mesh = HalfEdgeMesh(segments: makeSquareSegments())
         #expect(mesh.validate() == nil)
         mesh.deleteEdge(segmentID: "bottom")
-        // The mesh should still have vertices
         #expect(mesh.vertices.count == 4)
     }
 
@@ -475,8 +597,8 @@ struct HalfEdgeMeshEdgeDeletionTests {
 @Suite("HalfEdgeMesh — Accessors")
 struct HalfEdgeMeshAccessorTests {
 
-    @Test("point() returns correct coordinates")
-    func pointAccessor() {
+    @Test("point() returns correct coordinates (2D)")
+    func pointAccessor2D() {
         let points = [
             CGPoint(x: 3, y: 7),
             CGPoint(x: 5, y: 11),
@@ -485,10 +607,27 @@ struct HalfEdgeMeshAccessorTests {
         let mesh = HalfEdgeMesh(points: points, faces: [
             .init(outer: [0, 1, 2])
         ])
-        let vID = HalfEdgeMesh<Int>.VertexID(raw: 1)
+        let vID = HalfEdgeMesh<Int, CGPoint>.VertexID(raw: 1)
         let p = mesh.point(vID)
         #expect(p.x == 5)
         #expect(p.y == 11)
+    }
+
+    @Test("point() returns correct coordinates (3D)")
+    func pointAccessor3D() {
+        let points: [SIMD3<Float>] = [
+            SIMD3(3, 7, 1),
+            SIMD3(5, 11, 2),
+            SIMD3(9, 2, 3),
+        ]
+        let mesh = HalfEdgeMesh(points: points, faces: [
+            .init(outer: [0, 1, 2])
+        ])
+        let vID = HalfEdgeMesh<Int, SIMD3<Float>>.VertexID(raw: 1)
+        let p = mesh.point(vID)
+        #expect(p.x == 5)
+        #expect(p.y == 11)
+        #expect(p.z == 2)
     }
 
     @Test("dest(of:) returns correct destination")
@@ -503,7 +642,6 @@ struct HalfEdgeMeshAccessorTests {
             .init(outer: [0, 1, 2]),
             .init(outer: [0, 2, 3]),
         ])
-        // Find a half-edge with a twin and check dest
         for he in mesh.halfEdges where he.twin != nil {
             let d = mesh.dest(of: he.id)
             #expect(d != nil)
@@ -519,16 +657,16 @@ struct HalfEdgeMeshDescriptionTests {
 
     @Test("ID descriptions")
     func idDescriptions() {
-        let v = HalfEdgeMesh<Int>.VertexID(raw: 42)
-        let h = HalfEdgeMesh<Int>.HalfEdgeID(raw: 7)
-        let f = HalfEdgeMesh<Int>.FaceID(raw: 3)
+        let v = HalfEdgeMesh<Int, CGPoint>.VertexID(raw: 42)
+        let h = HalfEdgeMesh<Int, CGPoint>.HalfEdgeID(raw: 7)
+        let f = HalfEdgeMesh<Int, CGPoint>.FaceID(raw: 3)
         #expect(v.description == "V42")
         #expect(h.description == "H7")
         #expect(f.description == "F3")
     }
 }
 
-// MARK: - Signed area (via faces)
+// MARK: - Signed area (2D only)
 
 @Suite("HalfEdgeMesh — Signed Area")
 struct HalfEdgeMeshSignedAreaTests {
@@ -536,17 +674,21 @@ struct HalfEdgeMeshSignedAreaTests {
     @Test("CCW square has positive signed area")
     func ccwSquarePositiveArea() {
         let mesh = HalfEdgeMesh(segments: makeSquareSegments())
-        let positiveFaces = mesh.faces.filter { ($0.signedArea ?? 0) > 0 }
+        let positiveFaces = mesh.faces.filter {
+            guard let area = mesh.signedArea(of: $0.id) else {
+                return false
+            }
+            return area > 0
+        }
         #expect(!positiveFaces.isEmpty)
     }
 
     @Test("Segment-based mesh has both positive and negative area faces")
     func segmentMeshBothAreas() {
         let mesh = HalfEdgeMesh(segments: makeSquareSegments())
-        let areas = mesh.faces.compactMap(\.signedArea)
+        let areas = mesh.faces.compactMap { mesh.signedArea(of: $0.id) }
         let hasPositive = areas.contains { $0 > 0 }
         let hasNegative = areas.contains { $0 < 0 }
-        // Interior face should be positive, exterior should be negative
         #expect(hasPositive)
         #expect(hasNegative)
     }
@@ -554,9 +696,9 @@ struct HalfEdgeMeshSignedAreaTests {
     @Test("Unit square interior face area is 1.0")
     func unitSquareArea() {
         let mesh = HalfEdgeMesh(segments: makeSquareSegments())
-        let areas = mesh.faces.compactMap(\.signedArea)
-        let positiveArea = areas.filter { $0 > 0 }
-        #expect(positiveArea.count == 1)
-        #expect(abs(positiveArea[0] - 1.0) < 1e-10)
+        let areas = mesh.faces.compactMap { mesh.signedArea(of: $0.id) }
+        let positiveAreas = areas.filter { $0 > 0 }
+        #expect(positiveAreas.count == 1)
+        #expect(abs(positiveAreas[0] - 1.0) < 1e-10)
     }
 }
