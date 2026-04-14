@@ -19,6 +19,27 @@ A Swift package for mesh data structures and operations.
 **`MeshWithEdges`**
 : Wraps a `Mesh` and extracts unique edges for wireframe rendering.
 
+## Comparison
+
+|                   | HalfEdgeMesh | PolygonMesh     | TrivialMesh              | Mesh      | MeshWithEdges |
+| ----------------- | ------------ | --------------- | ------------------------ | --------- | ------------- |
+| Indexed           | ✓            | ✓               | ✓                        | ✓         | ✓             |
+| Face type         | N-gon        | N-gon           | Triangles                | Triangles | Triangles     |
+| Dimension         | Generic      | 3D              | 3D                       | —         | —             |
+| Adjacency queries | ✓            | via HE          | —                        | —         | —             |
+| Normals           | —            | Per-face        | Per-vertex               | Raw       | Raw           |
+| UVs               | —            | —               | ✓                        | Raw       | Raw           |
+| Tangents          | —            | —               | ✓                        | Raw       | Raw           |
+| Colors            | —            | —               | ✓                        | Raw       | Raw           |
+| Submeshes         | —            | —               | —                        | ✓         | ✓             |
+| MTLBuffer         | —            | —               | —                        | ✓         | ✓             |
+| Edge list         | ✓            | ✓               | —                        | —         | ✓             |
+| Mutable           | ✓            | —               | ✓                        | ✓         | —             |
+| Insert vertex     | O(1)         | —               | O(1)                     | Rebuild   | —             |
+| Insert face       | O(n)         | —               | O(1)                     | Rebuild   | —             |
+| Insert edge       | O(n)         | —               | —                        | Rebuild   | —             |
+| Shape primitives  | —            | Platonic solids | Box, sphere, cylinder, … | —         | —             |
+
 ## Dependencies
 
 - [GeometryLite2D](https://github.com/schwa/GeometryLite2D) — 2D geometry primitives (`LineSegment`, `Polygon`, `Identified`, etc.)
