@@ -3,10 +3,12 @@
 ---
 
 ## 1: Rename HalfEdgeMesh to HalfEdgeTopology, strip Point generic and position storage
-status: new
+status: closed
 priority: high
 kind: task
 created: 2026-04-14T22:38:12Z
+updated: 2026-04-14T23:00:15Z
+closed: 2026-04-14T23:00:15Z
 
 Remove Point generic parameter. Remove Vertex.p position storage. Move polygon(for:), boundaryLoops(), collectLoop() to return IDs only. Move 2D CGPoint extensions (signedArea, isConvex, isHole, segment-based init) out. Pure topology only.
 

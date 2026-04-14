@@ -3,9 +3,8 @@ import simd
 
 public struct PolygonMesh: Equatable, Sendable {
 
-    internal typealias HE = HalfEdgeMesh<Int, SIMD3<Float>>
-
-    internal var storage: HE
+    internal var topology: HalfEdgeTopology
+    internal var positions: [SIMD3<Float>]
 
     public struct Edge: Hashable, Sendable {
         public var start: SIMD3<Float>
@@ -17,8 +16,9 @@ public struct PolygonMesh: Equatable, Sendable {
     }
 
     public init(vertices: [SIMD3<Float>], faces: [[Int]]) {
-        let faceDefs = faces.map { HE.FaceDefinition(outer: $0) }
-        storage = HE(points: vertices, faces: faceDefs)
+        self.positions = vertices
+        let faceDefs = faces.map { HalfEdgeTopology.FaceDefinition(outer: $0) }
+        self.topology = HalfEdgeTopology(vertexCount: vertices.count, faces: faceDefs)
     }
 
     public init(vertices: [SIMD3<Float>], faces: [Face]) {
@@ -37,9 +37,10 @@ public struct PolygonMesh: Equatable, Sendable {
         }
 
         let faceDefs = faces.map { face in
-            HE.FaceDefinition(outer: face.vertices.map { index(for: $0) })
+            HalfEdgeTopology.FaceDefinition(outer: face.vertices.map { index(for: $0) })
         }
-        storage = HE(points: indexedVertices, faces: faceDefs)
+        self.positions = indexedVertices
+        self.topology = HalfEdgeTopology(vertexCount: indexedVertices.count, faces: faceDefs)
     }
 }
 
@@ -47,13 +48,13 @@ public struct PolygonMesh: Equatable, Sendable {
 
 public extension PolygonMesh {
     var vertices: [SIMD3<Float>] {
-        storage.vertices.map(\.p)
+        positions
     }
 
     var faces: [Face] {
-        storage.faces.map { face in
-            let pts = storage.polygon(for: face.id)
-            return Face(vertices: pts)
+        topology.faces.map { face in
+            let vertexIDs = topology.vertexLoop(for: face.id)
+            return Face(vertices: vertexIDs.map { positions[$0.raw] })
         }
     }
 }
@@ -62,8 +63,8 @@ public extension PolygonMesh {
 
 public extension PolygonMesh {
     var edges: [Edge] {
-        storage.undirectedEdges().map { vertexA, vertexB, _ in
-            Edge(start: storage.point(vertexA), end: storage.point(vertexB))
+        topology.undirectedEdges().map { vertexA, vertexB in
+            Edge(start: positions[vertexA.raw], end: positions[vertexB.raw])
         }
     }
 
@@ -81,17 +82,17 @@ public extension PolygonMesh {
 public extension PolygonMesh {
     /// Validates the internal mesh structure. Returns nil if valid.
     func validate() -> String? {
-        storage.validate()
+        topology.validate()
     }
 
     /// Number of faces in the mesh.
     var faceCount: Int {
-        storage.faces.count
+        topology.faces.count
     }
 
     /// Number of unique undirected edges.
     var edgeCount: Int {
-        storage.undirectedEdges().count
+        topology.undirectedEdges().count
     }
 }
 
