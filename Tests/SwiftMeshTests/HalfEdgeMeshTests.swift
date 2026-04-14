@@ -1,4 +1,5 @@
 import CoreGraphics
+import Geometry
 import Testing
 @testable import SwiftMesh
 

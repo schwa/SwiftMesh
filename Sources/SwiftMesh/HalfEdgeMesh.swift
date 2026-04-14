@@ -1,81 +1,6 @@
 import CoreGraphics
 import Foundation
-
-// MARK: - Inlined support types (originally from GeometryLite2D/Geometry)
-
-/// A value paired with a stable identifier.
-public struct Identified<ID, Value>: Identifiable where ID: Hashable {
-    public var id: ID
-    public var value: Value
-
-    public init(id: ID, value: Value) {
-        self.id = id
-        self.value = value
-    }
-}
-
-extension Identified: Sendable where ID: Sendable, Value: Sendable {}
-extension Identified: Equatable where ID: Equatable, Value: Equatable {}
-extension Identified: Hashable where ID: Hashable, Value: Hashable {}
-
-/// A type-erased composite key for hashing pairs of values.
-struct Composite<each T> {
-    private let children: (repeat each T)
-
-    init(_ children: repeat each T) {
-        self.children = (repeat each children)
-    }
-}
-
-extension Composite: Equatable where repeat each T: Equatable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        for (left, right) in repeat (each lhs.children, each rhs.children) {
-            guard left == right else { return false }
-        }
-        return true
-    }
-}
-
-extension Composite: Hashable where repeat each T: Hashable {
-    func hash(into hasher: inout Hasher) {
-        for child in repeat (each children) {
-            child.hash(into: &hasher)
-        }
-    }
-}
-
-extension Composite: Sendable where repeat each T: Sendable {}
-
-/// A directed line segment in 2D.
-public struct LineSegment: Hashable, Sendable {
-    public var start: CGPoint
-    public var end: CGPoint
-
-    public init(start: CGPoint, end: CGPoint) {
-        self.start = start
-        self.end = end
-    }
-}
-
-// MARK: - Private 2D helpers
-
-private extension CGPoint {
-    func angle(to other: CGPoint) -> CGFloat {
-        atan2(other.y - y, other.x - x)
-    }
-}
-
-/// Shoelace formula for signed area of a simple polygon.
-private func signedArea(of points: [CGPoint]) -> CGFloat {
-    guard points.count >= 3 else { return 0 }
-    var sum: CGFloat = 0
-    for i in 0..<points.count {
-        let current = points[i]
-        let next = points[(i + 1) % points.count]
-        sum += (current.x * next.y) - (next.x * current.y)
-    }
-    return sum / 2
-}
+import Geometry
 
 // MARK: - HalfEdgeMesh
 
@@ -641,7 +566,7 @@ extension HalfEdgeMesh where Point == CGPoint {
         guard pts.count >= 3 else {
             return nil
         }
-        return SwiftMesh.signedArea(of: pts)
+        return Polygon(pts).signedArea
     }
 
     /// Whether this face has clockwise winding (negative signed area), indicating a hole.
@@ -658,25 +583,7 @@ extension HalfEdgeMesh where Point == CGPoint {
         guard pts.count >= 3 else {
             return false
         }
-        let n = pts.count
-        var sign: Bool?
-        for i in 0..<n {
-            let a = pts[i]
-            let b = pts[(i + 1) % n]
-            let c = pts[(i + 2) % n]
-            let cross = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x)
-            if cross != 0 {
-                let positive = cross > 0
-                if let s = sign {
-                    if s != positive {
-                        return false
-                    }
-                } else {
-                    sign = positive
-                }
-            }
-        }
-        return true
+        return Polygon(pts).isConvex
     }
 
     // MARK: - 2D segment-based build
