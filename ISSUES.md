@@ -15,10 +15,12 @@ Remove Point generic parameter. Remove Vertex.p position storage. Move polygon(f
 ---
 
 ## 2: Build Mesh type — topology + SoA vertex attributes
-status: new
+status: closed
 priority: high
 kind: task
 created: 2026-04-14T22:38:19Z
+updated: 2026-04-14T23:37:01Z
+closed: 2026-04-14T23:37:01Z
 
 Mesh wraps HalfEdgeTopology. SoA attribute storage: positions indexed by VertexID.raw, per-corner attributes (UVs, normals) indexed by HalfEdgeID.raw. Per-face material tag. Optional attribute arrays. Shape primitives (Platonic solids, etc.) move here.
 

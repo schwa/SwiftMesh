@@ -17,13 +17,13 @@ public struct MeshWithEdges {
         }
     }
 
-    var mesh: Mesh
+    var mesh: LegacyMesh
     var uniqueEdges: [Edge]
 }
 
 public extension MeshWithEdges {
     /// Create a MeshWithEdges from a Mesh by extracting its unique edges
-    init(mesh: Mesh) {
+    init(mesh: LegacyMesh) {
         self.mesh = mesh
 
         // Calculate total triangle count for capacity reservation

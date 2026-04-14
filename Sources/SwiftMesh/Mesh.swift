@@ -3,7 +3,7 @@ import Metal
 import MetalSupport
 import simd
 
-public struct Mesh {
+public struct LegacyMesh {
     public var label: String?
     public var submeshes: [Submesh]
     public var vertexDescriptor: VertexDescriptor
@@ -42,7 +42,7 @@ public struct Mesh {
 }
 
 public extension MTLRenderCommandEncoder {
-    func draw(mesh: Mesh) {
+    func draw(mesh: LegacyMesh) {
         // TODO: Simple case
         assert(mesh.vertexBuffers.count == 1)
         setVertexBuffer(mesh.vertexBuffers[0].buffer, offset: mesh.vertexBuffers[0].offset, index: 0) // TODO: Index
@@ -54,7 +54,7 @@ public extension MTLRenderCommandEncoder {
 
 // MARK: - Codable
 
-extension Mesh.Buffer: Codable {
+extension LegacyMesh.Buffer: Codable {
     enum CodingKeys: String, CodingKey {
         case bufferData
         case count
@@ -100,7 +100,7 @@ extension Mesh.Buffer: Codable {
     }
 }
 
-extension Mesh.Submesh: Codable {
+extension LegacyMesh.Submesh: Codable {
     enum CodingKeys: String, CodingKey {
         case label
         case primitiveType
@@ -112,7 +112,7 @@ extension Mesh.Submesh: Codable {
         label = try container.decodeIfPresent(String.self, forKey: .label)
         let primitiveTypeRawValue = try container.decode(UInt.self, forKey: .primitiveType)
         primitiveType = MTLPrimitiveType(rawValue: primitiveTypeRawValue) ?? .triangle
-        indices = try container.decode(Mesh.Buffer.self, forKey: .indices)
+        indices = try container.decode(LegacyMesh.Buffer.self, forKey: .indices)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -123,7 +123,7 @@ extension Mesh.Submesh: Codable {
     }
 }
 
-extension Mesh: Codable {
+extension LegacyMesh: Codable {
     enum CodingKeys: String, CodingKey {
         case label
         case submeshes

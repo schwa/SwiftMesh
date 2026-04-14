@@ -3,7 +3,7 @@ import MetalSupport
 import GeometryLite3D
 import Metal
 
-public extension Mesh {
+public extension LegacyMesh {
     init(_ trivial: TrivialMesh, device: MTLDevice) {
         self.label = trivial.label
         let vertexDescriptor = trivial.vertexDescriptor()
