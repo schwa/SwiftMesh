@@ -27,10 +27,12 @@ Mesh wraps HalfEdgeTopology. SoA attribute storage: positions indexed by VertexI
 ---
 
 ## 3: Triangulation — fan + earcut for n-gon faces
-status: new
+status: closed
 priority: high
 kind: task
 created: 2026-04-14T22:38:23Z
+updated: 2026-04-14T23:53:30Z
+closed: 2026-04-14T23:53:30Z
 
 Triangulate n-gon faces for GPU export. Fan triangulation for convex faces, SwiftEarcut for concave. Operates on Mesh, produces triangle index lists.
 

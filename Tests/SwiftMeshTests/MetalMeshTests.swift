@@ -81,4 +81,24 @@ struct MetalMeshTests {
         #expect(metalMesh.label == "Test")
         #expect(metalMesh.vertexBuffer.label == "Test Vertices")
     }
+
+    @Test("Cube (quad faces) exports correctly via triangulation")
+    func cubeExport() throws {
+        let device = try requireDevice()
+        let metalMesh = MetalMesh(mesh: .cube, device: device)
+        // 6 quad faces × 2 triangles × 3 verts = 36
+        #expect(metalMesh.vertexCount == 36)
+        #expect(metalMesh.submeshes.count == 1)
+        #expect(metalMesh.submeshes[0].indexCount == 36)
+    }
+
+    @Test("Dodecahedron (pentagon faces) exports correctly")
+    func dodecahedronExport() throws {
+        let device = try requireDevice()
+        let metalMesh = MetalMesh(mesh: .dodecahedron, device: device)
+        // 12 pentagon faces × 3 triangles × 3 verts = 108
+        #expect(metalMesh.vertexCount == 108)
+        #expect(metalMesh.submeshes.count == 1)
+        #expect(metalMesh.submeshes[0].indexCount == 108)
+    }
 }

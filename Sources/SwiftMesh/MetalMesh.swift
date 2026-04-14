@@ -6,8 +6,7 @@ import simd
 /// A GPU-ready mesh produced from a `Mesh` by triangulating faces,
 /// splitting vertices per-corner, and interleaving attributes into Metal buffers.
 ///
-/// Currently assumes all faces are triangles. N-gon triangulation (fan/earcut)
-/// will be added later.
+/// Faces are triangulated via earcut for n-gons, or passed through for triangles.
 public struct MetalMesh {
 
     public struct Submesh {
@@ -70,57 +69,72 @@ public struct MetalMesh {
             var indices: [UInt32] = []
 
             for faceID in faceIDs {
+                // Triangulate the face
+                let vertexIDs = mesh.topology.vertexLoop(for: faceID)
+                let faceTriangles: [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
+                if vertexIDs.count == 3 {
+                    faceTriangles = [(vertexIDs[0], vertexIDs[1], vertexIDs[2])]
+                } else {
+                    // Use Mesh.triangulate() logic for this face
+                    faceTriangles = mesh.triangulateFace(vertexIDs: vertexIDs)
+                }
+
+                // Build a lookup from vertexID to half-edge ID for this face
+                // (for per-corner attribute lookup)
                 let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
-                // Currently assumes triangles
-                assert(heLoop.count == 3, "MetalMesh currently only supports triangle faces (got \(heLoop.count)-gon)")
-
+                var vertexToHE: [Int: HalfEdgeTopology.HalfEdgeID] = [:]
                 for heID in heLoop {
-                    let vertexID = mesh.topology.halfEdges[heID.raw].origin
+                    vertexToHE[mesh.topology.halfEdges[heID.raw].origin.raw] = heID
+                }
 
-                    // Write interleaved vertex
-                    var vertexBytes = [UInt8](repeating: 0, count: stride)
-                    vertexBytes.withUnsafeMutableBytes { bytes in
-                        guard let base = bytes.baseAddress else {
-                            return
-                        }
-                        for attr in descriptor.attributes where attr.bufferIndex == 0 {
-                            let dest = base.advanced(by: attr.offset)
-                            switch attr.semantic {
-                            case .position:
-                                var packed = Packed3<Float>(mesh.positions[vertexID.raw])
-                                withUnsafeBytes(of: &packed) { src in
-                                    dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
-                                }
-                            case .normal:
-                                if let normals = mesh.normals {
-                                    var packed = Packed3<Float>(normals[heID.raw])
+                for (vid0, vid1, vid2) in faceTriangles {
+                    for vertexID in [vid0, vid1, vid2] {
+                        let heID = vertexToHE[vertexID.raw]
+
+                        var vertexBytes = [UInt8](repeating: 0, count: stride)
+                        vertexBytes.withUnsafeMutableBytes { bytes in
+                            guard let base = bytes.baseAddress else {
+                                return
+                            }
+                            for attr in descriptor.attributes where attr.bufferIndex == 0 {
+                                let dest = base.advanced(by: attr.offset)
+                                switch attr.semantic {
+                                case .position:
+                                    var packed = Packed3<Float>(mesh.positions[vertexID.raw])
                                     withUnsafeBytes(of: &packed) { src in
                                         dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
                                     }
-                                }
-                            case .texcoord:
-                                if let uvs = mesh.textureCoordinates {
-                                    var uv = uvs[heID.raw]
-                                    withUnsafeBytes(of: &uv) { src in
-                                        dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
+                                case .normal:
+                                    if let normals = mesh.normals, let heID {
+                                        var packed = Packed3<Float>(normals[heID.raw])
+                                        withUnsafeBytes(of: &packed) { src in
+                                            dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
+                                        }
                                     }
-                                }
-                            case .color:
-                                if let colors = mesh.colors {
-                                    var color = colors[heID.raw]
-                                    withUnsafeBytes(of: &color) { src in
-                                        dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
+                                case .texcoord:
+                                    if let uvs = mesh.textureCoordinates, let heID {
+                                        var uv = uvs[heID.raw]
+                                        withUnsafeBytes(of: &uv) { src in
+                                            dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
+                                        }
                                     }
+                                case .color:
+                                    if let colors = mesh.colors, let heID {
+                                        var color = colors[heID.raw]
+                                        withUnsafeBytes(of: &color) { src in
+                                            dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
+                                        }
+                                    }
+                                default:
+                                    break
                                 }
-                            default:
-                                break
                             }
                         }
-                    }
 
-                    vertexData.append(contentsOf: vertexBytes)
-                    indices.append(currentVertexIndex)
-                    currentVertexIndex += 1
+                        vertexData.append(contentsOf: vertexBytes)
+                        indices.append(currentVertexIndex)
+                        currentVertexIndex += 1
+                    }
                 }
             }
 
