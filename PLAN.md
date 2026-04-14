@@ -16,16 +16,18 @@ Three layers:
 - Positions keyed by VertexID
 - Other attributes (normals, UVs, colors) keyed by VertexID or HalfEdgeID (per-corner)
 - N-gon faces — no triangulation at this level
+- Per-face material/group tag (integer) — this is how submeshes are expressed
 - Shape primitives (Platonic solids, sphere, cylinder, etc.) live here
 - Replaces `PolygonMesh`
 
 ### 3. `MetalMesh`
 - Triangulated, interleaved Metal buffers ready for rendering
-- Produced from `Mesh` via export/conversion
+- Produced from `Mesh` via export/conversion: `MetalMesh(mesh:)`
+- Groups faces by material tag → one submesh per material
 - Triangulation at export time: fan for convex, earcut for concave
 - Vertex splitting for hard edges / per-face attributes
+- Shared vertex buffer, per-submesh index arrays
 - Interleaved buffer layout with vertex descriptor
-- Submesh support
 - Replaces `TrivialMesh`, the current `Mesh` (MTLBuffer wrapper), and `MeshWithEdges`
 - Edge list extraction is trivial from the source `Mesh`'s topology
 - Should live in its own target (separate Metal dependency)
@@ -50,7 +52,8 @@ Three layers:
 ## Decided
 
 - **Mesh attribute storage is SoA** (struct of arrays). Positions as `[SIMD3<Float>]` indexed by VertexID.raw, per-corner attributes as arrays indexed by HalfEdgeID.raw. Optional arrays for optional attributes. No fixed Vertex struct.
-- **MetalMesh layout doesn't matter** — it's a write-once export. Interleave however the vertex descriptor dictates.
+- **MetalMesh layout doesn't matter** — it's a write-once export.
+- **Submeshes are per-face material tags on Mesh.** MetalMesh splits into actual submeshes on export. One Mesh can have multiple materials. Interleave however the vertex descriptor dictates.
 
 ## Open Questions
 
