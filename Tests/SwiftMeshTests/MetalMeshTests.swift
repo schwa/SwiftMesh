@@ -1,0 +1,84 @@
+import Metal
+import simd
+import Testing
+@testable import SwiftMesh
+
+@Suite("MetalMesh")
+struct MetalMeshTests {
+
+    private func requireDevice() throws -> MTLDevice {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw MetalMeshTestError.noDevice
+        }
+        return device
+    }
+
+    enum MetalMeshTestError: Error {
+        case noDevice
+    }
+
+    @Test("Triangle mesh produces correct vertex/index counts")
+    func triangleCounts() throws {
+        let device = try requireDevice()
+        let mesh = Mesh.tetrahedron
+        let metalMesh = MetalMesh(mesh: mesh, device: device, label: "Tetrahedron")
+
+        // 4 faces × 3 corners = 12 vertices (split per-corner)
+        #expect(metalMesh.vertexCount == 12)
+        // 1 submesh (no material tags)
+        #expect(metalMesh.submeshes.count == 1)
+        // 12 indices
+        #expect(metalMesh.submeshes[0].indexCount == 12)
+    }
+
+    @Test("Octahedron export")
+    func octahedron() throws {
+        let device = try requireDevice()
+        let metalMesh = MetalMesh(mesh: .octahedron, device: device)
+        // 8 faces × 3 = 24
+        #expect(metalMesh.vertexCount == 24)
+        #expect(metalMesh.submeshes.count == 1)
+        #expect(metalMesh.submeshes[0].indexCount == 24)
+    }
+
+    @Test("Icosahedron export")
+    func icosahedron() throws {
+        let device = try requireDevice()
+        let metalMesh = MetalMesh(mesh: .icosahedron, device: device)
+        // 20 faces × 3 = 60
+        #expect(metalMesh.vertexCount == 60)
+        #expect(metalMesh.submeshes.count == 1)
+        #expect(metalMesh.submeshes[0].indexCount == 60)
+    }
+
+    @Test("Material tags produce multiple submeshes")
+    func materialSubmeshes() throws {
+        let device = try requireDevice()
+        let topo = HalfEdgeTopology(vertexCount: 6, faces: [
+            .init(outer: [0, 1, 2]),
+            .init(outer: [3, 4, 5])
+        ])
+        let mesh = Mesh(
+            topology: topo,
+            positions: [
+                SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0),
+                SIMD3(2, 0, 0), SIMD3(3, 0, 0), SIMD3(2.5, 1, 0)
+            ],
+            faceMaterials: [0, 1]
+        )
+        let metalMesh = MetalMesh(mesh: mesh, device: device)
+        #expect(metalMesh.submeshes.count == 2)
+        #expect(metalMesh.submeshes[0].materialIndex == 0)
+        #expect(metalMesh.submeshes[1].materialIndex == 1)
+        #expect(metalMesh.submeshes[0].indexCount == 3)
+        #expect(metalMesh.submeshes[1].indexCount == 3)
+    }
+
+    @Test("Label propagates")
+    func labelPropagates() throws {
+        let device = try requireDevice()
+        let metalMesh = MetalMesh(mesh: .tetrahedron, device: device, label: "Test")
+        #expect(metalMesh.label == "Test")
+        #expect(metalMesh.vertexBuffer.label == "Test Vertices")
+    }
+}

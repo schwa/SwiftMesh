@@ -37,10 +37,12 @@ Triangulate n-gon faces for GPU export. Fan triangulation for convex faces, Swif
 ---
 
 ## 4: Build MetalMesh — GPU export from Mesh
-status: new
+status: closed
 priority: high
 kind: task
 created: 2026-04-14T22:38:31Z
+updated: 2026-04-14T23:39:40Z
+closed: 2026-04-14T23:39:40Z
 
 Convert Mesh to Metal buffers. Triangulate faces, split vertices for hard edges/per-corner attributes, interleave into vertex buffer, generate per-submesh index arrays grouped by face material tag. Vertex descriptor. Replaces TrivialMesh, old Mesh, MeshWithEdges. Separate target with Metal dependency.
 
