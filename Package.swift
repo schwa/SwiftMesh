@@ -21,7 +21,6 @@ let package = Package(
         .target(
             name: "SwiftMesh",
             dependencies: [
-                .product(name: "Geometry", package: "GeometryLite2D"),
                 .product(name: "GeometryLite3D", package: "GeometryLite3D"),
                 .product(name: "MetalSupport", package: "MetalSupport"),
                 .product(name: "SwiftEarcut", package: "SwiftEarcut"),

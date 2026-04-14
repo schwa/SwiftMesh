@@ -49,10 +49,12 @@ Convert Mesh to Metal buffers. Triangulate faces, split vertices for hard edges/
 ---
 
 ## 5: Remove dead types — PolygonMesh, TrivialMesh, old Mesh, MeshWithEdges
-status: new
+status: closed
 priority: medium
 kind: task
 created: 2026-04-14T22:38:36Z
+updated: 2026-04-14T23:42:07Z
+closed: 2026-04-14T23:42:07Z
 
 Once MetalMesh is working, remove the legacy types and their associated files. Update tests and README.
 
