@@ -1,5 +1,5 @@
-import Collections
 import Metal
+import MetalSupport
 import simd
 
 // swiftlint:disable discouraged_optional_collection

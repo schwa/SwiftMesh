@@ -1,5 +1,5 @@
 import Foundation
-import MetalSprocketsSupport
+import MetalSupport
 import MikkTSpace
 
 extension SMikkTSpaceContext {

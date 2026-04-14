@@ -1,5 +1,5 @@
 {
-  "originHash" : "1d123532903ca5403a04620e7f7308c9140675193afab25a102edc6cc863add4",
+  "originHash" : "dddcce130576029e51ea4580e6c7399c12a6bb7414c03748a0977a08a3b32e1a",
   "pins" : [
     {
       "identity" : "geometrylite3d",
@@ -11,21 +11,12 @@
       }
     },
     {
-      "identity" : "metalcompilerplugin",
+      "identity" : "metalsupport",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/schwa/MetalCompilerPlugin",
+      "location" : "https://github.com/schwa/MetalSupport",
       "state" : {
-        "revision" : "9c11db3648fa4e4f02bd4918c4b7db3472a73c64",
-        "version" : "0.1.6"
-      }
-    },
-    {
-      "identity" : "metalsprockets",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/schwa/MetalSprockets",
-      "state" : {
-        "revision" : "20125f181f8571eca25ae9b5e160628f4e44177e",
-        "version" : "0.1.7"
+        "revision" : "bbd05e3292b7b5808e04c93be11a75e141aadf02",
+        "version" : "1.0.1"
       }
     },
     {
@@ -44,15 +35,6 @@
       "state" : {
         "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
         "version" : "1.1.1"
-      }
-    },
-    {
-      "identity" : "swift-syntax",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swiftlang/swift-syntax.git",
-      "state" : {
-        "revision" : "0687f71944021d616d34d922343dcef086855920",
-        "version" : "600.0.1"
       }
     },
     {
