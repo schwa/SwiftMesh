@@ -47,8 +47,12 @@ Three layers:
 5. **Build `MetalMesh`** — triangulated Metal buffer export from `Mesh`. Replaces `TrivialMesh` + old `Mesh` + `MeshWithEdges`.
 6. **Remove dead types** — `PolygonMesh`, `TrivialMesh`, old `Mesh`, `MeshWithEdges`.
 
+## Decided
+
+- **Mesh attribute storage is SoA** (struct of arrays). Positions as `[SIMD3<Float>]` indexed by VertexID.raw, per-corner attributes as arrays indexed by HalfEdgeID.raw. Optional arrays for optional attributes. No fixed Vertex struct.
+- **MetalMesh layout doesn't matter** — it's a write-once export. Interleave however the vertex descriptor dictates.
+
 ## Open Questions
 
-- **Attribute storage API**: parallel arrays keyed by VertexID? Dictionary? Generic attribute bags?
 - **MetalMesh naming**: `MetalMesh`? `GPUMesh`? `RenderMesh`?
 - **2D support**: keep 2D factories/queries as extensions? Separate module?
