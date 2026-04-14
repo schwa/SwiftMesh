@@ -15,6 +15,7 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-collections.git", from: "1.3.0"),
         .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.1.0"),
         .package(url: "https://github.com/schwa/MetalSprockets", from: "0.1.7"),
+        .package(url: "https://github.com/schwa/SwiftEarcut", from: "0.0.1"),
     ],
     targets: [
         .target(
@@ -23,6 +24,7 @@ let package = Package(
                 .product(name: "Collections", package: "swift-collections"),
                 .product(name: "GeometryLite3D", package: "GeometryLite3D"),
                 .product(name: "MetalSprocketsSupport", package: "MetalSprockets"),
+                .product(name: "SwiftEarcut", package: "SwiftEarcut"),
                 "MikkTSpace",
             ]
         ),
