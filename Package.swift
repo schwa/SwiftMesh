@@ -11,8 +11,25 @@ let package = Package(
     products: [
         .library(name: "SwiftMesh", targets: ["SwiftMesh"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-collections.git", from: "1.3.0"),
+        .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.1.0"),
+        .package(url: "https://github.com/schwa/MetalSprockets", from: "0.1.7"),
+    ],
     targets: [
-        .target(name: "SwiftMesh"),
+        .target(
+            name: "SwiftMesh",
+            dependencies: [
+                .product(name: "Collections", package: "swift-collections"),
+                .product(name: "GeometryLite3D", package: "GeometryLite3D"),
+                .product(name: "MetalSprocketsSupport", package: "MetalSprockets"),
+                "MikkTSpace",
+            ]
+        ),
+        .target(
+            name: "MikkTSpace",
+            publicHeadersPath: "."
+        ),
         .testTarget(name: "SwiftMeshTests", dependencies: ["SwiftMesh"]),
     ]
 )
