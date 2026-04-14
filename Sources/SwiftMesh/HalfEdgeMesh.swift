@@ -85,19 +85,19 @@ private func signedArea(of points: [CGPoint]) -> CGFloat {
 /// validation, queries) is dimension-agnostic. Geometry-specific operations
 /// (signed area, angle sorting, convexity) are provided as conditional
 /// extensions for specific point types (e.g. `CGPoint`).
-public struct HalfEdgeMesh<ID: Hashable, Point: Hashable & Sendable> {
+public struct HalfEdgeMesh<ID: Hashable, Point: Hashable & Sendable>: Sendable, Equatable where ID: Sendable & Equatable {
     // Stable ids
     public struct VertexID: Hashable, Sendable { public let raw: Int; public init(raw: Int) { self.raw = raw } }
     public struct HalfEdgeID: Hashable, Sendable { public let raw: Int; public init(raw: Int) { self.raw = raw } }
     public struct FaceID: Hashable, Sendable { public let raw: Int; public init(raw: Int) { self.raw = raw } }
 
-    public struct Vertex {
+    public struct Vertex: Sendable, Equatable {
         public let id: VertexID
         public var p: Point
         public var edge: HalfEdgeID? // one outgoing
     }
 
-    public struct HalfEdge {
+    public struct HalfEdge: Sendable, Equatable {
         public let id: HalfEdgeID
         public let origin: VertexID
         public var twin: HalfEdgeID?
@@ -107,7 +107,7 @@ public struct HalfEdgeMesh<ID: Hashable, Point: Hashable & Sendable> {
         public let segmentID: ID
     }
 
-    public struct Face {
+    public struct Face: Sendable, Equatable {
         public let id: FaceID
         public var edge: HalfEdgeID? // outer boundary edge
         public var holeEdges: [HalfEdgeID] = [] // one half-edge per hole loop

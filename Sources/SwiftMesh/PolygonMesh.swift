@@ -2,8 +2,10 @@ import Foundation
 import simd
 
 public struct PolygonMesh: Equatable, Sendable {
-    public var vertices: [SIMD3<Float>]
-    public var faces: [Face]
+
+    internal typealias HE = HalfEdgeMesh<Int, SIMD3<Float>>
+
+    internal var storage: HE
 
     public struct Edge: Hashable, Sendable {
         public var start: SIMD3<Float>
@@ -15,44 +17,93 @@ public struct PolygonMesh: Equatable, Sendable {
     }
 
     public init(vertices: [SIMD3<Float>], faces: [[Int]]) {
-        self.vertices = vertices
-        self.faces = faces.map { indices in
-            Face(vertices: indices.map { vertices[$0] })
-        }
+        let faceDefs = faces.map { HE.FaceDefinition(outer: $0) }
+        storage = HE(points: vertices, faces: faceDefs)
     }
 
     public init(vertices: [SIMD3<Float>], faces: [Face]) {
-        self.vertices = vertices
-        self.faces = faces
+        // Deduplicate vertex positions to build an indexed representation
+        var indexedVertices: [SIMD3<Float>] = []
+        var positionToIndex: [SIMD3<Float>: Int] = [:]
+
+        func index(for position: SIMD3<Float>) -> Int {
+            if let existing = positionToIndex[position] {
+                return existing
+            }
+            let idx = indexedVertices.count
+            indexedVertices.append(position)
+            positionToIndex[position] = idx
+            return idx
+        }
+
+        let faceDefs = faces.map { face in
+            HE.FaceDefinition(outer: face.vertices.map { index(for: $0) })
+        }
+        storage = HE(points: indexedVertices, faces: faceDefs)
     }
 }
+
+// MARK: - Vertices & Faces
+
+public extension PolygonMesh {
+    var vertices: [SIMD3<Float>] {
+        storage.vertices.map(\.p)
+    }
+
+    var faces: [Face] {
+        storage.faces.map { face in
+            let pts = storage.polygon(for: face.id)
+            return Face(vertices: pts)
+        }
+    }
+}
+
+// MARK: - Edges & Centers
 
 public extension PolygonMesh {
     var edges: [Edge] {
-        var unique: Set<Edge> = []
-        var result: [Edge] = []
-
-        for face in faces {
-            for edge in face.edges where unique.insert(edge).inserted {
-                result.append(edge)
-            }
+        storage.undirectedEdges().map { vertexA, vertexB, _ in
+            Edge(start: storage.point(vertexA), end: storage.point(vertexB))
         }
-        return result
     }
 
     var center: SIMD3<Float> {
-        guard !vertices.isEmpty else {
+        let verts = vertices
+        guard !verts.isEmpty else {
             return SIMD3<Float>(repeating: 0)
         }
-        return vertices.reduce(SIMD3<Float>(repeating: 0), +) / Float(vertices.count)
+        return verts.reduce(SIMD3<Float>(repeating: 0), +) / Float(verts.count)
     }
 }
+
+// MARK: - Topology queries
+
+public extension PolygonMesh {
+    /// Validates the internal mesh structure. Returns nil if valid.
+    func validate() -> String? {
+        storage.validate()
+    }
+
+    /// Number of faces in the mesh.
+    var faceCount: Int {
+        storage.faces.count
+    }
+
+    /// Number of unique undirected edges.
+    var edgeCount: Int {
+        storage.undirectedEdges().count
+    }
+}
+
+// MARK: - Edge
 
 public extension PolygonMesh.Edge {
     var center: SIMD3<Float> {
         (start + end) / 2
     }
 }
+
+// MARK: - Face
 
 public extension PolygonMesh.Face {
     var edges: [PolygonMesh.Edge] {
@@ -61,8 +112,8 @@ public extension PolygonMesh.Face {
         }
         var result: [PolygonMesh.Edge] = []
         let wrapped = vertices + [first]
-        for i in 0..<(wrapped.count - 1) {
-            result.append(PolygonMesh.Edge(start: wrapped[i], end: wrapped[i + 1]))
+        for index in 0..<(wrapped.count - 1) {
+            result.append(PolygonMesh.Edge(start: wrapped[index], end: wrapped[index + 1]))
         }
         return result
     }
@@ -71,7 +122,6 @@ public extension PolygonMesh.Face {
         guard vertices.count >= 3 else {
             return SIMD3<Float>(0, 0, 1)
         }
-
         let a = vertices[0]
         let b = vertices[1]
         let c = vertices[2]
@@ -82,6 +132,8 @@ public extension PolygonMesh.Face {
         vertices.reduce(SIMD3<Float>(repeating: 0), +) / Float(vertices.count)
     }
 }
+
+// MARK: - Platonic Solids
 
 public extension PolygonMesh {
     static let cube = PolygonMesh(
