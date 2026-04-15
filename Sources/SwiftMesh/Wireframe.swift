@@ -208,3 +208,120 @@ public extension Mesh {
         return Mesh(positions: positions, faces: faces)
     }
 }
+
+// MARK: - Border Mesh
+
+public extension Mesh {
+    /// Whether the border loop is inset (toward the face center) or outset
+    /// (away from the face center).
+    enum BorderDirection: Sendable {
+        /// Shrink each face boundary inward toward the centroid.
+        case inside
+        /// Expand each face boundary outward away from the centroid.
+        case outside
+    }
+
+    /// Generate a "border" mesh: a quad-strip frame around every face.
+    ///
+    /// For each face in the input mesh, an inset (or outset) copy of the
+    /// boundary loop is created, and quad faces are emitted connecting
+    /// the original boundary vertices to the offset boundary vertices.
+    /// The result looks like a picture-frame or "phat wireframe" that
+    /// follows the face topology instead of the edges.
+    ///
+    /// - Parameters:
+    ///   - thickness: How far to offset the inner/outer loop from the
+    ///     original boundary, measured along the face plane.
+    ///   - direction: Whether to inset or outset the loop.
+    ///   - triangulate: If `true`, each quad in the border strip is split
+    ///     into two triangles (simple fan, no earcut needed).
+    ///   - attributes: Which derived attributes to compute on the result.
+    /// - Returns: A new mesh composed of border strips around every face.
+    func border(
+        thickness: Float = 0.02,
+        direction: BorderDirection = .inside,
+        triangulate: Bool = false,
+        attributes: MeshAttributes = .default
+    ) -> Mesh {
+        var allPositions: [SIMD3<Float>] = []
+        var allFaces: [[Int]] = []
+
+        for face in topology.faces {
+            let vertexIDs = topology.vertexLoop(for: face.id)
+            guard vertexIDs.count >= 3 else { continue }
+
+            let facePositions = vertexIDs.map { positions[$0.raw] }
+            let centroid = facePositions.reduce(.zero, +) / Float(facePositions.count)
+            let faceNorm = faceNormal(face.id)
+            let count = facePositions.count
+
+            // Compute offset positions by moving each vertex toward/away from
+            // the centroid along the face plane.
+            var offsetPositions: [SIMD3<Float>] = []
+            offsetPositions.reserveCapacity(count)
+
+            for i in 0..<count {
+                let pos = facePositions[i]
+                // Direction from centroid to vertex, projected onto the face plane
+                var toVertex = pos - centroid
+                // Remove the component along the face normal so we stay on-plane
+                toVertex -= faceNorm * simd_dot(toVertex, faceNorm)
+                let len = simd_length(toVertex)
+                guard len > 1e-8 else {
+                    // Degenerate — vertex is at the centroid; just keep it
+                    offsetPositions.append(pos)
+                    continue
+                }
+                let dir = toVertex / len
+                switch direction {
+                case .inside:
+                    offsetPositions.append(pos - dir * thickness)
+                case .outside:
+                    offsetPositions.append(pos + dir * thickness)
+                }
+            }
+
+            // Emit geometry: quad strip between original and offset loops.
+            // Original loop vertices: baseIndex ..< baseIndex + count
+            // Offset loop vertices:   baseIndex + count ..< baseIndex + 2*count
+            let baseIndex = allPositions.count
+            allPositions.append(contentsOf: facePositions)
+            allPositions.append(contentsOf: offsetPositions)
+
+            for i in 0..<count {
+                let next = (i + 1) % count
+                // Quad: outer[i], outer[next], inner[next], inner[i]
+                let outerI: Int
+                let outerNext: Int
+                let innerI: Int
+                let innerNext: Int
+
+                switch direction {
+                case .inside:
+                    // Original = outer, offset = inner
+                    outerI = baseIndex + i
+                    outerNext = baseIndex + next
+                    innerI = baseIndex + count + i
+                    innerNext = baseIndex + count + next
+                case .outside:
+                    // Offset = outer, original = inner
+                    outerI = baseIndex + count + i
+                    outerNext = baseIndex + count + next
+                    innerI = baseIndex + i
+                    innerNext = baseIndex + next
+                }
+
+                if triangulate {
+                    allFaces.append([outerI, outerNext, innerNext])
+                    allFaces.append([outerI, innerNext, innerI])
+                } else {
+                    allFaces.append([outerI, outerNext, innerNext, innerI])
+                }
+            }
+        }
+
+        var result = Mesh(positions: allPositions, faces: allFaces)
+        result.applyAttributes(attributes)
+        return result
+    }
+}

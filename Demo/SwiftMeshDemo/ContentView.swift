@@ -312,6 +312,12 @@ struct MeshDetailView: View {
                     Button("Wireframe") {
                         applyOperation { $0.wireframe(radius: 0.015, sides: 8) }
                     }
+                    Button("Border (Inside)") {
+                        applyOperation { $0.border(thickness: 0.02, direction: .inside) }
+                    }
+                    Button("Border (Outside)") {
+                        applyOperation { $0.border(thickness: 0.02, direction: .outside) }
+                    }
 
                     Toggle("Highlight Standalone", isOn: $showStandalone)
                     Toggle("Vertex Dots", isOn: $showVertexDots)
@@ -566,6 +572,26 @@ struct MeshGallerySection: Identifiable {
                     mesh: torus.wireframe(radius: 0.005, sides: 6)),
                 MeshGalleryItem("Phat Cube", subtitle: "Thicc boi",
                     mesh: cube.wireframe(radius: 0.06, sides: 12))
+            ]
+        }()),
+        Self("Border", items: {
+            let cube = Mesh.cube(attributes: [])
+            let dodecahedron = Mesh.dodecahedron(attributes: [])
+            let icosahedron = Mesh.icosahedron(attributes: [])
+            let torus = Mesh.torus(majorSegments: 16, minorSegments: 8, attributes: [])
+            return [
+                MeshGalleryItem("Cube Border (Inside)", subtitle: "Inset quad strips",
+                    mesh: cube.border(thickness: 0.05, direction: .inside)),
+                MeshGalleryItem("Cube Border (Outside)", subtitle: "Outset quad strips",
+                    mesh: cube.border(thickness: 0.05, direction: .outside)),
+                MeshGalleryItem("Dodecahedron Border", subtitle: "Pentagon frames",
+                    mesh: dodecahedron.border(thickness: 0.04, direction: .inside)),
+                MeshGalleryItem("Icosahedron Border", subtitle: "Triangle frames",
+                    mesh: icosahedron.border(thickness: 0.04, direction: .inside)),
+                MeshGalleryItem("Torus Border", subtitle: "16×8 quad frames",
+                    mesh: torus.border(thickness: 0.008, direction: .inside)),
+                MeshGalleryItem("Cube Border (Tri)", subtitle: "Triangulated",
+                    mesh: cube.border(thickness: 0.05, direction: .inside, triangulate: true))
             ]
         }()),
         Self("Decimation", items: {
