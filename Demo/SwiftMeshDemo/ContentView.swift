@@ -81,9 +81,7 @@ struct MeshDetailView: View {
                         Text(currentMesh.isManifold ? "Yes" : "No")
                             .foregroundStyle(currentMesh.isManifold ? .green : .red)
                     }
-                    if showStandalone, let ids = standaloneFaceIDs {
-                        LabeledContent("Standalone Faces", value: "\(ids.count)")
-                    }
+                    LabeledContent("Standalone Faces", value: "\(standaloneFaceIDs?.count ?? 0)")
                 }
                 if let selection {
                     Section("Selection") {
@@ -137,8 +135,7 @@ struct MeshDetailView: View {
                         applyOperation { $0.decimated(ratio: 0.5) }
                     }
 
-                    Toggle("Standalone Faces", isOn: $showStandalone)
-                        .onChange(of: showStandalone) { if showStandalone { recomputeStandalone() } }
+                    Toggle("Highlight Standalone", isOn: $showStandalone)
                     Toggle("Vertex Dots", isOn: $showVertexDots)
 
                     if isModified {
