@@ -79,7 +79,7 @@ struct MetalMeshTests {
         let device = try requireDevice()
         let metalMesh = MetalMesh(mesh: .tetrahedron(attributes: []), device: device, label: "Test")
         #expect(metalMesh.label == "Test")
-        #expect(metalMesh.vertexBuffer.label == "Test Vertices")
+        #expect(metalMesh.vertexBuffers[0]?.label == "Test Vertices[0]")
     }
 
     @Test("Cube (quad faces) exports correctly via triangulation")
@@ -134,6 +134,43 @@ struct MetalMeshTests {
         // Each vertex appears in 3 faces with 3 different normals → 12 unique vertices
         #expect(tetraMetal.vertexCount == 12)
         #expect(tetraMetal.submeshes[0].indexCount == 12)
+    }
+
+    // MARK: - Separate buffer layout
+
+    @Test("Separate buffers creates one buffer per attribute")
+    func separateBuffers() throws {
+        let device = try requireDevice()
+        let mesh = Mesh.cube(attributes: .default)
+        let metalMesh = MetalMesh(mesh: mesh, device: device, bufferLayout: .separateBuffers)
+        // .default = flatNormals + textureCoordinates → position, normal, texcoord = 3 buffers
+        #expect(metalMesh.vertexBuffers.count == 3)
+        #expect(metalMesh.vertexBuffers[0] != nil) // positions
+        #expect(metalMesh.vertexBuffers[1] != nil) // normals
+        #expect(metalMesh.vertexBuffers[2] != nil) // texcoords
+    }
+
+    @Test("Separate buffers produces same vertex/index counts as interleaved")
+    func separateBuffersCounts() throws {
+        let device = try requireDevice()
+        let mesh = Mesh.tetrahedron(attributes: [])
+        let interleaved = MetalMesh(mesh: mesh, device: device, bufferLayout: .interleaved)
+        let separate = MetalMesh(mesh: mesh, device: device, bufferLayout: .separateBuffers)
+        #expect(interleaved.vertexCount == separate.vertexCount)
+        #expect(interleaved.submeshes[0].indexCount == separate.submeshes[0].indexCount)
+    }
+
+    @Test("Separate buffers round-trips to Mesh correctly")
+    func separateBuffersRoundTrip() throws {
+        let device = try requireDevice()
+        let original = Mesh.octahedron(attributes: []).withFlatNormals()
+        let metalMesh = MetalMesh(mesh: original, device: device, bufferLayout: .separateBuffers)
+        let restored = metalMesh.toMesh()
+
+        #expect(restored.normals != nil)
+        #expect(restored.vertexCount == original.vertexCount)
+        #expect(restored.faceCount == original.faceCount)
+        #expect(restored.validate() == nil)
     }
 
     // MARK: - MetalMesh → Mesh round-trip

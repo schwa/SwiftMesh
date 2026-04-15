@@ -196,12 +196,16 @@ Reduce mesh polygon count while preserving shape. Quadric error metrics or simil
 ---
 
 ## 18: Support separate-buffer (SoA) vertex layout in MetalMesh
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T01:09:58Z
+updated: 2026-04-15T05:01:06Z
+closed: 2026-04-15T05:01:06Z
 
 Currently MetalMesh always interleaves attributes into one buffer. Add option for separate MTLBuffers per attribute (positions, normals, UVs, etc.) — avoids per-vertex byte packing and enables near-zero-cost conversion from Mesh's SoA arrays.
+
+- `2026-04-15T05:01:06Z`: Implemented BufferLayout enum (interleaved vs separateBuffers)
 
 ---
 
