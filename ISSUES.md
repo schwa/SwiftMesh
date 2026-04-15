@@ -772,6 +772,8 @@ created: 2026-04-15T07:54:33Z
 
 Split a mesh along an arbitrary plane, producing two separate meshes (one for each side). Faces straddling the plane should be clipped and capped.
 
+- `2026-04-15T14:21:46Z`: Add option to heal (cap) the cut faces after splitting.
+
 ---
 
 ## 67: Add mesh diagnostic API (is/has-style queries)
