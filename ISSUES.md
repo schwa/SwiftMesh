@@ -248,3 +248,12 @@ created: 2026-04-15T02:57:27Z
 
 ---
 
+## 24: Generate UVs for cube primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:32Z
+
+
+---
+
