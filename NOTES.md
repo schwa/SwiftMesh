@@ -38,9 +38,6 @@ Three layers:
 - MetalMesh layout doesn't matter — write-once export, interleave however the vertex descriptor dictates.
 - Submeshes on Mesh are face groups (list of FaceIDs). MetalMesh maps 1:1.
 
-## Open questions
-
-- 2D support: keep 2D factories/queries as extensions? Separate module?
 
 ## Dependencies
 
