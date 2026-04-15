@@ -88,12 +88,16 @@ Bidirectional ModelIO conversion. MDLMesh → Mesh (import positions, normals, U
 ---
 
 ## 8: MetalMesh → Mesh conversion
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T00:51:21Z
+updated: 2026-04-15T04:54:54Z
+closed: 2026-04-15T04:54:54Z
 
 Convert MetalMesh back to Mesh. Will produce a triangle-only mesh with duplicated vertices (no topology recovery). Useful for importing GPU meshes back into the editing pipeline.
+
+- `2026-04-15T04:54:54Z`: Implemented MetalMesh.toMesh() with position dedup, per-corner attribute preservation, and submesh support
 
 ---
 

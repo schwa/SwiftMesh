@@ -135,4 +135,77 @@ struct MetalMeshTests {
         #expect(tetraMetal.vertexCount == 12)
         #expect(tetraMetal.submeshes[0].indexCount == 12)
     }
+
+    // MARK: - MetalMesh → Mesh round-trip
+
+    @Test("Round-trip position-only mesh preserves topology")
+    func roundTripPositionOnly() throws {
+        let device = try requireDevice()
+        let original = Mesh.tetrahedron(attributes: [])
+        let metalMesh = MetalMesh(mesh: original, device: device)
+        let restored = metalMesh.toMesh()
+
+        #expect(restored.vertexCount == original.vertexCount)
+        #expect(restored.faceCount == original.faceCount)
+        #expect(restored.validate() == nil)
+    }
+
+    @Test("Round-trip preserves normals")
+    func roundTripNormals() throws {
+        let device = try requireDevice()
+        let original = Mesh.cube(attributes: []).withFlatNormals()
+        let metalMesh = MetalMesh(mesh: original, device: device)
+        let restored = metalMesh.toMesh()
+
+        #expect(restored.normals != nil)
+        #expect(restored.validate() == nil)
+        // All restored normals should be unit length
+        for n in restored.normals! {
+            let len = simd_length(n)
+            #expect(abs(len - 1.0) < 1e-4)
+        }
+    }
+
+    @Test("Round-trip preserves UVs")
+    func roundTripUVs() throws {
+        let device = try requireDevice()
+        let original = Mesh.sphere(latitudeSegments: 4, longitudeSegments: 8, attributes: .textureCoordinates)
+        let metalMesh = MetalMesh(mesh: original, device: device)
+        let restored = metalMesh.toMesh()
+
+        #expect(restored.textureCoordinates != nil)
+        #expect(restored.validate() == nil)
+        // UV values should be in [0,1]
+        for uv in restored.textureCoordinates! {
+            #expect(uv.x >= -1e-5 && uv.x <= 1.0 + 1e-5)
+            #expect(uv.y >= -1e-5 && uv.y <= 1.0 + 1e-5)
+        }
+    }
+
+    @Test("Round-trip preserves submeshes")
+    func roundTripSubmeshes() throws {
+        let device = try requireDevice()
+        let topo = HalfEdgeTopology(vertexCount: 6, faces: [
+            .init(outer: [0, 1, 2]),
+            .init(outer: [3, 4, 5])
+        ])
+        let original = Mesh(
+            topology: topo,
+            positions: [
+                SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0),
+                SIMD3(2, 0, 0), SIMD3(3, 0, 0), SIMD3(2.5, 1, 0)
+            ],
+            submeshes: [
+                .init(label: "A", faces: [topo.faces[0].id]),
+                .init(label: "B", faces: [topo.faces[1].id])
+            ]
+        )
+        let metalMesh = MetalMesh(mesh: original, device: device)
+        let restored = metalMesh.toMesh()
+
+        #expect(restored.submeshes.count == 2)
+        #expect(restored.submeshes[0].faces.count == 1)
+        #expect(restored.submeshes[1].faces.count == 1)
+        #expect(restored.validate() == nil)
+    }
 }

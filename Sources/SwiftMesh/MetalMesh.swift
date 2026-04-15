@@ -199,6 +199,154 @@ public struct MetalMesh {
     }
 }
 
+// MARK: - Conversion to Mesh
+
+public extension MetalMesh {
+    /// Convert a MetalMesh back to a Mesh.
+    ///
+    /// Produces a triangle-only mesh. Vertices are deduplicated by position,
+    /// with per-corner attributes (normals, UVs, etc.) preserved on the
+    /// half-edge topology.
+    func toMesh() -> Mesh {
+        let stride = vertexDescriptor.layouts[0]!.stride
+
+        // Find attribute offsets
+        func attributeOffset(for semantic: VertexDescriptor.Attribute.Semantic) -> Int? {
+            vertexDescriptor.attributes.first(where: { $0.semantic == semantic && $0.bufferIndex == 0 })?.offset
+        }
+
+        let positionOffset = attributeOffset(for: .position)!
+        let normalOffset = attributeOffset(for: .normal)
+        let texcoordOffset = attributeOffset(for: .texcoord)
+        let tangentOffset = attributeOffset(for: .tangent)
+        let bitangentOffset = attributeOffset(for: .bitangent)
+        let colorOffset = attributeOffset(for: .color)
+
+        // Read vertex data from buffer
+        let vertexPtr = vertexBuffer.contents().assumingMemoryBound(to: UInt8.self)
+
+        // Helper to read typed data from a vertex
+        func readFloat3(vertex: Int, offset: Int) -> SIMD3<Float> {
+            let ptr = vertexPtr.advanced(by: vertex * stride + offset)
+            let x = ptr.withMemoryRebound(to: Float.self, capacity: 3) { p in
+                SIMD3<Float>(p[0], p[1], p[2])
+            }
+            return x
+        }
+
+        func readFloat2(vertex: Int, offset: Int) -> SIMD2<Float> {
+            let ptr = vertexPtr.advanced(by: vertex * stride + offset)
+            let x = ptr.withMemoryRebound(to: Float.self, capacity: 2) { p in
+                SIMD2<Float>(p[0], p[1])
+            }
+            return x
+        }
+
+        func readFloat4(vertex: Int, offset: Int) -> SIMD4<Float> {
+            let ptr = vertexPtr.advanced(by: vertex * stride + offset)
+            let x = ptr.withMemoryRebound(to: Float.self, capacity: 4) { p in
+                SIMD4<Float>(p[0], p[1], p[2], p[3])
+            }
+            return x
+        }
+
+        // Deduplicate vertices by position → assign position indices
+        // Two MetalMesh vertices with the same position but different normals
+        // map to the same Mesh vertex (position is per-vertex, normals are per-corner).
+        var uniquePositions: [SIMD3<Float>] = []
+        var positionMap: [Int: Int] = [:] // metalVertex → position index
+        var positionDedup: [SIMD3<Float>: Int] = [:]
+
+        // We need a tolerance-based comparison for positions
+        for vi in 0..<vertexCount {
+            let pos = readFloat3(vertex: vi, offset: positionOffset)
+            if let existing = positionDedup[pos] {
+                positionMap[vi] = existing
+            } else {
+                let idx = uniquePositions.count
+                uniquePositions.append(pos)
+                positionDedup[pos] = idx
+                positionMap[vi] = idx
+            }
+        }
+
+        // Collect all triangle faces across submeshes, remapped to position indices
+        var allFaces: [[Int]] = []
+        // Keep track of the original metal vertex indices per corner for attribute lookup
+        var allCornerMetalVertices: [[Int]] = []
+        var submeshFaceRanges: [(label: String?, start: Int, count: Int)] = []
+
+        for submesh in submeshes {
+            let start = allFaces.count
+            let indexPtr = submesh.indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
+            let triCount = submesh.indexCount / 3
+            for tri in 0..<triCount {
+                let i0 = Int(indexPtr[tri * 3])
+                let i1 = Int(indexPtr[tri * 3 + 1])
+                let i2 = Int(indexPtr[tri * 3 + 2])
+                allFaces.append([positionMap[i0]!, positionMap[i1]!, positionMap[i2]!])
+                allCornerMetalVertices.append([i0, i1, i2])
+            }
+            submeshFaceRanges.append((label: submesh.label, start: start, count: allFaces.count - start))
+        }
+
+        // Build topology
+        let faceDefs = allFaces.map { HalfEdgeTopology.FaceDefinition(outer: $0) }
+        let topology = HalfEdgeTopology(vertexCount: uniquePositions.count, faces: faceDefs)
+
+        // Build per-corner attributes indexed by HalfEdgeID.raw
+        let heCount = topology.halfEdges.count
+        var normals: [SIMD3<Float>]? = normalOffset != nil ? .init(repeating: .zero, count: heCount) : nil
+        var texcoords: [SIMD2<Float>]? = texcoordOffset != nil ? .init(repeating: .zero, count: heCount) : nil
+        var tangents: [SIMD3<Float>]? = tangentOffset != nil ? .init(repeating: .zero, count: heCount) : nil
+        var bitangents: [SIMD3<Float>]? = bitangentOffset != nil ? .init(repeating: .zero, count: heCount) : nil
+        var colors: [SIMD4<Float>]? = colorOffset != nil ? .init(repeating: .zero, count: heCount) : nil
+
+        // Walk faces and assign per-corner attributes
+        for (faceIdx, cornerVerts) in allCornerMetalVertices.enumerated() {
+            let faceID = HalfEdgeTopology.FaceID(raw: faceIdx)
+            let heLoop = topology.halfEdgeLoop(for: faceID)
+
+            for (cornerIdx, heID) in heLoop.enumerated() {
+                let metalVertex = cornerVerts[cornerIdx]
+
+                if let offset = normalOffset {
+                    normals![heID.raw] = readFloat3(vertex: metalVertex, offset: offset)
+                }
+                if let offset = texcoordOffset {
+                    texcoords![heID.raw] = readFloat2(vertex: metalVertex, offset: offset)
+                }
+                if let offset = tangentOffset {
+                    tangents![heID.raw] = readFloat3(vertex: metalVertex, offset: offset)
+                }
+                if let offset = bitangentOffset {
+                    bitangents![heID.raw] = readFloat3(vertex: metalVertex, offset: offset)
+                }
+                if let offset = colorOffset {
+                    colors![heID.raw] = readFloat4(vertex: metalVertex, offset: offset)
+                }
+            }
+        }
+
+        // Build submeshes
+        let meshSubmeshes = submeshFaceRanges.map { range in
+            let faceIDs = (range.start..<(range.start + range.count)).map { HalfEdgeTopology.FaceID(raw: $0) }
+            return Mesh.Submesh(label: range.label, faces: faceIDs)
+        }
+
+        return Mesh(
+            topology: topology,
+            positions: uniquePositions,
+            normals: normals,
+            textureCoordinates: texcoords,
+            tangents: tangents,
+            bitangents: bitangents,
+            colors: colors,
+            submeshes: meshSubmeshes
+        )
+    }
+}
+
 // MARK: - Drawing
 
 public extension MTLRenderCommandEncoder {
