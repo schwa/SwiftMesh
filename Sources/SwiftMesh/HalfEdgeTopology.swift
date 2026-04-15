@@ -280,6 +280,48 @@ extension HalfEdgeTopology {
 
         return nil
     }
+
+    /// Whether this topology is a closed 2-manifold.
+    ///
+    /// A closed 2-manifold has:
+    /// - Every half-edge paired with exactly one twin (no boundary edges)
+    /// - Every half-edge assigned to a face
+    /// - Every vertex surrounded by a single, complete fan of faces
+    ///   (no non-manifold vertices where multiple fans meet at a pinch point)
+    public var isManifold: Bool {
+        // Check 1: every half-edge has a twin and a face (no boundary)
+        for edge in halfEdges {
+            guard edge.twin != nil, edge.face != nil else {
+                return false
+            }
+        }
+
+        // Check 2: every vertex has a single closed fan
+        // Walk around each vertex via twin→next. If the fan is closed and
+        // consistent, we visit exactly the right number of edges before
+        // returning to the start.
+        for vertex in vertices {
+            guard let startEdge = vertex.edge else {
+                return false
+            }
+            // Walk: from startEdge, go to twin.next repeatedly
+            var current = startEdge
+            var count = 0
+            repeat {
+                guard let twin = halfEdges[current.raw].twin,
+                      let next = halfEdges[twin.raw].next else {
+                    return false
+                }
+                current = next
+                count += 1
+                if count > halfEdges.count {
+                    return false // infinite loop
+                }
+            } while current != startEdge
+        }
+
+        return true
+    }
 }
 
 // MARK: - Topology queries

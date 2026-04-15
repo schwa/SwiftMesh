@@ -96,6 +96,10 @@ public extension Mesh {
     /// Number of unique undirected edges.
     var edgeCount: Int { topology.undirectedEdges().count }
 
+    /// Whether this mesh is a closed 2-manifold (no boundary edges, no
+    /// non-manifold vertices).
+    var isManifold: Bool { topology.isManifold }
+
     /// Position of a vertex.
     func position(of vertex: HalfEdgeTopology.VertexID) -> SIMD3<Float> {
         positions[vertex.raw]

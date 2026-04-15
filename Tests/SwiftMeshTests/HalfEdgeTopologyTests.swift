@@ -681,3 +681,103 @@ struct HalfEdgeTopologyEulerTests {
         #expect(topo.vertices.count - topo.undirectedEdges().count + topo.faces.count == 2)
     }
 }
+
+// MARK: - Manifold
+
+@Suite("HalfEdgeTopology — Manifold")
+struct HalfEdgeTopologyManifoldTests {
+    @Test("Closed tetrahedron is manifold")
+    func tetrahedronManifold() {
+        let topo = HalfEdgeTopology(vertexCount: 4, faces: [
+            .init(outer: [0, 1, 2]),
+            .init(outer: [0, 3, 1]),
+            .init(outer: [0, 2, 3]),
+            .init(outer: [1, 3, 2])
+        ])
+        #expect(topo.isManifold)
+    }
+
+    @Test("Closed cube is manifold")
+    func cubeManifold() {
+        let topo = HalfEdgeTopology(vertexCount: 8, faces: [
+            .init(outer: [0, 3, 2, 1]),
+            .init(outer: [4, 5, 6, 7]),
+            .init(outer: [0, 1, 5, 4]),
+            .init(outer: [3, 7, 6, 2]),
+            .init(outer: [1, 2, 6, 5]),
+            .init(outer: [0, 4, 7, 3])
+        ])
+        #expect(topo.isManifold)
+    }
+
+    @Test("Single triangle is not manifold (boundary edges)")
+    func singleTriangleNotManifold() {
+        let topo = HalfEdgeTopology(vertexCount: 3, faces: [.init(outer: [0, 1, 2])])
+        #expect(!topo.isManifold)
+    }
+
+    @Test("Quad is not manifold (boundary edges)")
+    func quadNotManifold() {
+        let topo = HalfEdgeTopology(vertexCount: 4, faces: [.init(outer: [0, 1, 2, 3])])
+        #expect(!topo.isManifold)
+    }
+
+    @Test("Two adjacent triangles are not manifold (open boundary)")
+    func twoTrianglesNotManifold() {
+        let topo = HalfEdgeTopology(vertexCount: 4, faces: [
+            .init(outer: [0, 1, 2]),
+            .init(outer: [1, 3, 2])
+        ])
+        #expect(!topo.isManifold)
+    }
+
+    @Test("Platonic solids are manifold")
+    func platonicSolidsManifold() {
+        #expect(Mesh.tetrahedron(attributes: []).isManifold)
+        #expect(Mesh.cube(attributes: []).isManifold)
+        #expect(Mesh.octahedron(attributes: []).isManifold)
+        #expect(Mesh.icosahedron(attributes: []).isManifold)
+        #expect(Mesh.dodecahedron(attributes: []).isManifold)
+    }
+
+    @Test("Closed primitives are manifold")
+    func closedPrimitivesManifold() {
+        #expect(Mesh.box(attributes: []).isManifold)
+        #expect(Mesh.sphere(attributes: []).isManifold)
+        #expect(Mesh.icoSphere(attributes: []).isManifold)
+        #expect(Mesh.torus(attributes: []).isManifold)
+        #expect(Mesh.capsule(attributes: []).isManifold)
+    }
+
+    @Test("Capped primitives are manifold")
+    func cappedPrimitivesManifold() {
+        #expect(Mesh.cylinder(capped: true, attributes: []).isManifold)
+        #expect(Mesh.hemisphere(capped: true, attributes: []).isManifold)
+        #expect(Mesh.cone(capped: true, attributes: []).isManifold)
+        #expect(Mesh.conicalFrustum(capped: true, attributes: []).isManifold)
+        #expect(Mesh.rectangularFrustum(capped: true, attributes: []).isManifold)
+    }
+
+    @Test("Uncapped primitives are not manifold")
+    func uncappedPrimitivesNotManifold() {
+        #expect(!Mesh.cylinder(capped: false, attributes: []).isManifold)
+        #expect(!Mesh.hemisphere(capped: false, attributes: []).isManifold)
+        #expect(!Mesh.cone(capped: false, attributes: []).isManifold)
+        #expect(!Mesh.conicalFrustum(capped: false, attributes: []).isManifold)
+        #expect(!Mesh.rectangularFrustum(capped: false, attributes: []).isManifold)
+    }
+
+    @Test("Open surfaces are not manifold")
+    func openSurfacesNotManifold() {
+        #expect(!Mesh.triangle(attributes: []).isManifold)
+        #expect(!Mesh.quad(attributes: []).isManifold)
+        #expect(!Mesh.circle(attributes: []).isManifold)
+    }
+
+    @Test("Known non-manifold primitives (unwelded seams)")
+    func knownNonManifoldPrimitives() {
+        // cubeSphere (#62) and teapot (#63) have unwelded seam vertices
+        #expect(!Mesh.cubeSphere(attributes: []).isManifold)
+        #expect(!Mesh.teapot(attributes: []).isManifold)
+    }
+}

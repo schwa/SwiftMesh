@@ -198,6 +198,9 @@ struct MeshDetailView: View {
                             .font(.caption)
                             .foregroundStyle(Color(red: 1, green: 0, blue: 1))
                     }
+                    Text(currentMesh.isManifold ? "Manifold" : "Non-manifold")
+                        .font(.caption)
+                        .foregroundStyle(currentMesh.isManifold ? .green : .red)
                     Text(name)
                         .font(.title2.bold())
                 }
