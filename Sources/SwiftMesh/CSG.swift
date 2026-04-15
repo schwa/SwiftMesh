@@ -1,5 +1,59 @@
 import simd
 
+// MARK: - AABB
+
+/// Axis-aligned bounding box used for early-out tests in the BSP tree.
+struct AABB: Sendable {
+    var min: SIMD3<Float>
+    var max: SIMD3<Float>
+
+    init() {
+        self.min = SIMD3<Float>(repeating: .infinity)
+        self.max = SIMD3<Float>(repeating: -.infinity)
+    }
+
+    init(min: SIMD3<Float>, max: SIMD3<Float>) {
+        self.min = min
+        self.max = max
+    }
+
+    var isEmpty: Bool {
+        min.x > max.x
+    }
+
+    mutating func expandToInclude(_ point: SIMD3<Float>) {
+        self.min = simd_min(self.min, point)
+        self.max = simd_max(self.max, point)
+    }
+
+    mutating func expandToInclude(_ other: AABB) {
+        self.min = simd_min(self.min, other.min)
+        self.max = simd_max(self.max, other.max)
+    }
+
+    func overlaps(_ other: AABB) -> Bool {
+        min.x <= other.max.x && max.x >= other.min.x &&
+        min.y <= other.max.y && max.y >= other.min.y &&
+        min.z <= other.max.z && max.z >= other.min.z
+    }
+}
+
+extension AABB {
+    init(polygon: CSGPolygon) {
+        self.init()
+        for v in polygon.vertices {
+            expandToInclude(v)
+        }
+    }
+
+    init(vertices: [SIMD3<Float>]) {
+        self.init()
+        for v in vertices {
+            expandToInclude(v)
+        }
+    }
+}
+
 // MARK: - CSG Plane
 
 /// A plane in 3D space defined by a normal and distance from origin.
@@ -72,6 +126,8 @@ final class CSGNode: @unchecked Sendable {
     var front: CSGNode?
     var back: CSGNode?
     var polygons: [CSGPolygon]
+    /// Bounding box of all geometry in this subtree (this node + children).
+    var bounds: AABB = AABB()
 
     init(polygons: [CSGPolygon] = []) {
         self.polygons = []
@@ -87,6 +143,7 @@ final class CSGNode: @unchecked Sendable {
         node.front = front?.clone()
         node.back = back?.clone()
         node.polygons = polygons
+        node.bounds = bounds
         return node
     }
 
@@ -113,6 +170,20 @@ final class CSGNode: @unchecked Sendable {
         var coplanarBackList: [CSGPolygon] = []
 
         for polygon in list {
+            // Early-out: if polygon doesn't overlap this subtree's bounds,
+            // classify it by which side of the splitting plane it falls on
+            // without recursing deeper or splitting it.
+            let polyBounds = AABB(polygon: polygon)
+            if !bounds.isEmpty && !polyBounds.overlaps(bounds) {
+                // Determine side by checking any vertex against the splitting plane
+                let d = plane.distanceTo(polygon.vertices[0])
+                if d >= 0 {
+                    frontList.append(polygon)
+                } else {
+                    backList.append(polygon)
+                }
+                continue
+            }
             splitPolygon(polygon, plane: plane, front: &frontList, back: &backList, coplanarFront: &coplanarFrontList, coplanarBack: &coplanarBackList)
         }
 
@@ -148,6 +219,13 @@ final class CSGNode: @unchecked Sendable {
     func build(_ list: [CSGPolygon]) {
         guard !list.isEmpty else {
             return
+        }
+
+        // Expand bounds to cover all incoming polygon vertices.
+        for polygon in list {
+            for v in polygon.vertices {
+                bounds.expandToInclude(v)
+            }
         }
 
         if plane == nil {
