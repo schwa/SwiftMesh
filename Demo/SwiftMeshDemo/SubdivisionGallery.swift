@@ -3,25 +3,29 @@ import SwiftUI
 
 /// A gallery showing subdivision surface results.
 struct SubdivisionGallery: View {
+    @State private var selectedExample: SubdivisionExample?
+
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 20) {
-                ForEach(SubdivisionExample.all) { example in
-                    VStack {
-                        MeshCanvasView(mesh: example.mesh, fillColor: example.color)
-                            .frame(height: 250)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        Text(example.name)
-                            .font(.headline)
-                        Text(example.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+        ZStack {
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 20) {
+                    ForEach(SubdivisionExample.all) { example in
+                        MeshGridCell(name: example.name, mesh: example.mesh, subtitle: example.subtitle) {
+                            withAnimation { selectedExample = example }
+                        }
                     }
                 }
+                .padding()
             }
-            .padding()
-        }
 
+            if let example = selectedExample {
+                MeshDetailView(name: example.name, mesh: example.mesh) {
+                    withAnimation { selectedExample = nil }
+                }
+                .padding()
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
     }
 }
 
