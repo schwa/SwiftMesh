@@ -2,6 +2,8 @@
 
 Mesh data structures and operations for Swift. Half-edge topology, n-gon faces, SoA attributes, Metal export.
 
+![SwiftMesh Demo](Documentation/screenshot.png)
+
 ## Quick start
 
 ```swift
