@@ -10,6 +10,7 @@
 		451594952F64AAE8005F944D /* SwiftMeshDemoSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 451594942F64AAE8005F944D /* SwiftMeshDemoSupport */; };
 		457F400F2F8F12FE00A9AC0B /* SwiftMesh in Frameworks */ = {isa = PBXBuildFile; productRef = 457F400E2F8F12FE00A9AC0B /* SwiftMesh */; };
 		457F40112F8F12FE00A9AC0B /* SwiftMeshIO in Frameworks */ = {isa = PBXBuildFile; productRef = 457F40102F8F12FE00A9AC0B /* SwiftMeshIO */; };
+		457F402A2F8F139400A9AC0B /* GeometryLite3D in Frameworks */ = {isa = PBXBuildFile; productRef = 457F40292F8F139400A9AC0B /* GeometryLite3D */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -70,6 +71,7 @@
 				451594952F64AAE8005F944D /* SwiftMeshDemoSupport in Frameworks */,
 				457F40112F8F12FE00A9AC0B /* SwiftMeshIO in Frameworks */,
 				457F400F2F8F12FE00A9AC0B /* SwiftMesh in Frameworks */,
+				457F402A2F8F139400A9AC0B /* GeometryLite3D in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +121,7 @@
 				451594942F64AAE8005F944D /* SwiftMeshDemoSupport */,
 				457F400E2F8F12FE00A9AC0B /* SwiftMesh */,
 				457F40102F8F12FE00A9AC0B /* SwiftMeshIO */,
+				457F40292F8F139400A9AC0B /* GeometryLite3D */,
 			);
 			productName = SwiftMeshDemo;
 			productReference = 451594472F64A8DC005F944D /* SwiftMeshDemo.app */;
@@ -150,6 +153,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				457F400D2F8F12FE00A9AC0B /* XCLocalSwiftPackageReference "../../SwiftMesh" */,
+				457F40282F8F139400A9AC0B /* XCRemoteSwiftPackageReference "GeometryLite3D" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 451594482F64A8DC005F944D /* Products */;
@@ -246,6 +250,17 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		457F40282F8F139400A9AC0B /* XCRemoteSwiftPackageReference "GeometryLite3D" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/schwa/GeometryLite3D";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		451594942F64AAE8005F944D /* SwiftMeshDemoSupport */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -258,6 +273,11 @@
 		457F40102F8F12FE00A9AC0B /* SwiftMeshIO */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftMeshIO;
+		};
+		457F40292F8F139400A9AC0B /* GeometryLite3D */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 457F40282F8F139400A9AC0B /* XCRemoteSwiftPackageReference "GeometryLite3D" */;
+			productName = GeometryLite3D;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
