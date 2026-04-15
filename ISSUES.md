@@ -606,12 +606,16 @@ Replace the four separate tabs (Platonic Solids, Surfaces, CSG, Subdivision) wit
 ---
 
 ## 53: Inspector tab in demo showing mesh details
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T06:11:30Z
+updated: 2026-04-15T06:12:44Z
+closed: 2026-04-15T06:12:44Z
 
 New tab with a single mesh (cylinder) and a .inspector() sidebar showing vertex count, face count, edge count, and which attributes are present.
+
+- `2026-04-15T06:12:44Z`: Implemented
 
 ---
 

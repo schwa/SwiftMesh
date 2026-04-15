@@ -2,6 +2,19 @@ import SwiftMesh
 import SwiftUI
 
 struct ContentView: View {
+    var body: some View {
+        TabView {
+            Tab("Gallery", systemImage: "square.grid.2x2") {
+                GalleryView()
+            }
+            Tab("Inspector", systemImage: "sidebar.right") {
+                InspectorView()
+            }
+        }
+    }
+}
+
+struct GalleryView: View {
     @State private var selectedItem: MeshGalleryItem?
 
     var body: some View {
