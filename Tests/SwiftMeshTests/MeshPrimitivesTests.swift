@@ -32,6 +32,94 @@ struct MeshPrimitivesTests {
         #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
     }
 
+    @Test("cube() without attributes has no UVs")
+    func cubeNoAttributes() {
+        let mesh = Mesh.cube()
+        #expect(mesh.textureCoordinates == nil)
+        #expect(mesh.normals == nil)
+    }
+
+    @Test("cube(attributes: .textureCoordinates) has per-corner UVs")
+    func cubeUVs() throws {
+        let mesh = Mesh.cube(attributes: .textureCoordinates)
+        let uvs = try #require(mesh.textureCoordinates)
+        #expect(uvs.count == mesh.topology.halfEdges.count)
+        // Each quad face should have corners mapped to [0,0], [1,0], [1,1], [0,1]
+        for face in mesh.topology.faces {
+            let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
+            #expect(heLoop.count == 4)
+            let faceUVs = heLoop.map { uvs[$0.raw] }
+            #expect(faceUVs[0] == SIMD2<Float>(0, 0))
+            #expect(faceUVs[1] == SIMD2<Float>(1, 0))
+            #expect(faceUVs[2] == SIMD2<Float>(1, 1))
+            #expect(faceUVs[3] == SIMD2<Float>(0, 1))
+        }
+    }
+
+    @Test("cube(attributes: .flatNormals) has flat normals")
+    func cubeFlatNormals() {
+        let mesh = Mesh.cube(attributes: .flatNormals)
+        #expect(mesh.normals != nil)
+        #expect(mesh.normals?.count == mesh.topology.halfEdges.count)
+    }
+
+    @Test("sphere(attributes: .textureCoordinates) has UVs")
+    func sphereUVs() {
+        let mesh = Mesh.sphere(attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+    }
+
+    @Test("sphere() without attributes has no UVs")
+    func sphereNoAttributes() {
+        let mesh = Mesh.sphere()
+        #expect(mesh.textureCoordinates == nil)
+        #expect(mesh.normals == nil)
+    }
+
+    @Test("triangle(attributes: .textureCoordinates) has UVs")
+    func triangleUVs() throws {
+        let mesh = Mesh.triangle(attributes: .textureCoordinates)
+        let uvs = try #require(mesh.textureCoordinates)
+        #expect(uvs.count == mesh.topology.halfEdges.count)
+    }
+
+    @Test("quad(attributes: .textureCoordinates) has per-corner UVs")
+    func quadUVs() throws {
+        let mesh = Mesh.quad(attributes: .textureCoordinates)
+        let uvs = try #require(mesh.textureCoordinates)
+        #expect(uvs.count == mesh.topology.halfEdges.count)
+        let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: 0))
+        #expect(uvs[heLoop[0].raw] == SIMD2<Float>(0, 0))
+        #expect(uvs[heLoop[1].raw] == SIMD2<Float>(1, 0))
+        #expect(uvs[heLoop[2].raw] == SIMD2<Float>(1, 1))
+        #expect(uvs[heLoop[3].raw] == SIMD2<Float>(0, 1))
+    }
+
+    @Test("box(attributes: .textureCoordinates) has per-corner UVs")
+    func boxUVs() {
+        let mesh = Mesh.box(attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("cylinder(attributes: .textureCoordinates) has UVs")
+    func cylinderUVs() {
+        let mesh = Mesh.cylinder(segments: 8, attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("cone(attributes: .textureCoordinates) has UVs")
+    func coneUVs() {
+        let mesh = Mesh.cone(segments: 8, attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
     // MARK: - Parametric Surfaces
 
     @Test("sphere() default")

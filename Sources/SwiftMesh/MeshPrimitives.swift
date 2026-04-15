@@ -16,7 +16,7 @@ public extension Mesh {
     }
 
     /// A regular cube centered at the origin.
-    static func cube(extents: SIMD3<Float> = [1, 1, 1]) -> Mesh {
+    static func cube(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = []) -> Mesh {
         let positions: [SIMD3<Float>] = [
             SIMD3(-1, -1, -1), SIMD3(1, -1, -1), SIMD3(1, 1, -1), SIMD3(-1, 1, -1),
             SIMD3(-1, -1, 1), SIMD3(1, -1, 1), SIMD3(1, 1, 1), SIMD3(-1, 1, 1)
@@ -27,6 +27,23 @@ public extension Mesh {
             [1, 2, 6, 5], [0, 4, 7, 3]
         ])
         mesh.fitToExtents(extents)
+
+        if attributes.contains(.textureCoordinates) {
+            // Each quad face maps to the full [0,1]×[0,1] square.
+            let quadUVs: [SIMD2<Float>] = [
+                SIMD2(0, 0), SIMD2(1, 0), SIMD2(1, 1), SIMD2(0, 1)
+            ]
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            for face in mesh.topology.faces {
+                let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
+                for (i, he) in heLoop.enumerated() {
+                    uvs[he.raw] = quadUVs[i]
+                }
+            }
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
         return mesh
     }
 
@@ -91,27 +108,51 @@ public extension Mesh {
 
 public extension Mesh {
     /// A single triangle in the XY plane, centered at the origin.
-    static func triangle(extents: SIMD2<Float> = [1, 1]) -> Mesh {
+    static func triangle(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = []) -> Mesh {
         // Unit equilateral-ish triangle fitting in -0.5...0.5
         var mesh = Mesh(positions: [
             SIMD3(0, 0.5, 0), SIMD3(-0.5, -0.5, 0), SIMD3(0.5, -0.5, 0)
         ], faces: [[0, 1, 2]])
         mesh.fitToExtents(SIMD3(extents.x, extents.y, 0))
+
+        if attributes.contains(.textureCoordinates) {
+            let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: 0))
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            uvs[heLoop[0].raw] = SIMD2(0.5, 0) // top vertex
+            uvs[heLoop[1].raw] = SIMD2(0, 1)   // bottom-left
+            uvs[heLoop[2].raw] = SIMD2(1, 1)   // bottom-right
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
         return mesh
     }
 
     /// A quad in the XY plane, centered at the origin.
-    static func quad(extents: SIMD2<Float> = [1, 1]) -> Mesh {
+    static func quad(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = []) -> Mesh {
         let hw = extents.x / 2
         let hh = extents.y / 2
-        return Mesh(positions: [
+        var mesh = Mesh(positions: [
             SIMD3(-hw, -hh, 0), SIMD3(hw, -hh, 0),
             SIMD3(hw, hh, 0), SIMD3(-hw, hh, 0)
         ], faces: [[0, 1, 2, 3]])
+
+        if attributes.contains(.textureCoordinates) {
+            let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: 0))
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            uvs[heLoop[0].raw] = SIMD2(0, 0)
+            uvs[heLoop[1].raw] = SIMD2(1, 0)
+            uvs[heLoop[2].raw] = SIMD2(1, 1)
+            uvs[heLoop[3].raw] = SIMD2(0, 1)
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
     }
 
     /// A box centered at the origin with quad faces.
-    static func box(extents: SIMD3<Float> = [1, 1, 1]) -> Mesh {
+    static func box(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = []) -> Mesh {
         let h = extents / 2
         let positions: [SIMD3<Float>] = [
             SIMD3(-h.x, -h.y, h.z), SIMD3(h.x, -h.y, h.z),
@@ -119,7 +160,7 @@ public extension Mesh {
             SIMD3(-h.x, -h.y, -h.z), SIMD3(h.x, -h.y, -h.z),
             SIMD3(h.x, h.y, -h.z), SIMD3(-h.x, h.y, -h.z)
         ]
-        return Mesh(positions: positions, faces: [
+        var mesh = Mesh(positions: positions, faces: [
             [0, 1, 2, 3],     // front
             [5, 4, 7, 6],     // back
             [4, 0, 3, 7],     // left
@@ -127,15 +168,31 @@ public extension Mesh {
             [3, 2, 6, 7],     // top
             [4, 5, 1, 0]      // bottom
         ])
+
+        if attributes.contains(.textureCoordinates) {
+            let quadUVs: [SIMD2<Float>] = [
+                SIMD2(0, 0), SIMD2(1, 0), SIMD2(1, 1), SIMD2(0, 1)
+            ]
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            for face in mesh.topology.faces {
+                let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
+                for (i, he) in heLoop.enumerated() {
+                    uvs[he.raw] = quadUVs[i]
+                }
+            }
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
     }
 }
 
 // MARK: - Parametric Surfaces
 
 public extension Mesh {
-    /// A UV sphere (or ellipsoid) with quad faces (and triangle caps at the poles),
-    /// including per-corner texture coordinates.
-    static func sphere(extents: SIMD3<Float> = [1, 1, 1], latitudeSegments: Int = 16, longitudeSegments: Int = 32) -> Mesh {
+    /// A UV sphere (or ellipsoid) with quad faces (and triangle caps at the poles).
+    static func sphere(extents: SIMD3<Float> = [1, 1, 1], latitudeSegments: Int = 16, longitudeSegments: Int = 32, attributes: MeshAttributes = []) -> Mesh {
         let radii = extents / 2
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
@@ -188,6 +245,7 @@ public extension Mesh {
 
         var mesh = Mesh(positions: positions, faces: faces)
 
+        if attributes.contains(.textureCoordinates) {
         // Assign per-corner UVs from parametric coordinates.
         // For each half-edge we know which face it belongs to and which vertex it
         // originates from, so we can recover the (lat, lon) indices and compute
@@ -269,6 +327,9 @@ public extension Mesh {
         }
 
         mesh.textureCoordinates = uvs
+        } // end .textureCoordinates
+
+        mesh.applyAttributes(attributes)
         return mesh
     }
 
@@ -307,7 +368,7 @@ public extension Mesh {
     }
 
     /// A cylinder with quad sides and optional n-gon caps.
-    static func cylinder(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true) -> Mesh {
+    static func cylinder(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = []) -> Mesh {
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 
@@ -340,11 +401,52 @@ public extension Mesh {
             faces.append(topCap)
         }
 
-        return Mesh(positions: positions, faces: faces)
+        var mesh = Mesh(positions: positions, faces: faces)
+
+        if attributes.contains(.textureCoordinates) {
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+
+            // Side quads: unwrap around circumference
+            for seg in 0..<segments {
+                let faceID = HalfEdgeTopology.FaceID(raw: seg)
+                let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
+                let u0 = Float(seg) / Float(segments)
+                let u1 = Float(seg + 1) / Float(segments)
+                // Face vertices: [bottom, nextBottom, nextTop, top]
+                uvs[heLoop[0].raw] = SIMD2(u0, 1)
+                uvs[heLoop[1].raw] = SIMD2(u1, 1)
+                uvs[heLoop[2].raw] = SIMD2(u1, 0)
+                uvs[heLoop[3].raw] = SIMD2(u0, 0)
+            }
+
+            // Cap UVs: project onto unit circle centered at (0.5, 0.5)
+            if capped {
+                let bottomFaceID = HalfEdgeTopology.FaceID(raw: segments)
+                let bottomLoop = mesh.topology.halfEdgeLoop(for: bottomFaceID)
+                for (i, he) in bottomLoop.enumerated() {
+                    // Bottom cap is reversed, so map index back to segment
+                    let seg = segments - 1 - i
+                    let angle = 2 * Float.pi * Float(seg) / Float(segments)
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                }
+
+                let topFaceID = HalfEdgeTopology.FaceID(raw: segments + 1)
+                let topLoop = mesh.topology.halfEdgeLoop(for: topFaceID)
+                for (i, he) in topLoop.enumerated() {
+                    let angle = 2 * Float.pi * Float(i) / Float(segments)
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                }
+            }
+
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
     }
 
     /// A cone with triangle sides and an optional n-gon base cap.
-    static func cone(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true) -> Mesh {
+    static func cone(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = []) -> Mesh {
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 
@@ -371,6 +473,38 @@ public extension Mesh {
             faces.append(baseCap)
         }
 
-        return Mesh(positions: positions, faces: faces)
+        var mesh = Mesh(positions: positions, faces: faces)
+
+        if attributes.contains(.textureCoordinates) {
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+
+            // Side triangles: unwrap around circumference
+            for seg in 0..<segments {
+                let faceID = HalfEdgeTopology.FaceID(raw: seg)
+                let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
+                let u0 = Float(seg) / Float(segments)
+                let u1 = Float(seg + 1) / Float(segments)
+                let uMid = (u0 + u1) / 2
+                // Face vertices: [apex, nextBase, base]
+                uvs[heLoop[0].raw] = SIMD2(uMid, 0) // apex
+                uvs[heLoop[1].raw] = SIMD2(u1, 1)   // nextBase
+                uvs[heLoop[2].raw] = SIMD2(u0, 1)   // base
+            }
+
+            // Base cap: project onto unit circle centered at (0.5, 0.5)
+            if capped {
+                let capFaceID = HalfEdgeTopology.FaceID(raw: segments)
+                let capLoop = mesh.topology.halfEdgeLoop(for: capFaceID)
+                for (i, he) in capLoop.enumerated() {
+                    let angle = 2 * Float.pi * Float(i) / Float(segments)
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                }
+            }
+
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
     }
 }

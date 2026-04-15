@@ -249,10 +249,12 @@ created: 2026-04-15T02:57:27Z
 ---
 
 ## 24: Generate UVs for cube primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:32Z
+updated: 2026-04-15T03:11:58Z
+closed: 2026-04-15T03:11:58Z
 
 
 ---
@@ -285,28 +287,34 @@ created: 2026-04-15T02:57:33Z
 ---
 
 ## 28: Generate UVs for triangle() primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:33Z
+updated: 2026-04-15T03:39:51Z
+closed: 2026-04-15T03:39:51Z
 
 
 ---
 
 ## 29: Generate UVs for quad() primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:33Z
+updated: 2026-04-15T03:39:51Z
+closed: 2026-04-15T03:39:51Z
 
 
 ---
 
 ## 30: Generate UVs for box() primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:33Z
+updated: 2026-04-15T03:39:51Z
+closed: 2026-04-15T03:39:51Z
 
 
 ---
@@ -321,19 +329,23 @@ created: 2026-04-15T02:57:33Z
 ---
 
 ## 32: Generate UVs for cylinder() primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:34Z
+updated: 2026-04-15T03:39:51Z
+closed: 2026-04-15T03:39:51Z
 
 
 ---
 
 ## 33: Generate UVs for cone() primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:34Z
+updated: 2026-04-15T03:39:51Z
+closed: 2026-04-15T03:39:51Z
 
 
 ---
