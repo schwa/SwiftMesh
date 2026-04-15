@@ -63,6 +63,41 @@ public extension Mesh {
             }
         }
 
+        // Also check for coplanar faces sharing edges geometrically but without
+        // twin linkage (can happen after CSG produces near-duplicate vertices).
+        // Collect all boundary half-edges, then brute-force match nearby reverse edges.
+        let edgeMatchTolerance: Float = 0.02
+
+        struct BoundaryEdge {
+            var heID: HalfEdgeTopology.HalfEdgeID
+            var faceID: HalfEdgeTopology.FaceID
+            var origin: SIMD3<Float>
+            var dest: SIMD3<Float>
+        }
+
+        var boundaryEdgeList: [BoundaryEdge] = []
+        for he in topology.halfEdges where he.twin == nil {
+            guard let faceID = he.face, let next = he.next else { continue }
+            boundaryEdgeList.append(BoundaryEdge(
+                heID: he.id, faceID: faceID,
+                origin: positions[he.origin.raw],
+                dest: positions[topology.halfEdges[next.raw].origin.raw]
+            ))
+        }
+
+        // Match boundary edges: edge A→B matches edge B'→A' if A≈B' and B≈A'
+        for i in 0..<boundaryEdgeList.count {
+            let ei = boundaryEdgeList[i]
+            for j in (i + 1)..<boundaryEdgeList.count {
+                let ej = boundaryEdgeList[j]
+                guard ei.faceID != ej.faceID else { continue }
+                let d = simd_distance(ei.origin, ej.dest) + simd_distance(ei.dest, ej.origin)
+                if d < edgeMatchTolerance && areCoplanar(ei.faceID.raw, ej.faceID.raw) {
+                    union(ei.faceID.raw, ej.faceID.raw)
+                }
+            }
+        }
+
         // Group faces by their root
         var groups: [Int: [Int]] = [:]
         for i in 0..<faceCount {
@@ -83,34 +118,70 @@ public extension Mesh {
             }
 
             // Find boundary edges of this group: edges where one face is in the group
-            // and the other is not (or is a boundary edge with no twin)
+            // and the other is not (or is a true boundary edge).
+            // An edge is interior if it has a twin in the group OR if there's a
+            // geometrically-matching reverse edge from another face in the group.
             let groupSet = Set(group)
-            var boundaryEdges: [(Int, Int)] = [] // directed edges (origin, dest)
+
+            // Collect all directed edges from this group with their positions
+            struct GroupEdge {
+                var faceIdx: Int
+                var originIdx: Int
+                var destIdx: Int
+                var origin: SIMD3<Float>
+                var dest: SIMD3<Float>
+            }
+            var groupEdges: [GroupEdge] = []
+            for faceIdx in group {
+                let faceID = HalfEdgeTopology.FaceID(raw: faceIdx)
+                let heLoop = topology.halfEdgeLoop(for: faceID)
+                for heID in heLoop {
+                    let he = topology.halfEdges[heID.raw]
+                    guard let next = he.next else { continue }
+                    let destVID = topology.halfEdges[next.raw].origin
+                    groupEdges.append(GroupEdge(
+                        faceIdx: faceIdx,
+                        originIdx: he.origin.raw,
+                        destIdx: destVID.raw,
+                        origin: positions[he.origin.raw],
+                        dest: positions[destVID.raw]
+                    ))
+                }
+            }
+
+            var boundaryEdges: [(Int, Int)] = []
 
             for faceIdx in group {
                 let faceID = HalfEdgeTopology.FaceID(raw: faceIdx)
                 let heLoop = topology.halfEdgeLoop(for: faceID)
                 for heID in heLoop {
                     let he = topology.halfEdges[heID.raw]
+                    guard let next = he.next else { continue }
                     let origin = he.origin.raw
-                    let dest: Int
-                    if let next = he.next {
-                        dest = topology.halfEdges[next.raw].origin.raw
-                    } else {
-                        continue
-                    }
+                    let dest = topology.halfEdges[next.raw].origin.raw
 
-                    let isBoundary: Bool
+                    // Check twin linkage
                     if let twinID = he.twin {
                         let twinFace = topology.halfEdges[twinID.raw].face
-                        isBoundary = twinFace == nil || !groupSet.contains(twinFace!.raw)
-                    } else {
-                        isBoundary = true
+                        if let tf = twinFace, groupSet.contains(tf.raw) {
+                            continue // interior via twin
+                        }
                     }
 
-                    if isBoundary {
-                        boundaryEdges.append((origin, dest))
+                    // Check geometric match: is there a reverse edge in this group?
+                    let posO = positions[origin]
+                    let posD = positions[dest]
+                    var hasGeometricMatch = false
+                    for ge in groupEdges where ge.faceIdx != faceIdx {
+                        let d = simd_distance(ge.origin, posD) + simd_distance(ge.dest, posO)
+                        if d < edgeMatchTolerance {
+                            hasGeometricMatch = true
+                            break
+                        }
                     }
+                    if hasGeometricMatch { continue }
+
+                    boundaryEdges.append((origin, dest))
                 }
             }
 
