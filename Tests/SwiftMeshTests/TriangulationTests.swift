@@ -86,4 +86,79 @@ struct TriangulationTests {
         let tris = mesh.triangulate()
         #expect(tris.count == 4) // 6 vertices → 4 triangles
     }
+
+    // MARK: - triangulated() → Mesh
+
+    @Test("triangulated() on all-triangle mesh is identity")
+    func triangulatedIdentity() {
+        let mesh = Mesh.icosahedron(attributes: [])
+        let result = mesh.triangulated()
+        #expect(result.faceCount == mesh.faceCount)
+        #expect(result.vertexCount == mesh.vertexCount)
+        #expect(result.validate() == nil)
+    }
+
+    @Test("triangulated() cube: 6 quads → 12 triangles")
+    func triangulatedCube() {
+        let mesh = Mesh.cube(attributes: [])
+        let result = mesh.triangulated()
+        #expect(result.faceCount == 12)
+        #expect(result.vertexCount == mesh.vertexCount)
+        #expect(result.validate() == nil)
+        // Every face should be a triangle
+        for face in result.topology.faces {
+            let loop = result.topology.vertexLoop(for: face.id)
+            #expect(loop.count == 3)
+        }
+    }
+
+    @Test("triangulated() dodecahedron: 12 pentagons → 36 triangles")
+    func triangulatedDodecahedron() {
+        let mesh = Mesh.dodecahedron(attributes: [])
+        let result = mesh.triangulated()
+        #expect(result.faceCount == 36)
+        for face in result.topology.faces {
+            let loop = result.topology.vertexLoop(for: face.id)
+            #expect(loop.count == 3)
+        }
+    }
+
+    @Test("triangulated() preserves vertex positions")
+    func triangulatedPreservesPositions() {
+        let mesh = Mesh.cube(attributes: [])
+        let result = mesh.triangulated()
+        // Same positions array
+        #expect(result.positions.count == mesh.positions.count)
+        for i in mesh.positions.indices {
+            #expect(result.positions[i] == mesh.positions[i])
+        }
+    }
+
+    @Test("triangulated() validates")
+    func triangulatedValidates() {
+        let mesh = Mesh.dodecahedron(attributes: [])
+        let result = mesh.triangulated()
+        #expect(result.validate() == nil)
+    }
+
+    @Test("triangulated() mixed faces (triangle + quad)")
+    func triangulatedMixed() {
+        let mesh = Mesh(positions: [
+            SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0),
+            SIMD3(2, 0, 0), SIMD3(3, 0, 0), SIMD3(3, 1, 0), SIMD3(2, 1, 0)
+        ], faces: [[0, 1, 2], [3, 4, 5, 6]])
+        let result = mesh.triangulated()
+        #expect(result.faceCount == 3) // 1 tri + 2 from quad
+        for face in result.topology.faces {
+            let loop = result.topology.vertexLoop(for: face.id)
+            #expect(loop.count == 3)
+        }
+    }
+
+    @Test("triangulated() on already-triangulated mesh doesn't change face count")
+    func triangulatedNoOp() {
+        let mesh = Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 2, attributes: [])
+        let result = mesh.triangulated()
+        #expect(result.faceCount == mesh.faceCount)
+    }
 }

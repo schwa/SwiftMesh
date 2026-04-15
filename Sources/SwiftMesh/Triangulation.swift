@@ -59,6 +59,86 @@ extension Mesh {
 
         return result
     }
+
+    /// Return a new mesh where every face is a triangle.
+    ///
+    /// Faces that are already triangles are preserved. Quads and larger polygons
+    /// are split using earcut triangulation. Positions are shared; per-corner
+    /// attributes (normals, UVs, colors, tangents, bitangents) are carried over
+    /// from the original corners.
+    public func triangulated() -> Mesh {
+        let newPositions = positions
+        var newFaces: [[Int]] = []
+
+        // Per-corner attribute builders
+        var newNormals: [SIMD3<Float>]?
+        var newTexCoords: [SIMD2<Float>]?
+        var newTangents: [SIMD3<Float>]?
+        var newBitangents: [SIMD3<Float>]?
+        var newColors: [SIMD4<Float>]?
+
+        if normals != nil { newNormals = [] }
+        if textureCoordinates != nil { newTexCoords = [] }
+        if tangents != nil { newTangents = [] }
+        if bitangents != nil { newBitangents = [] }
+        if colors != nil { newColors = [] }
+
+        for face in topology.faces where face.edge != nil {
+            let verts = topology.vertexLoop(for: face.id)
+            let halfEdges = topology.halfEdgeLoop(for: face.id)
+            guard verts.count >= 3 else {
+                continue
+            }
+
+            if verts.count == 3 {
+                // Already a triangle — pass through
+                newFaces.append(verts.map(\.raw))
+                // Copy per-corner attributes
+                for he in halfEdges {
+                    newNormals?.append(normals![he.raw])
+                    newTexCoords?.append(textureCoordinates![he.raw])
+                    newTangents?.append(tangents![he.raw])
+                    newBitangents?.append(bitangents![he.raw])
+                    newColors?.append(colors![he.raw])
+                }
+            } else {
+                // Triangulate
+                let triVerts = triangulateFace(vertexIDs: verts)
+                // Build a lookup from VertexID to the half-edge index in this face
+                var vertToLocalIndex: [Int: Int] = [:]
+                for (i, v) in verts.enumerated() {
+                    vertToLocalIndex[v.raw] = i
+                }
+                for (a, b, c) in triVerts {
+                    newFaces.append([a.raw, b.raw, c.raw])
+                    // Copy per-corner attributes from the original face corners
+                    for v in [a, b, c] {
+                        let localIdx = vertToLocalIndex[v.raw]!
+                        let heID = halfEdges[localIdx]
+                        newNormals?.append(normals![heID.raw])
+                        newTexCoords?.append(textureCoordinates![heID.raw])
+                        newTangents?.append(tangents![heID.raw])
+                        newBitangents?.append(bitangents![heID.raw])
+                        newColors?.append(colors![heID.raw])
+                    }
+                }
+            }
+        }
+
+        // Build new topology
+        let faceDefs = newFaces.map { HalfEdgeTopology.FaceDefinition(outer: $0) }
+        let topo = HalfEdgeTopology(vertexCount: newPositions.count, faces: faceDefs)
+
+        return Mesh(
+            topology: topo,
+            positions: newPositions,
+            normals: newNormals,
+            textureCoordinates: newTexCoords,
+            tangents: newTangents,
+            bitangents: newBitangents,
+            colors: newColors
+        )
+    }
 }
 
 // MARK: - Internal helpers
