@@ -1,6 +1,11 @@
+import Metal
+import MetalKit
+import ModelIO
 import simd
 import SwiftMesh
+import SwiftMeshIO
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum SidebarSelection: Hashable {
     case all
@@ -9,12 +14,34 @@ enum SidebarSelection: Hashable {
 
 struct ContentView: View {
     @State private var selection: SidebarSelection? = .all
+    @State private var importedItems: [MeshGalleryItem] = []
+    @State private var importError: String?
 
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
                 NavigationLink(value: SidebarSelection.all) {
                     Label("All", systemImage: "square.grid.2x2")
+                }
+                if !importedItems.isEmpty {
+                    Section("Imported") {
+                        ForEach(importedItems) { item in
+                            NavigationLink(value: SidebarSelection.item(item)) {
+                                HStack {
+                                    MeshPreviewView(mesh: item.mesh)
+                                        .frame(width: 48, height: 48)
+                                    VStack(alignment: .leading) {
+                                        Text(item.name)
+                                        if let subtitle = item.subtitle {
+                                            Text(subtitle)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 ForEach(MeshGallerySection.all) { section in
                     Section(section.name) {
@@ -51,6 +78,63 @@ struct ContentView: View {
             case nil:
                 ContentUnavailableView("Select a Mesh", systemImage: "square.grid.2x2", description: Text("Choose a mesh from the sidebar"))
             }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            for url in urls {
+                importMesh(from: url)
+            }
+            return !urls.isEmpty
+        }
+        .alert("Import Error", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } })) {
+            Button("OK") { importError = nil }
+        } message: {
+            Text(importError ?? "")
+        }
+    }
+
+    private func importMesh(from url: URL) {
+        do {
+            let mesh = try Self.loadMesh(from: url)
+            let name = url.deletingPathExtension().lastPathComponent
+            let ext = url.pathExtension.uppercased()
+            let item = MeshGalleryItem("\(name) (\(ext))", subtitle: "Imported", mesh: mesh)
+            importedItems.append(item)
+            selection = .item(item)
+        } catch {
+            importError = error.localizedDescription
+        }
+    }
+
+    private static func loadMesh(from url: URL) throws -> Mesh {
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            throw MeshImportError.noMetalDevice
+        }
+        let allocator = MTKMeshBufferAllocator(device: device)
+        let asset = MDLAsset(url: url, vertexDescriptor: nil, bufferAllocator: allocator)
+        guard let mdlMesh = asset.childObjects(of: MDLMesh.self).first as? MDLMesh else {
+            throw MeshImportError.noMeshFound(url.lastPathComponent)
+        }
+        var mesh = try Mesh(mdlMesh: mdlMesh, device: device)
+        mesh.normals = nil
+        mesh.textureCoordinates = nil
+        mesh.tangents = nil
+        mesh.bitangents = nil
+        mesh.colors = nil
+        return mesh
+    }
+}
+
+enum MeshImportError: Error, LocalizedError {
+    case noMetalDevice
+    case noMeshFound(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .noMetalDevice:
+            "No Metal device available"
+
+        case .noMeshFound(let filename):
+            "No mesh found in \(filename)"
         }
     }
 }
@@ -103,6 +187,7 @@ struct MeshDetailView: View {
     @State private var selection: MeshSelection?
     @State private var showVertexDots = false
     @State private var isModified = false
+    @State private var isExporting = false
 
     init(item: MeshGalleryItem) {
         self.item = item
@@ -200,10 +285,21 @@ struct MeshDetailView: View {
             .inspectorColumnWidth(min: 220, ideal: 260, max: 320)
         }
         .toolbar {
+            Button {
+                isExporting = true
+            } label: {
+                Label("Export PLY", systemImage: "square.and.arrow.up")
+            }
             Toggle(isOn: $showInspector) {
                 Label("Inspector", systemImage: "sidebar.right")
             }
         }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: PLYDocument(mesh: currentMesh),
+            contentType: .ply,
+            defaultFilename: "\(item.name).ply"
+        ) { _ in }
         .onAppear { recomputeStandalone() }
     }
 
@@ -349,6 +445,30 @@ struct MeshGallerySection: Identifiable {
             ]
         }())
     ]
+}
+
+// MARK: - PLY Export
+
+struct PLYDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.ply] }
+
+    let data: Data
+
+    init(mesh: Mesh) {
+        self.data = PLY.write(mesh)
+    }
+
+    init(configuration: ReadConfiguration) {
+        self.data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration _: WriteConfiguration) -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
+    }
+}
+
+extension UTType {
+    static let ply = UTType(filenameExtension: "ply") ?? .data
 }
 
 #Preview {
