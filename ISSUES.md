@@ -284,3 +284,12 @@ created: 2026-04-15T02:57:33Z
 
 ---
 
+## 28: Generate UVs for triangle() primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:33Z
+
+
+---
+
