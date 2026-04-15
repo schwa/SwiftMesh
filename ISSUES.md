@@ -131,10 +131,12 @@ Convert MetalMesh back to Mesh. Will produce a triangle-only mesh with duplicate
 ## 9: Binary PLY support
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: effort:m
 created: 2026-04-15T00:51:26Z
+updated: 2026-04-15T17:02:58Z
 +++
 
 Add binary PLY read/write to SwiftMeshIO. Needed for large meshes — ASCII PLY is too slow/large.
@@ -227,10 +229,12 @@ Add scaled(), translated(), rotated(), transformed() methods on Mesh. Return new
 ## 15: Mesh merge / combine
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:m
 created: 2026-04-15T00:52:03Z
+updated: 2026-04-15T17:02:58Z
 +++
 
 Combine multiple Meshes into one, merging topologies and attribute arrays. Each source mesh becomes a submesh.
@@ -289,10 +293,12 @@ Currently MetalMesh always interleaves attributes into one buffer. Add option fo
 ## 19: 2D support — extensions or separate module?
 
 +++
-status: new
+status: open
 priority: low
 kind: task
+labels: effort:s
 created: 2026-04-15T01:11:40Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Decide how to handle 2D mesh operations (signed area, convexity, segment-based construction from CGPoint). Options: conditional extensions on Mesh, or a separate module depending on GeometryLite2D.
@@ -302,10 +308,12 @@ Decide how to handle 2D mesh operations (signed area, convexity, segment-based c
 ## 20: Improve test coverage for MetalMesh attribute interleaving
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
+labels: effort:s
 created: 2026-04-15T01:19:52Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 MetalMesh is at 73.4% coverage. The per-corner attribute paths (normals, UVs, tangents, colors) aren't exercised — tests only export position-only meshes. Add tests that export meshes with withFlatNormals/withSphericalUVs/withTangents and verify vertex buffer contents.
@@ -315,10 +323,12 @@ MetalMesh is at 73.4% coverage. The per-corner attribute paths (normals, UVs, ta
 ## 21: Improve test coverage for HalfEdgeTopology edge cases
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
+labels: effort:s
 created: 2026-04-15T01:19:58Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 HalfEdgeTopology is at 82.8% coverage. Uncovered paths include deleteEdge branches (boundary edges, single-face deletion) and boundaryLoops. Add targeted tests for these.
@@ -591,10 +601,12 @@ Merge two vertices connected by an edge into one, removing adjacent faces and re
 ## 41: Edge flip operation on HalfEdgeTopology
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: effort:s
 created: 2026-04-15T05:24:28Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Swap the diagonal of two adjacent triangles. Useful for mesh quality improvement and Delaunay-like refinement.
@@ -604,10 +616,12 @@ Swap the diagonal of two adjacent triangles. Useful for mesh quality improvement
 ## 42: Edge split operation on HalfEdgeTopology
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:m
 created: 2026-04-15T05:25:32Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Insert a vertex at an edge midpoint, splitting the two adjacent faces into four. Core editing primitive.
@@ -617,10 +631,12 @@ Insert a vertex at an edge midpoint, splitting the two adjacent faces into four.
 ## 43: Face extrude operation
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:m
 created: 2026-04-15T05:25:33Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Push a face outward along its normal, creating side wall quads connecting the original boundary to the extruded face.
@@ -630,13 +646,17 @@ Push a face outward along its normal, creating side wall quads connecting the or
 ## 44: Vertex weld / deduplication
 
 +++
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T05:25:33Z
+updated: 2026-04-15T17:02:41Z
+closed: 2026-04-15T17:02:41Z
 +++
 
 Merge vertices that are within a tolerance distance of each other, rewiring topology. Useful for cleaning up imported meshes.
+
+- `2026-04-15T17:02:41Z`: Duplicate of #64 (Mesh.welded(tolerance:)), which is already implemented.
 
 ---
 
@@ -694,52 +714,68 @@ CSG boolean operations produce excessive triangulation on flat surfaces — e.g.
 ## 48: Mesh from extruded text
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: effort:l
 created: 2026-04-15T05:55:51Z
+updated: 2026-04-15T17:03:10Z
 +++
 
 Generate meshes from text strings by converting font glyphs to paths, triangulating the 2D outline, and extruding to 3D. Should support font, size, and extrusion depth parameters.
+
+- `2026-04-15T17:03:10Z`: Related: #49 (extruded Path) — text extrusion could build on Path extrusion.
 
 ---
 
 ## 49: Mesh from extruded SwiftUI.Path
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:l
 created: 2026-04-15T05:56:16Z
+updated: 2026-04-15T17:03:10Z
 +++
 
 Generate meshes by triangulating a SwiftUI Path and extruding to 3D. Should handle holes, produce front/back caps and side walls. Could be the foundation for text extrusion (#48) as well.
+
+- `2026-04-15T17:03:10Z`: Related: #48 (extruded text) — could serve as foundation for text extrusion.
 
 ---
 
 ## 50: Edge fillet (rounding)
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: effort:xl
 created: 2026-04-15T05:57:13Z
+updated: 2026-04-15T17:03:10Z
 +++
 
 Round selected edges by replacing them with a smooth arc of faces. Requires edge split and vertex insertion along the edge neighborhood.
+
+- `2026-04-15T17:03:10Z`: Related: #51 (edge chamfer).
 
 ---
 
 ## 51: Edge chamfer (beveling)
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: effort:l
 created: 2026-04-15T05:57:13Z
+updated: 2026-04-15T17:03:10Z
 +++
 
 Bevel selected edges by cutting them at an angle, replacing each edge with a flat face. Simpler than fillet — no curvature, just a single angled cut.
+
+- `2026-04-15T17:03:10Z`: Related: #50 (edge fillet).
 
 ---
 
@@ -783,7 +819,9 @@ New tab with a single mesh (cylinder) and a .inspector() sidebar showing vertex 
 status: new
 priority: low
 kind: feature
+labels: needs-info
 created: 2026-04-15T06:39:36Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 ---
@@ -808,10 +846,12 @@ mergingCoplanarFaces() produces degenerate polygons with self-intersecting bound
 ## 56: CSG over-splits faces that don't intersect the other solid
 
 +++
-status: new
+status: open
 priority: medium
 kind: bug
+labels: effort:l
 created: 2026-04-15T06:58:03Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 BSP-based CSG splits cube faces even when the sphere is entirely interior and doesn't intersect those faces. This creates unnecessary triangulation on flat surfaces that coplanar merging can only partially clean up, since the BSP split introduces true boundary edges where none should exist.
@@ -821,49 +861,63 @@ BSP-based CSG splits cube faces even when the sphere is entirely interior and do
 ## 57: Generic Mesh over Float/Double scalar type
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:xl
 created: 2026-04-15T07:09:54Z
+updated: 2026-04-15T17:03:09Z
 +++
 
 Make Mesh generic over scalar type (Float vs Double). Positions, normals, UVs etc would use the generic scalar. Enables double-precision meshes for CSG and other operations that accumulate floating point error.
+
+- `2026-04-15T17:03:09Z`: Related: #58 (CSG in Double), #59 (Float/Double conversion). #58 and #59 depend on this.
 
 ---
 
 ## 58: CSG operations in Double precision
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
+labels: effort:l
 created: 2026-04-15T07:09:54Z
+updated: 2026-04-15T17:03:09Z
 +++
 
 Run CSG BSP internals in Double precision to reduce vertex drift from plane splitting. Convert back to Float (or keep as Double if Mesh supports it) at the end. Depends on generic Mesh or a separate DoubleMesh type.
+
+- `2026-04-15T17:03:09Z`: Depends on #57 (generic Mesh over scalar type). Related: #59.
 
 ---
 
 ## 59: Float/Double mesh conversion
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:m
 created: 2026-04-15T07:09:54Z
+updated: 2026-04-15T17:03:09Z
 +++
 
 Add conversion between Float and Double precision meshes. MetalMesh only works with Float, so need a way to downconvert Double meshes for GPU use.
+
+- `2026-04-15T17:03:09Z`: Depends on #57 (generic Mesh over scalar type). Related: #58.
 
 ---
 
 ## 60: Decimation damages CSG difference mesh (sphere − cube)
 
 +++
-status: new
+status: open
 priority: high
 kind: bug
+labels: effort:l
 created: 2026-04-15T07:40:25Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Decimating the 'Difference: Sphere − Cube' gallery mesh produces a gaping hole. The decimation algorithm likely collapses edges on the CSG boundary where the carved-out region meets the sphere surface, breaking the manifold.
@@ -941,10 +995,12 @@ TriangleSoup.welded(tolerance:) merges positions but doesn't rebuild half-edge t
 ## 65: CSG results should be manifold
 
 +++
-status: new
+status: open
 priority: medium
 kind: bug
+labels: effort:xl
 created: 2026-04-15T07:54:19Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 CSG union/intersection/difference of two manifold closed meshes should produce a manifold result. Currently the BSP-based algorithm produces meshes with boundary edges and standalone faces due to the TriangleSoup round-trip losing topology. Affected: all CSG operations between closed solids (e.g. cube∪cube, sphere∩cube, sphere−cube).
@@ -954,10 +1010,12 @@ CSG union/intersection/difference of two manifold closed meshes should produce a
 ## 66: Add split-by-plane operation
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:l
 created: 2026-04-15T07:54:33Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Split a mesh along an arbitrary plane, producing two separate meshes (one for each side). Faces straddling the plane should be clipped and capped.
@@ -969,10 +1027,12 @@ Split a mesh along an arbitrary plane, producing two separate meshes (one for ea
 ## 67: Add mesh diagnostic API (is/has-style queries)
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:m
 created: 2026-04-15T14:12:08Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Add a comprehensive set of diagnostic properties and methods for detecting mesh issues and attributes. We already have `isManifold`.
@@ -1044,10 +1104,12 @@ Replace the current TabView with Gallery/Inspector tabs and the full-screen over
 ## 70: Add Metal debug shaders for topology visualization
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: effort:m
 created: 2026-04-15T14:14:11Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Integrate debug shaders from MetalSprocketsAddons to visualize mesh topology in the demo app. Include: normal visualization (lines or color-mapped), wireframe overlay, face winding display, boundary edge highlighting, vertex valence heatmap.
@@ -1060,7 +1122,9 @@ Integrate debug shaders from MetalSprocketsAddons to visualize mesh topology in 
 status: new
 priority: medium
 kind: feature
+labels: needs-info
 created: 2026-04-15T14:20:40Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 ---
@@ -1071,7 +1135,9 @@ created: 2026-04-15T14:20:40Z
 status: new
 priority: medium
 kind: feature
+labels: needs-info
 created: 2026-04-15T14:20:52Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 ---
@@ -1079,11 +1145,12 @@ created: 2026-04-15T14:20:52Z
 ## 73: Unify per-corner attribute handling into a reusable remapping layer
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: architecture, refactor
+labels: architecture, refactor, effort:l
 created: 2026-04-15T15:38:03Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Every file that touches per-corner attributes (normals, textureCoordinates, tangents, bitangents, colors) manually zips/copies/remaps 5–6 optional arrays in lockstep. This boilerplate is duplicated across welding, triangulation, MetalMesh conversion, PLY export, subdivision, and coplanar merge. Adding a new attribute (e.g. bone weights) requires touching 8+ files.
@@ -1101,11 +1168,12 @@ Test impact: A single boundary test on the attribute-remapping API would replace
 ## 74: Simplify CSG conversion pipeline
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
-labels: architecture, refactor
+labels: architecture, refactor, effort:l
 created: 2026-04-15T15:38:15Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 The CSG pipeline performs 5+ data conversions in sequence: Mesh → TriangleSoup → CSGPolygon → BSPNode → [CSGPolygon] → TriangleSoup → welded TriangleSoup → Mesh → welded Mesh → mergingCoplanarFaces. Each step loses information (all per-corner attributes are stripped) and introduces tolerance-dependent behavior spread across welding (1e-5), coplanar merge (1e-4 angle, 1e-4 distance), BSP splitting (1e-5 epsilon), and the Mesh.union/intersection/difference weldTolerance parameter (1e-2).
@@ -1127,11 +1195,12 @@ Test impact: Existing CSGTests already test at the boundary (union/intersection/
 ## 75: Implement Euler characteristic and genus computation
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
-labels: topology, diagnostics
+labels: topology, diagnostics, effort:m
 created: 2026-04-15T15:43:32Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Split from #67. Compute eulerCharacteristic (V - E + F) and hasConsistentGenus. Non-trivial because:
@@ -1147,11 +1216,12 @@ Depends on boundaryLoopCount from #67.
 ## 76: Detect inconsistent face winding
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
-labels: topology, diagnostics
+labels: topology, diagnostics, effort:m
 created: 2026-04-15T15:43:40Z
+updated: 2026-04-15T17:02:59Z
 +++
 
 Split from #67. hasInconsistentFaceWinding — verify that for every pair of adjacent faces sharing an edge, the shared half-edges run in opposite directions. Non-trivial because:
@@ -1165,36 +1235,46 @@ Split from #67. hasInconsistentFaceWinding — verify that for every pair of adj
 ## 77: Add convex hull from points
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:l
 created: 2026-04-15T16:08:54Z
+updated: 2026-04-15T17:03:10Z
 +++
 
 Compute the convex hull of a set of 3D points, returning a Mesh. Standard incremental or quickhull algorithm.
+
+- `2026-04-15T17:03:10Z`: Related: #78 (convex hull with radii) depends on this.
 
 ---
 
 ## 78: Add convex hull from points with radii
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: effort:l
 created: 2026-04-15T16:08:59Z
+updated: 2026-04-15T17:03:10Z
 +++
 
 Compute the convex hull of a set of 3D spheres (point + radius), returning a Mesh. This is the Minkowski sum of the convex hull of the centers with a sphere — effectively rounding the edges and vertices of the hull. Depends on #77 (convex hull from points).
+
+- `2026-04-15T17:03:10Z`: Depends on #77 (convex hull from points).
 
 ---
 
 ## 79: Add marching cubes
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
+labels: effort:l
 created: 2026-04-15T16:09:04Z
+updated: 2026-04-15T17:03:00Z
 +++
 
 Implement marching cubes to generate a Mesh (or TriangleSoup) from a scalar field / signed distance function. Takes a grid resolution and a sampling closure (SIMD3<Float>) -> Float, produces an isosurface mesh at the zero crossing.
