@@ -466,10 +466,12 @@ closed: 2026-04-15T04:22:43Z
 ---
 
 ## 40: Edge collapse operation on HalfEdgeTopology
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T05:24:28Z
+updated: 2026-04-15T06:58:51Z
+closed: 2026-04-15T06:58:51Z
 
 Merge two vertices connected by an edge into one, removing adjacent faces and rewiring topology. Prerequisite for mesh decimation (#17).
 
