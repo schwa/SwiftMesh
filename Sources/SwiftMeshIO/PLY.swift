@@ -21,7 +21,6 @@ public enum PLYError: Error, CustomStringConvertible {
 // MARK: - PLY Reader
 
 public enum PLY {
-
     /// Read a Mesh from PLY ASCII data.
     ///
     /// Supports vertex positions (x, y, z) and polygon face lists.
@@ -81,9 +80,9 @@ public enum PLY {
                 inVertexElement = false
                 continue
             }
-            if trimmed.hasPrefix("property") && inVertexElement {
+            if trimmed.hasPrefix("property"), inVertexElement {
                 let parts = trimmed.split(separator: " ")
-                if parts.count >= 3 && !trimmed.contains("list") {
+                if parts.count >= 3, !trimmed.contains("list") {
                     vertexProperties.append(String(parts.last!))
                 }
             }

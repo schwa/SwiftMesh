@@ -1,10 +1,9 @@
 import simd
-import Testing
 @testable import SwiftMesh
+import Testing
 
 @Suite("Mesh")
 struct MeshTests {
-
     // MARK: - Construction
 
     @Test("Init from positions and face index arrays")
@@ -147,8 +146,6 @@ struct MeshTests {
         #expect(error != nil)
         #expect(error!.contains("normals.count"))
     }
-
-
 
     // MARK: - Platonic Solids
 

@@ -1,10 +1,9 @@
 import simd
-import Testing
 @testable import SwiftMesh
+import Testing
 
 @Suite("Triangulation")
 struct TriangulationTests {
-
     @Test("Triangle face produces one triangle")
     func triangleFace() {
         let mesh = Mesh(positions: [

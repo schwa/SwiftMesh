@@ -1,10 +1,9 @@
 import simd
-import Testing
 @testable import SwiftMesh
+import Testing
 
 @Suite("Mesh Primitives")
 struct MeshPrimitivesTests {
-
     // MARK: - Simple Primitives
 
     @Test("triangle()")

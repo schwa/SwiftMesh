@@ -1,11 +1,10 @@
 import Metal
 import simd
-import Testing
 @testable import SwiftMesh
+import Testing
 
 @Suite("MetalMesh")
 struct MetalMeshTests {
-
     private func requireDevice() throws -> MTLDevice {
         guard let device = MTLCreateSystemDefaultDevice() else {
             throw MetalMeshTestError.noDevice

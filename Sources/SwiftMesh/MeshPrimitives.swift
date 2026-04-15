@@ -227,7 +227,7 @@ public extension Mesh {
         // Caps
         if capped {
             // Bottom cap (winding inward)
-            let bottomCap = (0..<segments).reversed().map { $0 }
+            let bottomCap = (0..<segments).reversed().map(\.self)
             faces.append(bottomCap)
             // Top cap
             let topCap = (0..<segments).map { $0 + segments }

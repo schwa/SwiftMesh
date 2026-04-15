@@ -1,10 +1,9 @@
 import simd
-import Testing
 @testable import SwiftMesh
+import Testing
 
 @Suite("Mesh Attributes")
 struct MeshAttributesTests {
-
     // MARK: - Flat Normals
 
     @Test("withFlatNormals on XY plane triangle")

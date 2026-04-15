@@ -6,7 +6,6 @@ import simd
 /// Normals, UVs, and colors can be per-vertex or per-corner (indexed by `HalfEdgeID.raw`).
 /// Material assignment is per-face (indexed by `FaceID.raw`).
 public struct Mesh: Sendable, Equatable {
-
     /// The combinatorial topology (vertices, half-edges, faces, wiring).
     public var topology: HalfEdgeTopology
 
@@ -88,7 +87,6 @@ public struct Mesh: Sendable, Equatable {
 // MARK: - Convenience accessors
 
 public extension Mesh {
-
     /// Number of vertices.
     var vertexCount: Int { topology.vertices.count }
 
@@ -170,4 +168,3 @@ public extension Mesh {
         return nil
     }
 }
-

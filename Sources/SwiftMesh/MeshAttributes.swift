@@ -4,7 +4,6 @@ import simd
 // MARK: - Normal Generation
 
 public extension Mesh {
-
     /// Returns a new mesh with flat (per-face) normals assigned to every corner.
     func withFlatNormals() -> Mesh {
         var normals = [SIMD3<Float>](repeating: .zero, count: topology.halfEdges.count)
@@ -58,7 +57,6 @@ public extension Mesh {
 // MARK: - UV Generation
 
 public extension Mesh {
-
     /// Returns a new mesh with spherical UV coordinates computed from vertex positions.
     func withSphericalUVs() -> Mesh {
         var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
@@ -88,7 +86,6 @@ public extension Mesh {
 // MARK: - Tangent Generation (MikkTSpace)
 
 public extension Mesh {
-
     /// Returns a new mesh with tangents and bitangents computed via MikkTSpace.
     ///
     /// Requires normals and texture coordinates to be present.

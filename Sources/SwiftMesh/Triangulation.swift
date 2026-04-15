@@ -4,7 +4,6 @@ import SwiftEarcut
 // MARK: - Triangulation
 
 extension Mesh {
-
     /// Triangulate all faces, returning triangle indices as triples of VertexIDs.
     ///
     /// - Triangles (3 vertices) are passed through unchanged.
@@ -18,8 +17,10 @@ extension Mesh {
             switch verts.count {
             case ..<3:
                 continue
+
             case 3:
                 triangles.append((verts[0], verts[1], verts[2]))
+
             default:
                 let faceTriangles = triangulateFace(vertexIDs: verts)
                 triangles.append(contentsOf: faceTriangles)

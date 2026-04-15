@@ -1,5 +1,5 @@
-import Testing
 @testable import SwiftMesh
+import Testing
 
 // MARK: - Helpers
 
@@ -30,7 +30,6 @@ private func makeQuadWithHoleTopology() -> HalfEdgeTopology {
 
 @Suite("HalfEdgeTopology — Construction")
 struct HalfEdgeTopologyConstructionTests {
-
     @Test("Triangle: correct counts")
     func triangleCounts() {
         let topo = makeTriangleTopology()
@@ -137,7 +136,6 @@ struct HalfEdgeTopologyConstructionTests {
 
 @Suite("HalfEdgeTopology — Queries")
 struct HalfEdgeTopologyQueryTests {
-
     @Test("vertexLoop returns correct IDs")
     func vertexLoop() {
         let topo = makeTriangleTopology()
@@ -208,7 +206,6 @@ struct HalfEdgeTopologyQueryTests {
 
 @Suite("HalfEdgeTopology — Edge Deletion")
 struct HalfEdgeTopologyEdgeDeletionTests {
-
     @Test("Delete shared edge merges two faces")
     func deleteSharedEdge() {
         var topo = makeTwoTrianglesTopology()
@@ -238,7 +235,6 @@ struct HalfEdgeTopologyEdgeDeletionTests {
 
 @Suite("HalfEdgeTopology — CustomStringConvertible")
 struct HalfEdgeTopologyDescriptionTests {
-
     @Test("ID descriptions")
     func idDescriptions() {
         let vertex = HalfEdgeTopology.VertexID(raw: 42)
@@ -254,7 +250,6 @@ struct HalfEdgeTopologyDescriptionTests {
 
 @Suite("HalfEdgeTopology — Euler Formula")
 struct HalfEdgeTopologyEulerTests {
-
     @Test("Tetrahedron: V=4, E=6, F=4")
     func tetrahedron() {
         let topo = HalfEdgeTopology(vertexCount: 4, faces: [

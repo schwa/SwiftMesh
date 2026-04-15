@@ -8,7 +8,6 @@ import simd
 ///
 /// Faces are triangulated via earcut for n-gons, or passed through for triangles.
 public struct MetalMesh {
-
     public struct Submesh {
         public var label: String?
         public var indexBuffer: MTLBuffer
@@ -100,6 +99,7 @@ public struct MetalMesh {
                                     withUnsafeBytes(of: &packed) { src in
                                         dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
                                     }
+
                                 case .normal:
                                     if let normals = mesh.normals, let heID {
                                         var packed = Packed3<Float>(normals[heID.raw])
@@ -107,6 +107,7 @@ public struct MetalMesh {
                                             dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
                                         }
                                     }
+
                                 case .texcoord:
                                     if let uvs = mesh.textureCoordinates, let heID {
                                         var uv = uvs[heID.raw]
@@ -114,6 +115,7 @@ public struct MetalMesh {
                                             dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
                                         }
                                     }
+
                                 case .tangent:
                                     if let tangents = mesh.tangents, let heID {
                                         var packed = Packed3<Float>(tangents[heID.raw])
@@ -121,6 +123,7 @@ public struct MetalMesh {
                                             dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
                                         }
                                     }
+
                                 case .bitangent:
                                     if let bitangents = mesh.bitangents, let heID {
                                         var packed = Packed3<Float>(bitangents[heID.raw])
@@ -128,6 +131,7 @@ public struct MetalMesh {
                                             dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
                                         }
                                     }
+
                                 case .color:
                                     if let colors = mesh.colors, let heID {
                                         var color = colors[heID.raw]
@@ -135,6 +139,7 @@ public struct MetalMesh {
                                             dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
                                         }
                                     }
+
                                 default:
                                     break
                                 }

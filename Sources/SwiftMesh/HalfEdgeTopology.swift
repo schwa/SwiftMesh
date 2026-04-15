@@ -76,7 +76,7 @@ public struct HalfEdgeTopology: Sendable, Equatable {
                 let forwardKey = originIdx * vertexCount + destIdx
                 let reverseKey = destIdx * vertexCount + originIdx
 
-                var twin: HalfEdgeID? = nil
+                var twin: HalfEdgeID?
                 if let twinID = edgeMap[reverseKey] {
                     twin = twinID
                     halfEdges[twinID.raw].twin = heID
@@ -157,7 +157,6 @@ extension HalfEdgeTopology.FaceID: CustomStringConvertible {
 // MARK: - Validation
 
 extension HalfEdgeTopology {
-
     /// Validates the consistency of the half-edge topology.
     /// Returns nil if valid, or an error message describing the first issue found.
     public func validate() -> String? {
@@ -286,7 +285,6 @@ extension HalfEdgeTopology {
 // MARK: - Topology queries
 
 extension HalfEdgeTopology {
-
     /// Return the ordered boundary of `face` as vertex IDs.
     public func vertexLoop(for face: FaceID) -> [VertexID] {
         guard let start = faces[face.raw].edge else {
@@ -473,12 +471,12 @@ extension HalfEdgeTopology {
 
         let originA = halfEdges[heA].origin
         if vertices[originA.raw].edge?.raw == heA {
-            vertices[originA.raw].edge = halfEdges.first(where: { $0.origin == originA && $0.next != nil })?.id
+            vertices[originA.raw].edge = halfEdges.first { $0.origin == originA && $0.next != nil }?.id
         }
         if let heB {
             let originB = halfEdges[heB].origin
             if vertices[originB.raw].edge?.raw == heB {
-                vertices[originB.raw].edge = halfEdges.first(where: { $0.origin == originB && $0.next != nil })?.id
+                vertices[originB.raw].edge = halfEdges.first { $0.origin == originB && $0.next != nil }?.id
             }
         }
     }

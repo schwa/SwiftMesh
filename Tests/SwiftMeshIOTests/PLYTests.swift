@@ -1,12 +1,11 @@
 import Foundation
 import simd
-import Testing
 @testable import SwiftMesh
 @testable import SwiftMeshIO
+import Testing
 
 @Suite("PLY I/O")
 struct PLYTests {
-
     // MARK: - Reading
 
     @Test("Read triangle")
@@ -135,7 +134,7 @@ struct PLYTests {
     // MARK: - Writing
 
     @Test("Write triangle")
-    func writeTriangle() throws {
+    func writeTriangle() {
         let mesh = Mesh(positions: [
             SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0)
         ], faces: [[0, 1, 2]])
@@ -150,7 +149,7 @@ struct PLYTests {
     }
 
     @Test("Write with normals")
-    func writeWithNormals() throws {
+    func writeWithNormals() {
         let mesh = Mesh(positions: [
             SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0)
         ], faces: [[0, 1, 2]]).withFlatNormals()
