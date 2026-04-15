@@ -204,4 +204,22 @@ public extension Mesh {
             positions[i] = (positions[i] - currentCenter) * scale
         }
     }
+
+    /// Uniformly scale and translate positions so the mesh fits within a sphere
+    /// of the given `diameter`, centered at the origin.
+    ///
+    /// Aspect ratio is preserved — the longest axis of the bounding box
+    /// matches the diameter.
+    mutating func fitToDiameter(_ diameter: Float) {
+        let (lo, hi) = bounds
+        let currentSize = hi - lo
+        let currentCenter = (lo + hi) / 2
+        let maxExtent = max(currentSize.x, max(currentSize.y, currentSize.z))
+        guard maxExtent > 0 else { return }
+        let scale = diameter / maxExtent
+
+        for i in positions.indices {
+            positions[i] = (positions[i] - currentCenter) * scale
+        }
+    }
 }

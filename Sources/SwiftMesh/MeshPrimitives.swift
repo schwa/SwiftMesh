@@ -1253,8 +1253,9 @@ public extension Mesh {
 public extension Mesh {
     /// The Utah teapot, loaded from a bundled OBJ file.
     ///
-    /// The mesh is scaled to fit within `extents` and centered at the origin.
-    static func teapot(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh {
+    /// The mesh is uniformly scaled to fit within `diameter` and centered
+    /// at the origin, preserving aspect ratio.
+    static func teapot(diameter: Float = 1, attributes: MeshAttributes = .default) -> Mesh {
         guard let url = Bundle.module.url(forResource: "teapot", withExtension: "obj") else {
             fatalError("teapot.obj not found in bundle")
         }
@@ -1276,7 +1277,7 @@ public extension Mesh {
         mesh.bitangents = nil
         mesh.colors = nil
 
-        mesh.fitToExtents(extents)
+        mesh.fitToDiameter(diameter)
 
         if attributes.contains(.textureCoordinates) {
             mesh = mesh.withSphericalUVs()
