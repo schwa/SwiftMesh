@@ -266,3 +266,12 @@ created: 2026-04-15T02:57:33Z
 
 ---
 
+## 26: Generate UVs for icosahedron primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:33Z
+
+
+---
+
