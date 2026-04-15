@@ -872,7 +872,7 @@ created: 2026-04-15T14:20:52Z
 status: new
 priority: medium
 kind: enhancement
-labels: architecture,refactor
+labels: architecture, refactor
 created: 2026-04-15T15:38:03Z
 
 Every file that touches per-corner attributes (normals, textureCoordinates, tangents, bitangents, colors) manually zips/copies/remaps 5–6 optional arrays in lockstep. This boilerplate is duplicated across welding, triangulation, MetalMesh conversion, PLY export, subdivision, and coplanar merge. Adding a new attribute (e.g. bone weights) requires touching 8+ files.
@@ -884,6 +884,29 @@ Affected files: Mesh.swift (welded), Triangulation.swift (triangulated), MetalMe
 Dependency category: In-process (pure data, no I/O).
 
 Test impact: A single boundary test on the attribute-remapping API would replace scattered attribute-plumbing assertions across MeshTests, MeshAttributesTests, TriangulationTests, MetalMeshTests, and PLYTests.
+
+---
+
+## 74: Simplify CSG conversion pipeline
+status: new
+priority: low
+kind: enhancement
+labels: architecture,refactor
+created: 2026-04-15T15:38:15Z
+
+The CSG pipeline performs 5+ data conversions in sequence: Mesh → TriangleSoup → CSGPolygon → BSPNode → [CSGPolygon] → TriangleSoup → welded TriangleSoup → Mesh → welded Mesh → mergingCoplanarFaces. Each step loses information (all per-corner attributes are stripped) and introduces tolerance-dependent behavior spread across welding (1e-5), coplanar merge (1e-4 angle, 1e-4 distance), BSP splitting (1e-5 epsilon), and the Mesh.union/intersection/difference weldTolerance parameter (1e-2).
+
+Opportunities:
+- CSGPolygon and TriangleSoup both represent flat indexed polygons — the TriangleSoup→CSGPolygon→TriangleSoup round-trip could be eliminated by operating directly on TriangleSoup or a shared polygon representation.
+- The welding step happens twice (once inside toMesh, once could happen via the caller). Consolidate.
+- Tolerance values are scattered as magic numbers across CSG.swift, TriangleSoup.swift, and MeshOptimization.swift. Centralize into a CSGOptions struct or similar.
+- Consider preserving per-corner attributes through the pipeline where possible (at minimum normals could be re-derived rather than stripped).
+
+Affected files: CSG.swift, TriangleSoup.swift, MeshOptimization.swift, Mesh.swift (welded).
+
+Dependency category: In-process (pure computation).
+
+Test impact: Existing CSGTests already test at the boundary (union/intersection/difference → validate topology). Internal simplification wouldn't require new tests but would make the pipeline easier to debug and extend.
 
 ---
 
