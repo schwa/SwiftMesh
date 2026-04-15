@@ -848,3 +848,12 @@ Integrate debug shaders from MetalSprocketsAddons to visualize mesh topology in 
 
 ---
 
+## 71: Support extrusion modes: solid, walls only, thin walls
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T14:20:40Z
+
+
+---
+
