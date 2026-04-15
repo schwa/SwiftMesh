@@ -223,3 +223,148 @@ public extension Mesh {
         }
     }
 }
+
+// MARK: - Transforms
+
+public extension Mesh {
+    /// Translate all positions by the given offset.
+    mutating func translate(by offset: SIMD3<Float>) {
+        for i in positions.indices {
+            positions[i] += offset
+        }
+    }
+
+    /// Return a new mesh with all positions translated by the given offset.
+    func translated(by offset: SIMD3<Float>) -> Mesh {
+        var copy = self
+        copy.translate(by: offset)
+        return copy
+    }
+
+    /// Scale all positions by per-axis factors.
+    mutating func scale(by factor: SIMD3<Float>) {
+        for i in positions.indices {
+            positions[i] *= factor
+        }
+        transformDirectionAttributes { direction in
+            // For non-uniform scale, normals transform by the inverse-transpose.
+            // For directions like tangents/bitangents, apply the scale directly.
+            direction
+        } normalTransform: { normal in
+            let inverseScale = SIMD3<Float>(1 / factor.x, 1 / factor.y, 1 / factor.z)
+            let transformed = normal * inverseScale
+            let len = simd_length(transformed)
+            return len > 0 ? transformed / len : normal
+        }
+    }
+
+    /// Scale all positions uniformly.
+    mutating func scale(by factor: Float) {
+        scale(by: SIMD3<Float>(repeating: factor))
+    }
+
+    /// Return a new mesh with positions scaled by per-axis factors.
+    func scaled(by factor: SIMD3<Float>) -> Mesh {
+        var copy = self
+        copy.scale(by: factor)
+        return copy
+    }
+
+    /// Return a new mesh with positions scaled uniformly.
+    func scaled(by factor: Float) -> Mesh {
+        var copy = self
+        copy.scale(by: factor)
+        return copy
+    }
+
+    /// Rotate all positions and direction attributes by a quaternion.
+    mutating func rotate(by quaternion: simd_quatf) {
+        let matrix = simd_matrix3x3(quaternion)
+        for i in positions.indices {
+            positions[i] = matrix * positions[i]
+        }
+        transformDirectionAttributes { direction in
+            let transformed = matrix * direction
+            let len = simd_length(transformed)
+            return len > 0 ? transformed / len : direction
+        } normalTransform: { normal in
+            let transformed = matrix * normal
+            let len = simd_length(transformed)
+            return len > 0 ? transformed / len : normal
+        }
+    }
+
+    /// Return a new mesh rotated by a quaternion.
+    func rotated(by quaternion: simd_quatf) -> Mesh {
+        var copy = self
+        copy.rotate(by: quaternion)
+        return copy
+    }
+
+    /// Apply a 4×4 transform to positions and direction attributes.
+    mutating func transform(by matrix: simd_float4x4) {
+        let upperLeft = simd_float3x3(
+            SIMD3<Float>(matrix.columns.0.x, matrix.columns.0.y, matrix.columns.0.z),
+            SIMD3<Float>(matrix.columns.1.x, matrix.columns.1.y, matrix.columns.1.z),
+            SIMD3<Float>(matrix.columns.2.x, matrix.columns.2.y, matrix.columns.2.z)
+        )
+        let normalMatrix: simd_float3x3 = {
+            let det = upperLeft.determinant
+            guard abs(det) > 1e-8 else {
+                return upperLeft
+            }
+            return upperLeft.inverse.transpose
+        }()
+
+        for i in positions.indices {
+            let p = positions[i]
+            let transformed = matrix * SIMD4<Float>(p.x, p.y, p.z, 1)
+            positions[i] = SIMD3<Float>(transformed.x, transformed.y, transformed.z)
+        }
+        transformDirectionAttributes { direction in
+            let transformed = upperLeft * direction
+            let len = simd_length(transformed)
+            return len > 0 ? transformed / len : direction
+        } normalTransform: { normal in
+            let transformed = normalMatrix * normal
+            let len = simd_length(transformed)
+            return len > 0 ? transformed / len : normal
+        }
+    }
+
+    /// Return a new mesh transformed by a 4×4 matrix.
+    func transformed(by matrix: simd_float4x4) -> Mesh {
+        var copy = self
+        copy.transform(by: matrix)
+        return copy
+    }
+}
+
+// MARK: - Internal helpers
+
+private extension Mesh {
+    /// Apply transforms to direction-based attributes (normals, tangents, bitangents).
+    mutating func transformDirectionAttributes(
+        directionTransform: (SIMD3<Float>) -> SIMD3<Float>,
+        normalTransform: (SIMD3<Float>) -> SIMD3<Float>
+    ) {
+        if var n = normals {
+            for i in n.indices {
+                n[i] = normalTransform(n[i])
+            }
+            normals = n
+        }
+        if var t = tangents {
+            for i in t.indices {
+                t[i] = directionTransform(t[i])
+            }
+            tangents = t
+        }
+        if var b = bitangents {
+            for i in b.indices {
+                b[i] = directionTransform(b[i])
+            }
+            bitangents = b
+        }
+    }
+}
