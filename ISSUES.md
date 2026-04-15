@@ -754,3 +754,89 @@ TriangleSoup.welded(tolerance:) merges positions but doesn't rebuild half-edge t
 
 ---
 
+## 65: CSG results should be manifold
+status: new
+priority: medium
+kind: bug
+created: 2026-04-15T07:54:19Z
+
+CSG union/intersection/difference of two manifold closed meshes should produce a manifold result. Currently the BSP-based algorithm produces meshes with boundary edges and standalone faces due to the TriangleSoup round-trip losing topology. Affected: all CSG operations between closed solids (e.g. cube∪cube, sphere∩cube, sphere−cube).
+
+---
+
+## 66: Add split-by-plane operation
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T07:54:33Z
+
+Split a mesh along an arbitrary plane, producing two separate meshes (one for each side). Faces straddling the plane should be clipped and capped.
+
+---
+
+## 67: Add mesh diagnostic API (is/has-style queries)
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T14:12:08Z
+
+Add a comprehensive set of diagnostic properties and methods for detecting mesh issues and attributes. We already have `isManifold`.
+
+## Connectivity & Integrity
+- `hasOrphanedVertices` — vertices with no outgoing halfedge
+- `hasDanglingEdges` — edges where one or both halfedges have no face
+- `hasNonConsistentTwins` — verify h.twin.twin == h for every halfedge
+- `hasNonConsistentNextPrev` — verify h.next.prev == h and h.prev.next == h
+
+## Boundary & Genus
+- `boundaryLoopCount` — number of distinct boundary loops (0 = watertight)
+- `eulerCharacteristic` — V - E + F
+- `hasConsistentGenus` — flags if genus does not match expected surface type
+
+## Face Valence & Winding
+- `hasZeroAreaFaces` — degenerate faces with collinear/coincident vertices
+- `hasInconsistentFaceWinding` — shared halfedges not oriented opposite
+- `hasNonPlanarFaces` — for quad/ngon meshes
+
+## Vertex Valence
+- `hasZeroValenceVertices` — alias for orphaned vertices
+- `hasHighValenceVertices(threshold:)` — unusually high valence (poles, bad merges)
+- `valenceHistogram()` — frequency map of valences
+
+## Edge & Face Counting Consistency
+- `hasNonMatchingFaceEdgeCounts` — halfedge loop count vs stored face degree
+- `hasDuplicateFaces` — two faces sharing all the same vertices
+- `hasDuplicateEdges` — more than one edge connecting the same two vertices
+
+---
+
+## 68: Change validate() to return [ValidationIssue] instead of String?
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T14:12:38Z
+
+Currently `validate()` returns `String?` with the first error found. Change to return `[ValidationIssue]` so all issues are reported at once. ValidationIssue should be a structured type with severity, location (edge/face/vertex ID), and description.
+
+---
+
+## 69: Refactor demo app to NavigationSplitView
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T14:13:27Z
+
+Replace the current TabView with Gallery/Inspector tabs and the full-screen overlay with a single NavigationSplitView layout. Sidebar shows the mesh list, detail shows the interactive mesh view with the toolbar buttons (weld, triangulate, subdivide, decimate, standalone highlight) and the inspector info (manifold status, face count, etc.).
+
+---
+
+## 70: Add Metal debug shaders for topology visualization
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T14:14:11Z
+
+Integrate debug shaders from MetalSprocketsAddons to visualize mesh topology in the demo app. Include: normal visualization (lines or color-mapped), wireframe overlay, face winding display, boundary edge highlighting, vertex valence heatmap.
+
+---
+
