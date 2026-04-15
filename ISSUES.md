@@ -239,3 +239,12 @@ MetalMesh splits every half-edge corner into a unique vertex in the output buffe
 
 ---
 
+## 23: Generate UVs for tetrahedron primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:27Z
+
+
+---
+
