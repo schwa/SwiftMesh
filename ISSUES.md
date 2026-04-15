@@ -542,12 +542,16 @@ fitToExtents scales each axis independently to match the target extents, which d
 ---
 
 ## 47: Coplanar face merging after CSG operations
-status: new
+status: closed
 priority: medium
 kind: enhancement
 created: 2026-04-15T05:55:25Z
+updated: 2026-04-15T06:43:20Z
+closed: 2026-04-15T06:43:20Z
 
 CSG boolean operations produce excessive triangulation on flat surfaces — e.g. a flat square face becomes a mosaic of many triangles. Add a post-processing pass that merges coplanar adjacent faces back into larger polygons.
+
+- `2026-04-15T06:43:20Z`: Implemented mergingCoplanarFaces() — deletes shared edges between adjacent coplanar faces
 
 ---
 
