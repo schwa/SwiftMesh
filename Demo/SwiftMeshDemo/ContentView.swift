@@ -188,6 +188,8 @@ struct MeshDetailView: View {
     @State private var showVertexDots = false
     @State private var isModified = false
     @State private var isExporting = false
+    @State private var useMetalRenderer = false
+    @State private var animateRotation = true
 
     init(item: MeshGalleryItem) {
         self.item = item
@@ -195,12 +197,18 @@ struct MeshDetailView: View {
     }
 
     var body: some View {
-        MeshInteractiveView(
-            mesh: currentMesh,
-            highlightedFaces: showStandalone ? standaloneFaceIDs : nil,
-            showVertexDots: showVertexDots,
-            selection: $selection
-        )
+        Group {
+            if useMetalRenderer {
+                MetalMeshView(mesh: currentMesh, animating: animateRotation)
+            } else {
+                MeshInteractiveView(
+                    mesh: currentMesh,
+                    highlightedFaces: showStandalone ? standaloneFaceIDs : nil,
+                    showVertexDots: showVertexDots,
+                    selection: $selection
+                )
+            }
+        }
         .navigationTitle(item.name)
         .navigationSubtitle(item.subtitle ?? "")
         .inspector(isPresented: $showInspector) {
@@ -285,6 +293,14 @@ struct MeshDetailView: View {
             .inspectorColumnWidth(min: 220, ideal: 260, max: 320)
         }
         .toolbar {
+            Toggle(isOn: $useMetalRenderer) {
+                Label("Metal", systemImage: "cube")
+            }
+            if useMetalRenderer {
+                Toggle(isOn: $animateRotation) {
+                    Label("Animate", systemImage: "play")
+                }
+            }
             Button {
                 isExporting = true
             } label: {
