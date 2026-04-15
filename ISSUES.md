@@ -592,12 +592,16 @@ Bevel selected edges by cutting them at an angle, replacing each edge with a fla
 ---
 
 ## 52: Consolidate demo into single gallery with section groupings
-status: new
+status: closed
 priority: medium
 kind: enhancement
 created: 2026-04-15T05:57:53Z
+updated: 2026-04-15T05:59:56Z
+closed: 2026-04-15T05:59:56Z
 
 Replace the four separate tabs (Platonic Solids, Surfaces, CSG, Subdivision) with a single scrollable gallery using section headers to group the meshes. Reduces code duplication across gallery views.
+
+- `2026-04-15T05:59:56Z`: Consolidated into single scrollable gallery with section headers
 
 ---
 
