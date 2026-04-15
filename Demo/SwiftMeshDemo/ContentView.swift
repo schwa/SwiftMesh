@@ -469,6 +469,47 @@ struct MeshGallerySection: Identifiable {
                 ))
             ]
         }()),
+        Self("2D CSG", items: {
+            let t: Float = 0.02 // wall thickness
+
+            // Wall with door
+            let wall = Mesh.box(extents: [0.8, 0.5, t], attributes: [])
+            let door = Mesh.box(extents: [0.18, 0.3, t * 2], attributes: []).translated(by: [0.1, -0.1, 0])
+            let wallWithDoor = wall.difference(door)
+
+            // Wall with window
+            let window = Mesh.box(extents: [0.2, 0.15, t * 2], attributes: []).translated(by: [0, 0.05, 0])
+            let wallWithWindow = wall.difference(window)
+
+            // Wall with door + two windows
+            let wallFull = wall
+                .difference(door)
+                .difference(Mesh.box(extents: [0.12, 0.12, t * 2], attributes: []).translated(by: [-0.25, 0.06, 0]))
+                .difference(Mesh.box(extents: [0.12, 0.12, t * 2], attributes: []).translated(by: [0.3, 0.06, 0]))
+
+            // Arch window (cylinder subtracted from wall)
+            let archCutter = Mesh.cylinder(segments: 24, height: t * 2, radius: 0.1, attributes: [])
+                .rotated(by: simd_quatf(angle: .pi / 2, axis: [1, 0, 0]))
+                .translated(by: [0, 0.08, 0])
+            let rectCutter = Mesh.box(extents: [0.2, 0.18, t * 2], attributes: []).translated(by: [0, -0.04, 0])
+            let archWindow = wall.difference(archCutter).difference(rectCutter)
+
+            // Floor plan: four walls forming a room with a doorway
+            let wallN = Mesh.box(extents: [0.6, t, 0.6], attributes: []).translated(by: [0, 0, -0.3])
+            let wallS = Mesh.box(extents: [0.6, t, 0.6], attributes: []).translated(by: [0, 0, 0.3])
+            let wallE = Mesh.box(extents: [t, t, 0.6], attributes: []).translated(by: [0.3, 0, 0])
+            let wallW = Mesh.box(extents: [t, t, 0.6], attributes: []).translated(by: [-0.3, 0, 0])
+            let doorCut = Mesh.box(extents: [0.15, t * 2, t * 2], attributes: []).translated(by: [0.05, 0, 0.3])
+            let room = wallN.union(wallS).union(wallE).union(wallW).difference(doorCut)
+
+            return [
+                MeshGalleryItem("Wall + Door", subtitle: "Door cut from wall", mesh: wallWithDoor),
+                MeshGalleryItem("Wall + Window", subtitle: "Window cut from wall", mesh: wallWithWindow),
+                MeshGalleryItem("Wall + Door + Windows", subtitle: "Multiple cutouts", mesh: wallFull),
+                MeshGalleryItem("Arch Window", subtitle: "Cylinder + rect cutout", mesh: archWindow),
+                MeshGalleryItem("Floor Plan", subtitle: "Room with doorway", mesh: room),
+            ]
+        }()),
         Self("Subdivision", items: [
             MeshGalleryItem("Tetrahedron", subtitle: "Original (4 faces)", mesh: .tetrahedron(attributes: [])),
             MeshGalleryItem("Loop ×1", subtitle: "16 faces", mesh: Mesh.tetrahedron(attributes: []).loopSubdivided(iterations: 1)),
