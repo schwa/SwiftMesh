@@ -857,3 +857,12 @@ created: 2026-04-15T14:20:40Z
 
 ---
 
+## 72: Heal holes
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T14:20:52Z
+
+
+---
+
