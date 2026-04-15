@@ -1,0 +1,251 @@
+only_rules:
+  - accessibility_label_for_image
+  - accessibility_trait_for_button
+#  - anonymous_argument_in_multiline_closure # 520 violations
+#  - array_init # 9 violations
+  - async_without_await # 1 violations (fixable)
+  - attribute_name_spacing
+#  - attributes # 1195 violations
+#  - balanced_xctest_lifecycle # 1 violations
+#  - blanket_disable_command # 1 violations
+  - block_based_kvo
+  - capture_variable
+  - class_delegate_protocol
+  - closing_brace
+#  - closure_body_length # 89 violations
+  - closure_end_indentation # 6 violations (fixable)
+#  - closure_parameter_position # 1 violations
+  - closure_spacing # 34 violations (fixable)
+  - collection_alignment
+  - colon # 71 violations (fixable)
+  - comma # 185 violations (fixable)
+  - comma_inheritance # 5 violations (fixable)
+  - comment_spacing # 1479 violations (fixable)
+  - compiler_protocol_init
+  - computed_accessors_order
+#  - conditional_returns_on_newline # 987 violations
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+#  - contains_over_first_not_nil # 2 violations
+  - contains_over_range_nil_comparison
+  - contrasted_opening_brace # 19946 violations (fixable)
+  - control_statement # 2 violations (fixable)
+#  - convenience_type # 1 violations
+  - custom_rules
+#  - cyclomatic_complexity # 53 violations
+  - deployment_target
+  - direct_return # 4 violations (fixable)
+  - discarded_notification_center_observer
+  - discouraged_assert
+  - discouraged_direct_init
+#  - discouraged_none_name # 1 violations
+  - discouraged_object_literal
+#  - discouraged_optional_boolean # 12 violations
+#  - discouraged_optional_collection # 23 violations
+  - duplicate_conditions
+  - duplicate_enum_cases
+  - duplicate_imports
+#  - duplicated_key_in_dictionary_literal # 9 violations
+  - dynamic_inline
+  - empty_collection_literal
+  - empty_count # 108 violations (fixable)
+  - empty_enum_arguments # 17 violations (fixable)
+  - empty_parameters
+  - empty_parentheses_with_trailing_closure # 14 violations (fixable)
+  - empty_string
+  - empty_xctest_method
+  - enum_case_associated_values_count
+  - expiring_todo
+#  - explicit_acl # 2668 violations
+#  - explicit_enum_raw_value # 12 violations
+  - explicit_init # 3 violations (fixable)
+  - explicit_self
+#  - explicit_top_level_acl # 230 violations
+#  - explicit_type_interface # 8554 violations
+#  - extension_access_modifier # 616 violations
+  - fallthrough
+#  - fatal_error_message # 15 violations
+#  - file_header # 721 violations
+#  - file_length # 85 violations
+#  - file_name # 121 violations
+#  - file_name_no_space # 109 violations
+#  - file_types_order # 84 violations
+  - final_test_case # 1 violations (fixable)
+  - first_where
+  - flatmap_over_map_reduce
+#  - for_where # 21 violations
+#  - force_cast # 14 violations
+  - force_try
+#  - force_unwrapping # 340 violations
+#  - function_body_length # 76 violations
+#  - function_default_parameter_at_end # 37 violations
+  - function_name_whitespace # 127 violations (fixable)
+#  - function_parameter_count # 4 violations
+  - generic_type_name
+  - ibinspectable_in_extension
+#  - identical_operands # 6 violations
+#  - identifier_name # 6576 violations
+#  - implicit_getter # 6 violations
+  - implicit_optional_initialization # 23 violations (fixable)
+  - implicit_return # 234 violations (fixable)
+#  - implicitly_unwrapped_optional # 4 violations
+  - inclusive_language
+  - incompatible_concurrency_annotation
+#  - indentation_width # 20500 violations
+  - invalid_swiftlint_command
+#  - is_disjoint # 7 violations
+  - joined_default_parameter # 2 violations (fixable)
+#  - large_tuple # 38 violations
+  - last_where
+  - leading_whitespace
+  - legacy_cggeometry_functions
+  - legacy_constant
+  - legacy_constructor
+#  - legacy_hashing # 5 violations
+#  - legacy_multiple # 19 violations
+  - legacy_nsgeometry_functions
+#  - legacy_objc_type # 7 violations
+  - legacy_random
+#  - let_var_whitespace # 26 violations
+#  - line_length # 117 violations
+  - literal_expression_end_indentation
+#  - local_doc_comment # 6 violations
+  - lower_acl_than_parent # 3 violations (fixable)
+  - mark # 23 violations (fixable)
+#  - missing_docs # 901 violations
+  - modifier_order # 5 violations (fixable)
+#  - multiline_arguments # 328 violations
+#  - multiline_arguments_brackets # 1255 violations
+#  - multiline_call_arguments # 174 violations
+#  - multiline_function_chains # 6 violations
+#  - multiline_literal_brackets # 58 violations
+#  - multiline_parameters # 34 violations
+#  - multiline_parameters_brackets # 16 violations
+#  - multiple_closures_with_trailing_closure # 69 violations
+#  - nesting # 60 violations
+  - nimble_operator
+#  - no_empty_block # 57 violations
+#  - no_extension_access_modifier # 84 violations
+  - no_fallthrough_only
+#  - no_grouping_extension # 584 violations
+#  - no_magic_numbers # 6206 violations
+  - no_space_in_method_call
+  - non_optional_string_data_conversion
+  - non_overridable_class_declaration
+  - notification_center_detachment
+  - ns_number_init_as_function_reference
+  - nslocalizedstring_key
+  - nslocalizedstring_require_bundle
+  - nsobject_prefer_isequal
+  - number_separator # 380 violations (fixable)
+  - object_literal
+#  - one_declaration_per_file # 63 violations
+  - opening_brace # 69 violations (fixable)
+  - operator_usage_whitespace # 441 violations (fixable)
+#  - optional_data_string_conversion # 1 violations
+  - optional_enum_case_matching
+#  - orphaned_doc_comment # 1 violations
+  - overridden_super_call
+  - override_in_extension
+#  - pattern_matching_keywords # 26 violations
+  - period_spacing # 27 violations (fixable)
+  - prefer_asset_symbols
+  - prefer_condition_list # 102 violations (fixable)
+  - prefer_key_path # 60 violations (fixable)
+#  - prefer_nimble # 363 violations
+  - prefer_self_in_static_references # 39 violations (fixable)
+  - prefer_self_type_over_type_of_self
+  - prefer_type_checking
+  - prefer_zero_over_explicit_init
+#  - prefixed_toplevel_constant # 37 violations
+  - private_action
+  - private_outlet
+  - private_over_fileprivate # 12 violations (fixable)
+  - private_subject
+  - private_swiftui_state
+  - private_unit_test
+  - prohibited_interface_builder
+  - prohibited_super_call
+  - protocol_property_accessors_order
+  - quick_discouraged_call
+  - quick_discouraged_focused_test
+  - quick_discouraged_pending_test
+  - raw_value_for_camel_cased_codable_enum
+  - reduce_boolean
+  - reduce_into
+  - redundant_discardable_let # 6 violations (fixable)
+  - redundant_nil_coalescing
+  - redundant_objc_attribute
+  - redundant_self # 6 violations (fixable)
+  - redundant_sendable
+  - redundant_set_access_control
+  - redundant_string_enum_value
+  - redundant_type_annotation # 3 violations (fixable)
+  - redundant_void_return # 30 violations (fixable)
+#  - required_deinit # 76 violations
+  - required_enum_case
+  - return_arrow_whitespace # 1 violations (fixable)
+  - return_value_from_void_function # 13 violations (fixable)
+  - self_binding
+  - self_in_property_initialization
+#  - shorthand_argument # 21 violations
+#  - shorthand_operator # 3 violations
+  - shorthand_optional_binding # 86 violations (fixable)
+  - single_test_class
+#  - sorted_enum_cases # 14 violations
+  - sorted_first_last
+  - sorted_imports # 101 violations (fixable)
+  - statement_position # 28 violations (fixable)
+  - static_operator
+  - static_over_final_class
+#  - strict_fileprivate # 15 violations
+  - strong_iboutlet
+#  - superfluous_disable_command # 3 violations
+  - superfluous_else # 69 violations (fixable)
+  - switch_case_alignment
+#  - switch_case_on_newline # 89 violations
+  - syntactic_sugar # 33 violations (fixable)
+  - test_case_accessibility # 33 violations (fixable)
+#  - todo # 281 violations
+  - toggle_bool # 1 violations (fixable)
+  - trailing_closure # 139 violations (fixable)
+  - trailing_comma # 201 violations (fixable)
+  - trailing_newline # 31 violations (fixable)
+  - trailing_semicolon # 1 violations (fixable)
+  - trailing_whitespace # 2383 violations (fixable)
+#  - type_body_length # 26 violations
+#  - type_contents_order # 688 violations
+#  - type_name # 132 violations
+  - typesafe_array_init
+  - unavailable_condition
+#  - unavailable_function # 13 violations
+  - unhandled_throwing_task
+  - unneeded_break_in_switch
+  - unneeded_escaping # 1 violations (fixable)
+  - unneeded_override
+  - unneeded_parentheses_in_closure_argument # 12 violations (fixable)
+  - unneeded_synthesized_initializer # 4 violations (fixable)
+  - unneeded_throws_rethrows # 64 violations (fixable)
+  - unowned_variable_capture
+  - untyped_error_in_catch
+  - unused_closure_parameter # 208 violations (fixable)
+  - unused_control_flow_label # 4 violations (fixable)
+  - unused_declaration
+  - unused_enumerated
+  - unused_import
+#  - unused_optional_binding # 2 violations
+  - unused_parameter # 367 violations (fixable)
+  - unused_setter_value
+  - valid_ibinspectable
+  - vertical_parameter_alignment
+#  - vertical_parameter_alignment_on_call # 22 violations
+  - vertical_whitespace # 134 violations (fixable)
+  - vertical_whitespace_between_cases # 123 violations (fixable)
+  - vertical_whitespace_closing_braces # 42 violations (fixable)
+  - vertical_whitespace_opening_braces # 64 violations (fixable)
+  - void_function_in_ternary
+  - void_return # 2 violations (fixable)
+  - weak_delegate
+#  - xct_specific_matcher # 3 violations
+#  - xctfail_message # 16 violations
+#  - yoda_condition # 3 violations
