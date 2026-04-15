@@ -309,6 +309,9 @@ struct MeshDetailView: View {
                     Button("Decimate 50%") {
                         applyOperation { $0.decimated(ratio: 0.5) }
                     }
+                    Button("Wireframe") {
+                        applyOperation { $0.wireframe(radius: 0.015, sides: 8) }
+                    }
 
                     Toggle("Highlight Standalone", isOn: $showStandalone)
                     Toggle("Vertex Dots", isOn: $showVertexDots)
@@ -543,6 +546,26 @@ struct MeshGallerySection: Identifiable {
                     mesh: Mesh.convexHull(of: spherePoints, attributes: []) ?? .tetrahedron(attributes: [])),
                 MeshGalleryItem("Noisy Cube", subtitle: "Cube corners + 30 interior",
                     mesh: Mesh.convexHull(of: noisyCubePoints, attributes: []) ?? .tetrahedron(attributes: []))
+            ]
+        }()),
+        Self("Wireframe", items: {
+            let cube = Mesh.cube(attributes: [])
+            let icosahedron = Mesh.icosahedron(attributes: [])
+            let dodecahedron = Mesh.dodecahedron(attributes: [])
+            let torus = Mesh.torus(majorSegments: 16, minorSegments: 8, attributes: [])
+            return [
+                MeshGalleryItem("Cube Wireframe", subtitle: "Rectangular tubes",
+                    mesh: cube.wireframe(radius: 0.02, sides: 4)),
+                MeshGalleryItem("Cube Wireframe (Cyl)", subtitle: "Cylindrical tubes",
+                    mesh: cube.wireframe(radius: 0.02, sides: 16)),
+                MeshGalleryItem("Icosahedron Wireframe", subtitle: "20-face polyhedron",
+                    mesh: icosahedron.wireframe(radius: 0.015, sides: 8)),
+                MeshGalleryItem("Dodecahedron Wireframe", subtitle: "12 pentagons",
+                    mesh: dodecahedron.wireframe(radius: 0.015, sides: 8)),
+                MeshGalleryItem("Torus Wireframe", subtitle: "16×8 torus grid",
+                    mesh: torus.wireframe(radius: 0.005, sides: 6)),
+                MeshGalleryItem("Phat Cube", subtitle: "Thicc boi",
+                    mesh: cube.wireframe(radius: 0.06, sides: 12))
             ]
         }()),
         Self("Decimation", items: {
