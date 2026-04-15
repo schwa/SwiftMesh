@@ -450,6 +450,29 @@ struct MeshGallerySection: Identifiable {
             MeshGalleryItem("Icosahedron", subtitle: "Original (20 faces)", mesh: .icosahedron(attributes: [])),
             MeshGalleryItem("Loop Icosahedron ×2", subtitle: "320 faces", mesh: Mesh.icosahedron(attributes: []).loopSubdivided(iterations: 2))
         ]),
+        Self("Marching Cubes", items: {
+            let bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5))
+            return [
+                MeshGalleryItem("MC Sphere", subtitle: "SDF sphere", mesh: .marchingCubes(resolution: 32, bounds: bounds) { p in
+                    simd_length(p) - 0.4
+                }),
+                MeshGalleryItem("MC Torus", subtitle: "SDF torus", mesh: .marchingCubes(resolution: 32, bounds: bounds) { p in
+                    let q = SIMD2<Float>(simd_length(SIMD2<Float>(p.x, p.z)) - 0.3, p.y)
+                    return simd_length(q) - 0.1
+                }),
+                MeshGalleryItem("MC Rounded Box", subtitle: "SDF rounded box", mesh: .marchingCubes(resolution: 32, bounds: bounds) { p in
+                    let q = SIMD3<Float>(abs(p.x), abs(p.y), abs(p.z)) - SIMD3<Float>(0.25, 0.25, 0.25)
+                    let outside = simd_length(SIMD3<Float>(max(q.x, 0), max(q.y, 0), max(q.z, 0)))
+                    let inside = min(max(q.x, max(q.y, q.z)), Float(0))
+                    return outside + inside - 0.05
+                }),
+                MeshGalleryItem("MC Gyroid", subtitle: "Triply periodic surface", mesh: .marchingCubes(resolution: 48, bounds: bounds) { p in
+                    let s = p * (2 * .pi * 3)
+                    let g = sin(s.x) * cos(s.y) + sin(s.y) * cos(s.z) + sin(s.z) * cos(s.x)
+                    return abs(g) - 0.3
+                }),
+            ]
+        }()),
         Self("Decimation", items: {
             let sphere = Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 3, attributes: [])
             let sphereFaces = sphere.topology.faces.filter { $0.edge != nil }.count
