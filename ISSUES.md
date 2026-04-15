@@ -703,12 +703,16 @@ Decimating the 'Difference: Sphere − Cube' gallery mesh produces a gaping hole
 ---
 
 ## 61: Add isManifold method
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T07:40:38Z
+updated: 2026-04-15T15:42:37Z
+closed: 2026-04-15T15:42:37Z
 
 Add a method to check whether a mesh is a closed 2-manifold (every edge has exactly one twin, no boundary edges, consistent orientation).
+
+- `2026-04-15T15:42:37Z`: Already implemented on HalfEdgeTopology and exposed as Mesh.isManifold.
 
 ---
 
@@ -891,7 +895,7 @@ Test impact: A single boundary test on the attribute-remapping API would replace
 status: new
 priority: low
 kind: enhancement
-labels: architecture,refactor
+labels: architecture, refactor
 created: 2026-04-15T15:38:15Z
 
 The CSG pipeline performs 5+ data conversions in sequence: Mesh → TriangleSoup → CSGPolygon → BSPNode → [CSGPolygon] → TriangleSoup → welded TriangleSoup → Mesh → welded Mesh → mergingCoplanarFaces. Each step loses information (all per-corner attributes are stripped) and introduces tolerance-dependent behavior spread across welding (1e-5), coplanar merge (1e-4 angle, 1e-4 distance), BSP splitting (1e-5 epsilon), and the Mesh.union/intersection/difference weldTolerance parameter (1e-2).
