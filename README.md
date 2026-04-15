@@ -142,4 +142,4 @@ meshA.difference(meshB)     // A − B
 - [GeometryLite3D](https://github.com/schwa/GeometryLite3D)
 - [MetalSupport](https://github.com/schwa/MetalSupport)
 - [SwiftEarcut](https://github.com/schwa/SwiftEarcut)
-- MikkTSpace (vendored)
+- [MikkTSpace](https://github.com/mmikk/MikkTSpace) (vendored) — see [mikktspace.com](http://www.mikktspace.com/)

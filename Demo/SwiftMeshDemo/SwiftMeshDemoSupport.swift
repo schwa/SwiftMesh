@@ -123,6 +123,7 @@ struct MeshInteractiveView: View {
         .onTapGesture { location in
             hitTest(at: location)
         }
+        .accessibilityAddTraits(.isButton)
         .onGeometryChange(for: CGSize.self, of: \.size) { viewSize = $0 }
         .interactiveCamera(
             rotation: $cameraRotation,
