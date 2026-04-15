@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		452619932F8F5A6600E3ABFF /* Interaction3D in Frameworks */ = {isa = PBXBuildFile; productRef = 452619922F8F5A6600E3ABFF /* Interaction3D */; };
 		457F400F2F8F12FE00A9AC0B /* SwiftMesh in Frameworks */ = {isa = PBXBuildFile; productRef = 457F400E2F8F12FE00A9AC0B /* SwiftMesh */; };
 		457F40112F8F12FE00A9AC0B /* SwiftMeshIO in Frameworks */ = {isa = PBXBuildFile; productRef = 457F40102F8F12FE00A9AC0B /* SwiftMeshIO */; };
 		457F402A2F8F139400A9AC0B /* GeometryLite3D in Frameworks */ = {isa = PBXBuildFile; productRef = 457F40292F8F139400A9AC0B /* GeometryLite3D */; };
@@ -52,6 +53,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				452619932F8F5A6600E3ABFF /* Interaction3D in Frameworks */,
 				457F40112F8F12FE00A9AC0B /* SwiftMeshIO in Frameworks */,
 				457F400F2F8F12FE00A9AC0B /* SwiftMesh in Frameworks */,
 				457F402A2F8F139400A9AC0B /* GeometryLite3D in Frameworks */,
@@ -102,6 +104,7 @@
 				457F400E2F8F12FE00A9AC0B /* SwiftMesh */,
 				457F40102F8F12FE00A9AC0B /* SwiftMeshIO */,
 				457F40292F8F139400A9AC0B /* GeometryLite3D */,
+				452619922F8F5A6600E3ABFF /* Interaction3D */,
 			);
 			productName = SwiftMeshDemo;
 			productReference = 451594472F64A8DC005F944D /* SwiftMeshDemo.app */;
@@ -134,6 +137,7 @@
 			packageReferences = (
 				457F400D2F8F12FE00A9AC0B /* XCLocalSwiftPackageReference ".." */,
 				457F40282F8F139400A9AC0B /* XCRemoteSwiftPackageReference "GeometryLite3D" */,
+				452619912F8F5A6600E3ABFF /* XCRemoteSwiftPackageReference "Interaction3D" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 451594482F64A8DC005F944D /* Products */;
@@ -231,6 +235,14 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		452619912F8F5A6600E3ABFF /* XCRemoteSwiftPackageReference "Interaction3D" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/schwa/Interaction3D";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 		457F40282F8F139400A9AC0B /* XCRemoteSwiftPackageReference "GeometryLite3D" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/schwa/GeometryLite3D";
@@ -242,6 +254,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		452619922F8F5A6600E3ABFF /* Interaction3D */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 452619912F8F5A6600E3ABFF /* XCRemoteSwiftPackageReference "Interaction3D" */;
+			productName = Interaction3D;
+		};
 		457F400E2F8F12FE00A9AC0B /* SwiftMesh */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftMesh;

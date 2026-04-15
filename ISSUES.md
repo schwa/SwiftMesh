@@ -514,12 +514,16 @@ Merge vertices that are within a tolerance distance of each other, rewiring topo
 ---
 
 ## 45: Use Interaction3D for gestures in demo
-status: new
+status: closed
 priority: low
 kind: enhancement
 created: 2026-04-15T05:30:18Z
+updated: 2026-04-15T05:35:02Z
+closed: 2026-04-15T05:35:02Z
 
 Replace manual DragGesture in demo with Interaction3D package (github.com/schwa/Interaction3D) for orbit/pan/zoom camera controls.
+
+- `2026-04-15T05:35:02Z`: Implemented — replaced manual DragGesture with Interaction3D's interactiveCamera modifier
 
 ---
 

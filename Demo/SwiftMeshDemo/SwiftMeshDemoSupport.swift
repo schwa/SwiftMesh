@@ -1,4 +1,5 @@
 import GeometryLite3D
+import Interaction3D
 import simd
 import SwiftMesh
 import SwiftUI
@@ -8,8 +9,9 @@ struct MeshCanvasView: View {
     let mesh: Mesh
     let fillColor: Color
 
-    @State private var rotation: SIMD2<Float> = .zero
-    @State private var isDragging = false
+    @State private var cameraRotation: simd_quatf = simd_quatf(angle: 0, axis: [0, 1, 0])
+    @State private var cameraDistance: Float = 4
+    @State private var cameraTarget: SIMD3<Float> = .zero
 
     init(mesh: Mesh, fillColor: Color = .blue) {
         self.mesh = mesh
@@ -20,8 +22,9 @@ struct MeshCanvasView: View {
         Canvas { context, size in
             let fov = PerspectiveProjection(verticalAngleOfView: .degrees(45))
             let projectionMatrix = fov.projectionMatrix(width: Float(size.width), height: Float(size.height))
-            let rotationMatrix = float4x4(yRotation: .radians(rotation.x)) * float4x4(xRotation: .radians(rotation.y))
-            let viewMatrix = (rotationMatrix * float4x4(translation: [0, 0, 4])).inverse
+
+            let rotationMatrix = float4x4(cameraRotation)
+            let viewMatrix = (float4x4(translation: cameraTarget) * rotationMatrix * float4x4(translation: [0, 0, cameraDistance])).inverse
 
             let renderer = SoftwareRenderer(
                 viewMatrix: viewMatrix,
@@ -37,13 +40,10 @@ struct MeshCanvasView: View {
                 lineWidth: 0.5
             )
         }
-        .gesture(
-            DragGesture()
-                .onChanged { value in
-                    let sensitivity: Float = 0.01
-                    rotation.x += Float(value.translation.width) * sensitivity
-                    rotation.y += Float(value.translation.height) * sensitivity
-                }
+        .interactiveCamera(
+            rotation: $cameraRotation,
+            distance: $cameraDistance,
+            target: $cameraTarget
         )
     }
 }
