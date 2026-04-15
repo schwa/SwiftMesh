@@ -23,11 +23,11 @@ Three layers:
 
 ## Consumers
 
-- **Interaction3D** — 3D mesh rendering in SwiftUI Canvas (replaces inlined PolygonMesh)
-- **MetalSprocketsAddOns** — Metal mesh pipeline (replaces old Mesh/TrivialMesh)
-- **MetalSprocketsExample** — demo app consuming MetalMesh
-- **MetalSprocketsSceneGraph** — scene graph mesh nodes
-- **GeometryLite2D** — has redundant HalfEdgeMesh/PolygonMesh copies to remove
+- [X] **Interaction3D** — 3D mesh rendering in SwiftUI Canvas (replaces inlined PolygonMesh)
+- [X] **MetalSprocketsAddOns** — Metal mesh pipeline (replaces old Mesh/TrivialMesh)
+- [X] **MetalSprocketsExample** — demo app consuming MetalMesh
+- [ ] **MetalSprocketsSceneGraph** — scene graph mesh nodes
+- [ ] **GeometryLite2D** — has redundant HalfEdgeMesh/PolygonMesh copies to remove
 
 ## Design decisions
 

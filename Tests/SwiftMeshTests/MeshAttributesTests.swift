@@ -23,7 +23,7 @@ struct MeshAttributesTests {
 
     @Test("withFlatNormals on cube gives 6 distinct normals")
     func flatNormalsCube() {
-        let mesh = Mesh.cube.withFlatNormals()
+        let mesh = Mesh.cube().withFlatNormals()
         #expect(mesh.normals != nil)
 
         // Collect unique normals (quantized to avoid float noise)
@@ -39,7 +39,7 @@ struct MeshAttributesTests {
 
     @Test("withSmoothNormals on sphere-like mesh")
     func smoothNormalsSphere() {
-        let mesh = Mesh.icosahedron.withSmoothNormals()
+        let mesh = Mesh.icosahedron().withSmoothNormals()
         #expect(mesh.normals != nil)
         #expect(mesh.normals!.count == mesh.topology.halfEdges.count)
 
@@ -54,7 +54,7 @@ struct MeshAttributesTests {
 
     @Test("withSmoothNormals produces unit-length normals")
     func smoothNormalsUnitLength() {
-        let mesh = Mesh.cube.withSmoothNormals()
+        let mesh = Mesh.cube().withSmoothNormals()
         for normal in mesh.normals! {
             let len = simd_length(normal)
             #expect(abs(len - 1.0) < 1e-5)
@@ -65,7 +65,7 @@ struct MeshAttributesTests {
 
     @Test("withSphericalUVs produces valid UV range")
     func sphericalUVsRange() {
-        let mesh = Mesh.icosahedron.withSphericalUVs()
+        let mesh = Mesh.icosahedron().withSphericalUVs()
         #expect(mesh.textureCoordinates != nil)
         #expect(mesh.textureCoordinates!.count == mesh.topology.halfEdges.count)
 
@@ -79,7 +79,7 @@ struct MeshAttributesTests {
 
     @Test("withTangents requires normals and UVs")
     func tangentsPipeline() {
-        let mesh = Mesh.icosahedron
+        let mesh = Mesh.icosahedron()
             .withSmoothNormals()
             .withSphericalUVs()
             .withTangents()
@@ -93,7 +93,7 @@ struct MeshAttributesTests {
 
     @Test("Tangents are roughly unit length")
     func tangentsUnitLength() {
-        let mesh = Mesh.octahedron
+        let mesh = Mesh.octahedron()
             .withFlatNormals()
             .withSphericalUVs()
             .withTangents()

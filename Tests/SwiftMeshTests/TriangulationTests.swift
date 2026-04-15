@@ -44,14 +44,14 @@ struct TriangulationTests {
 
     @Test("Cube faces (quads) all triangulate")
     func cubeTriangulation() {
-        let tris = Mesh.cube.triangulate()
+        let tris = Mesh.cube().triangulate()
         // 6 quad faces × 2 triangles each = 12
         #expect(tris.count == 12)
     }
 
     @Test("Dodecahedron faces (pentagons) all triangulate")
     func dodecahedronTriangulation() {
-        let tris = Mesh.dodecahedron.triangulate()
+        let tris = Mesh.dodecahedron().triangulate()
         // 12 pentagon faces × 3 triangles each = 36
         #expect(tris.count == 36)
     }

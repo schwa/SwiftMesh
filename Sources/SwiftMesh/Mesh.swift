@@ -167,4 +167,41 @@ public extension Mesh {
         }
         return nil
     }
+
+    /// The axis-aligned bounding box of the mesh as (min, max).
+    var bounds: (min: SIMD3<Float>, max: SIMD3<Float>) {
+        guard let first = positions.first else {
+            return (.zero, .zero)
+        }
+        var lo = first
+        var hi = first
+        for p in positions.dropFirst() {
+            lo = simd_min(lo, p)
+            hi = simd_max(hi, p)
+        }
+        return (lo, hi)
+    }
+
+    /// Uniformly scale and translate positions so the bounding box fits within
+    /// the given extents, centered at the origin.
+    ///
+    /// Axes with zero extent in the target are ignored (positions on that axis
+    /// are left unchanged). This allows 2D shapes to pass `SIMD3(w, h, 0)`.
+    mutating func fitToExtents(_ extents: SIMD3<Float>) {
+        let (lo, hi) = bounds
+        let currentSize = hi - lo
+        let currentCenter = (lo + hi) / 2
+
+        // Compute per-axis scale, ignoring axes with zero current or target extent
+        var scale: SIMD3<Float> = [1, 1, 1]
+        for i in 0..<3 {
+            if currentSize[i] > 0 && extents[i] > 0 {
+                scale[i] = extents[i] / currentSize[i]
+            }
+        }
+
+        for i in positions.indices {
+            positions[i] = (positions[i] - currentCenter) * scale
+        }
+    }
 }

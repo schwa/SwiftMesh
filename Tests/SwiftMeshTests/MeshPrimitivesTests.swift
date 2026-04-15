@@ -100,11 +100,11 @@ struct MeshPrimitivesTests {
     @Test("All Platonic solids satisfy Euler formula")
     func eulerFormula() {
         let solids: [(String, Mesh)] = [
-            ("tetrahedron", .tetrahedron),
-            ("cube", .cube),
-            ("octahedron", .octahedron),
-            ("icosahedron", .icosahedron),
-            ("dodecahedron", .dodecahedron)
+            ("tetrahedron", .tetrahedron()),
+            ("cube", .cube()),
+            ("octahedron", .octahedron()),
+            ("icosahedron", .icosahedron()),
+            ("dodecahedron", .dodecahedron())
         ]
         for (name, mesh) in solids {
             let euler = mesh.vertexCount - mesh.edgeCount + mesh.faceCount

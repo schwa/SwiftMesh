@@ -184,16 +184,16 @@ struct PLYTests {
 
     @Test("Round-trip cube")
     func roundTripCube() throws {
-        let data = PLY.write(.cube)
+        let data = PLY.write(.cube())
         let restored = try PLY.read(from: data)
-        #expect(restored.vertexCount == Mesh.cube.vertexCount)
-        #expect(restored.faceCount == Mesh.cube.faceCount)
+        #expect(restored.vertexCount == Mesh.cube().vertexCount)
+        #expect(restored.faceCount == Mesh.cube().faceCount)
         #expect(restored.validate() == nil)
     }
 
     @Test("Round-trip with normals")
     func roundTripNormals() throws {
-        let original = Mesh.tetrahedron.withFlatNormals()
+        let original = Mesh.tetrahedron().withFlatNormals()
         let data = PLY.write(original)
         let restored = try PLY.read(from: data)
 

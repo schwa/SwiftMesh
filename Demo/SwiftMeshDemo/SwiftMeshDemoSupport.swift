@@ -54,11 +54,11 @@ struct PlatonicSolidsGallery: View {
 
     var body: some View {
         let solids: [(String, Mesh, Color)] = [
-            ("Tetrahedron", .tetrahedron, .red),
-            ("Cube", .cube, .blue),
-            ("Octahedron", .octahedron, .green),
-            ("Icosahedron", .icosahedron, .orange),
-            ("Dodecahedron", .dodecahedron, .purple)
+            ("Tetrahedron", .tetrahedron(), .red),
+            ("Cube", .cube(), .blue),
+            ("Octahedron", .octahedron(), .green),
+            ("Icosahedron", .icosahedron(), .orange),
+            ("Dodecahedron", .dodecahedron(), .purple)
         ]
 
         ScrollView {
