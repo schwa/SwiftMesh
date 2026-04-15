@@ -527,3 +527,13 @@ Replace manual DragGesture in demo with Interaction3D package (github.com/schwa/
 
 ---
 
+## 46: Teapot is squished — fitToExtents scales non-uniformly
+status: new
+priority: medium
+kind: bug
+created: 2026-04-15T05:51:38Z
+
+fitToExtents scales each axis independently to match the target extents, which distorts non-cubic meshes like the teapot. Should use uniform scaling (fit within extents while preserving aspect ratio) for bundled meshes, or offer both modes.
+
+---
+
