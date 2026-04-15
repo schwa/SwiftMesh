@@ -188,8 +188,8 @@ struct MeshDetailView: View {
     @State private var showVertexDots = false
     @State private var isModified = false
     @State private var isExporting = false
-    @State private var useMetalRenderer = false
-    @State private var animateRotation = true
+    @AppStorage("useMetalRenderer") private var useMetalRenderer = false
+    @AppStorage("animateRotation") private var animateRotation = true
 
     init(item: MeshGalleryItem) {
         self.item = item
