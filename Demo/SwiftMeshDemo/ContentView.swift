@@ -95,6 +95,7 @@ private struct MeshGallerySection: Identifiable {
             MeshGalleryItem("Capsule", mesh: .capsule()),
             MeshGalleryItem("Conical Frustum", mesh: .conicalFrustum()),
             MeshGalleryItem("Rect Frustum", mesh: .rectangularFrustum()),
+            MeshGalleryItem("Quad", mesh: .quad()),
             MeshGalleryItem("Circle", mesh: .circle()),
             MeshGalleryItem("Teapot", mesh: .teapot()),
             MeshGalleryItem("IcoSphere", mesh: .icoSphere()),

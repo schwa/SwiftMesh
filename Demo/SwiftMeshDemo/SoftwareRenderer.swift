@@ -62,6 +62,23 @@ struct SoftwareRenderer {
     }
 }
 
+// MARK: - Standalone face detection
+
+extension Mesh {
+    /// Returns face IDs where no edge of the face has a twin (completely isolated).
+    func standaloneFaces() -> Set<HalfEdgeTopology.FaceID> {
+        var result = Set<HalfEdgeTopology.FaceID>()
+        for face in topology.faces {
+            let edges = topology.halfEdgeLoop(for: face.id)
+            let allBoundary = edges.allSatisfy { topology.halfEdges[$0.raw].twin == nil }
+            if allBoundary {
+                result.insert(face.id)
+            }
+        }
+        return result
+    }
+}
+
 // MARK: - Mesh rendering into Canvas
 
 extension Mesh {
@@ -73,7 +90,9 @@ extension Mesh {
         fillColor: Color = .blue,
         strokeColor: Color = .white,
         lineWidth: CGFloat = 1,
-        backfaceCull: Bool = true
+        backfaceCull: Bool = true,
+        highlightedFaces: Set<HalfEdgeTopology.FaceID>? = nil,
+        highlightStrokeColor: Color = .purple
     ) {
         // Collect faces with depth for painter's algorithm sorting
         struct FaceDrawInfo {
@@ -81,6 +100,7 @@ extension Mesh {
             var depth: Float
             var isFront: Bool
             var normal: SIMD3<Float>
+            var isHighlighted: Bool
         }
 
         var drawInfos: [FaceDrawInfo] = []
@@ -104,8 +124,9 @@ extension Mesh {
             } / Float(pts.count)
 
             let faceNormal = self.faceNormal(face.id)
+            let isHighlighted = highlightedFaces?.contains(face.id) ?? false
 
-            drawInfos.append(FaceDrawInfo(path: path, depth: avgZ, isFront: isFront, normal: faceNormal))
+            drawInfos.append(FaceDrawInfo(path: path, depth: avgZ, isFront: isFront, normal: faceNormal, isHighlighted: isHighlighted))
         }
 
         // Sort back-to-front (most negative Z first = farthest)
@@ -120,7 +141,11 @@ extension Mesh {
 
             let shadedColor = fillColor.opacity(Double(brightness))
             context.fill(info.path, with: .color(shadedColor))
-            context.stroke(info.path, with: .color(strokeColor.opacity(0.3)), lineWidth: lineWidth)
+            if info.isHighlighted {
+                context.stroke(info.path, with: .color(highlightStrokeColor), lineWidth: max(lineWidth, 2))
+            } else {
+                context.stroke(info.path, with: .color(strokeColor.opacity(0.3)), lineWidth: lineWidth)
+            }
         }
     }
 }
