@@ -432,8 +432,8 @@ public extension Mesh {
     ///
     /// - Parameter other: The mesh to union with.
     /// - Returns: A new mesh representing the combined volume.
-    func union(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh {
-        var result = TriangleSoup(mesh: self).union(TriangleSoup(mesh: other)).toMesh()
+    func union(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
+        var result = TriangleSoup(mesh: self).union(TriangleSoup(mesh: other)).toMesh(weldTolerance: weldTolerance)
         if mergeCoplanar { result = result.mergingCoplanarFaces() }
         return result
     }
@@ -447,8 +447,8 @@ public extension Mesh {
     ///
     /// - Parameter other: The mesh to intersect with.
     /// - Returns: A new mesh containing only the shared volume.
-    func intersection(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh {
-        var result = TriangleSoup(mesh: self).intersection(TriangleSoup(mesh: other)).toMesh()
+    func intersection(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
+        var result = TriangleSoup(mesh: self).intersection(TriangleSoup(mesh: other)).toMesh(weldTolerance: weldTolerance)
         if mergeCoplanar { result = result.mergingCoplanarFaces() }
         return result
     }
@@ -462,8 +462,8 @@ public extension Mesh {
     ///
     /// - Parameter other: The mesh volume to subtract.
     /// - Returns: A new mesh with the other's volume carved out.
-    func difference(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh {
-        var result = TriangleSoup(mesh: self).difference(TriangleSoup(mesh: other)).toMesh()
+    func difference(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
+        var result = TriangleSoup(mesh: self).difference(TriangleSoup(mesh: other)).toMesh(weldTolerance: weldTolerance)
         if mergeCoplanar { result = result.mergingCoplanarFaces() }
         return result
     }
