@@ -168,12 +168,16 @@ Combine multiple Meshes into one, merging topologies and attribute arrays. Each 
 ---
 
 ## 16: Port remaining shape primitives
-status: new
+status: closed
 priority: low
 kind: task
 created: 2026-04-15T00:52:07Z
+updated: 2026-04-15T04:12:19Z
+closed: 2026-04-15T04:12:19Z
 
 Port capsule, hemisphere, icoSphere, cubeSphere, circle from old TrivialMesh+Shapes to Mesh primitives.
+
+- `2026-04-15T04:12:19Z`: Superseded by individual issues #35-#39
 
 ---
 
@@ -240,10 +244,12 @@ MetalMesh splits every half-edge corner into a unique vertex in the output buffe
 ---
 
 ## 23: Generate UVs for tetrahedron primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:27Z
+updated: 2026-04-15T03:46:58Z
+closed: 2026-04-15T03:46:58Z
 
 
 ---
@@ -260,28 +266,34 @@ closed: 2026-04-15T03:11:58Z
 ---
 
 ## 25: Generate UVs for octahedron primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:33Z
+updated: 2026-04-15T03:46:58Z
+closed: 2026-04-15T03:46:58Z
 
 
 ---
 
 ## 26: Generate UVs for icosahedron primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:33Z
+updated: 2026-04-15T03:46:58Z
+closed: 2026-04-15T03:46:58Z
 
 
 ---
 
 ## 27: Generate UVs for dodecahedron primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:33Z
+updated: 2026-04-15T03:46:58Z
+closed: 2026-04-15T03:46:58Z
 
 
 ---
@@ -320,10 +332,12 @@ closed: 2026-04-15T03:39:51Z
 ---
 
 ## 31: Generate UVs for torus() primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T02:57:33Z
+updated: 2026-04-15T03:46:58Z
+closed: 2026-04-15T03:46:58Z
 
 
 ---
@@ -346,6 +360,60 @@ kind: feature
 created: 2026-04-15T02:57:34Z
 updated: 2026-04-15T03:39:51Z
 closed: 2026-04-15T03:39:51Z
+
+
+---
+
+## 34: Add teapot primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T04:11:12Z
+
+
+---
+
+## 35: Add capsule primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T04:12:03Z
+
+
+---
+
+## 36: Add hemisphere primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T04:12:03Z
+
+
+---
+
+## 37: Add icoSphere primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T04:12:03Z
+
+
+---
+
+## 38: Add cubeSphere primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T04:12:03Z
+
+
+---
+
+## 39: Add circle primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T04:12:03Z
 
 
 ---
