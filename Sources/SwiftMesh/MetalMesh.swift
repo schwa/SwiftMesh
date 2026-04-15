@@ -11,7 +11,6 @@ public struct MetalMesh {
 
     public struct Submesh {
         public var label: String?
-        public var materialIndex: Int
         public var indexBuffer: MTLBuffer
         public var indexCount: Int
     }
@@ -163,7 +162,6 @@ public struct MetalMesh {
             idxBuffer.label = label.map { "\($0) Indices [material \(mat)]" }
             return Submesh(
                 label: label,
-                materialIndex: mat,
                 indexBuffer: idxBuffer,
                 indexCount: indices.count
             )

@@ -68,8 +68,6 @@ struct MetalMeshTests {
         )
         let metalMesh = MetalMesh(mesh: mesh, device: device)
         #expect(metalMesh.submeshes.count == 2)
-        #expect(metalMesh.submeshes[0].materialIndex == 0)
-        #expect(metalMesh.submeshes[1].materialIndex == 1)
         #expect(metalMesh.submeshes[0].indexCount == 3)
         #expect(metalMesh.submeshes[1].indexCount == 3)
     }
