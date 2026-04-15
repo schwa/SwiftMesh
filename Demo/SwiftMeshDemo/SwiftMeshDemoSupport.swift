@@ -127,7 +127,9 @@ struct MeshDetailView: View {
                     .padding()
             }
         }
+        .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(radius: 10)
     }
 }
 
