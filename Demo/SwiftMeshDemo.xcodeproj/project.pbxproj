@@ -132,7 +132,7 @@
 			mainGroup = 4515943E2F64A8DC005F944D;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				457F400D2F8F12FE00A9AC0B /* XCLocalSwiftPackageReference "../../SwiftMesh" */,
+				457F400D2F8F12FE00A9AC0B /* XCLocalSwiftPackageReference ".." */,
 				457F40282F8F139400A9AC0B /* XCRemoteSwiftPackageReference "GeometryLite3D" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -224,9 +224,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		457F400D2F8F12FE00A9AC0B /* XCLocalSwiftPackageReference "../../SwiftMesh" */ = {
+		457F400D2F8F12FE00A9AC0B /* XCLocalSwiftPackageReference ".." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../SwiftMesh;
+			relativePath = ..;
 		};
 /* End XCLocalSwiftPackageReference section */
 

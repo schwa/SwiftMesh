@@ -9,6 +9,9 @@ struct ContentView: View {
             Tab("Surfaces", systemImage: "globe") {
                 ParametricSurfacesGallery()
             }
+            Tab("CSG", systemImage: "square.on.square.intersection.dashed") {
+                CSGGallery()
+            }
         }
     }
 }
