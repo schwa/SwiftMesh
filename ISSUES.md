@@ -125,12 +125,16 @@ Subdivision surface algorithms. Catmull-Clark for quad meshes, Loop for triangle
 ---
 
 ## 11: Boolean / CSG operations
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T00:51:34Z
+updated: 2026-04-15T05:14:55Z
+closed: 2026-04-15T05:14:55Z
 
 Union, intersection, difference on Mesh. Requires robust intersection detection and mesh splitting.
+
+- `2026-04-15T05:14:55Z`: Implemented
 
 ---
 
