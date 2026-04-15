@@ -106,9 +106,11 @@ public extension Mesh {
             case .x:
                 u = size.z > 0 ? (pos.z - lo.z) / size.z : 0
                 v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
+
             case .y:
                 u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
                 v = size.z > 0 ? (pos.z - lo.z) / size.z : 0
+
             case .z:
                 u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
                 v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
@@ -139,10 +141,12 @@ public extension Mesh {
                 let angle = atan2(Double(pos.z), Double(pos.y))
                 u = Float(angle / (2 * .pi) + 0.5)
                 v = size.x > 0 ? (pos.x - lo.x) / size.x : 0
+
             case .y:
                 let angle = atan2(Double(pos.z), Double(pos.x))
                 u = Float(angle / (2 * .pi) + 0.5)
                 v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
+
             case .z:
                 let angle = atan2(Double(pos.y), Double(pos.x))
                 u = Float(angle / (2 * .pi) + 0.5)
@@ -173,7 +177,7 @@ public extension Mesh {
 
             // Pick dominant axis
             let dominantAxis: ProjectionAxis
-            if ax >= ay && ax >= az {
+            if ax >= ay, ax >= az {
                 dominantAxis = .x
             } else if ay >= az {
                 dominantAxis = .y
@@ -190,9 +194,11 @@ public extension Mesh {
                 case .x:
                     u = size.z > 0 ? (pos.z - lo.z) / size.z : 0
                     v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
+
                 case .y:
                     u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
                     v = size.z > 0 ? (pos.z - lo.z) / size.z : 0
+
                 case .z:
                     u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
                     v = size.y > 0 ? (pos.y - lo.y) / size.y : 0

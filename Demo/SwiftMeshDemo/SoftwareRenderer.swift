@@ -10,12 +10,6 @@ struct SoftwareRenderer {
     var projectionMatrix: float4x4
     var viewportSize: CGSize
 
-    init(viewMatrix: float4x4, projectionMatrix: float4x4, viewportSize: CGSize) {
-        self.viewMatrix = viewMatrix
-        self.projectionMatrix = projectionMatrix
-        self.viewportSize = viewportSize
-    }
-
     /// Project a 3D point to 2D screen coordinates.
     func project(_ position: SIMD3<Float>, modelMatrix: float4x4 = .identity) -> CGPoint? {
         let clip = projectionMatrix * viewMatrix * modelMatrix * SIMD4(position, 1)

@@ -363,87 +363,87 @@ public extension Mesh {
         var mesh = Mesh(positions: positions, faces: faces)
 
         if attributes.contains(.textureCoordinates) {
-        // Assign per-corner UVs from parametric coordinates.
-        // For each half-edge we know which face it belongs to and which vertex it
-        // originates from, so we can recover the (lat, lon) indices and compute
-        // proper seam-aware UVs.
-        //
-        // Vertex index layout:
-        //   0              = top pole
-        //   1 ..< 1+N*(L-1) = ring vertices  (ring r, slot s -> index 1 + r*N + s)
-        //   bottomPole     = bottom pole
-        // where N = longitudeSegments, L = latitudeSegments.
-        //
-        // Face order (mirrors construction above):
-        //   [0, N)                          top cap triangles  (lon 0..<N)
-        //   [N, N + (L-2)*N)                quad strip faces   (lat 0..<L-2, lon 0..<N)
-        //   [N + (L-2)*N, N + (L-2)*N + N)  bottom cap triangles (lon 0..<N)
+            // Assign per-corner UVs from parametric coordinates.
+            // For each half-edge we know which face it belongs to and which vertex it
+            // originates from, so we can recover the (lat, lon) indices and compute
+            // proper seam-aware UVs.
+            //
+            // Vertex index layout:
+            //   0              = top pole
+            //   1 ..< 1+N*(L-1) = ring vertices  (ring r, slot s -> index 1 + r*N + s)
+            //   bottomPole     = bottom pole
+            // where N = longitudeSegments, L = latitudeSegments.
+            //
+            // Face order (mirrors construction above):
+            //   [0, N)                          top cap triangles  (lon 0..<N)
+            //   [N, N + (L-2)*N)                quad strip faces   (lat 0..<L-2, lon 0..<N)
+            //   [N + (L-2)*N, N + (L-2)*N + N)  bottom cap triangles (lon 0..<N)
 
-        let N = longitudeSegments
-        let L = latitudeSegments
+            let N = longitudeSegments
+            let L = latitudeSegments
 
-        var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
 
-        // Helper: UV for a ring vertex at (latRing 1-based, lonSlot) within a face
-        // whose longitudinal column is `faceLon`.
-        // `latRing` is 1..L-1 for ring vertices, 0 for top pole, L for bottom pole.
-        func uv(latRing: Int, lonSlot: Int, faceLon: Int) -> SIMD2<Float> {
-            let v = Float(latRing) / Float(L)
-            // For the last column (faceLon == N-1), the "next" longitude wraps to
-            // slot 0, which should map to u=1.0, not u=0.0.
-            let effectiveLon: Float
-            if lonSlot == 0 && faceLon == N - 1 {
-                effectiveLon = Float(N)
-            } else {
-                effectiveLon = Float(lonSlot)
+            // Helper: UV for a ring vertex at (latRing 1-based, lonSlot) within a face
+            // whose longitudinal column is `faceLon`.
+            // `latRing` is 1..L-1 for ring vertices, 0 for top pole, L for bottom pole.
+            func uv(latRing: Int, lonSlot: Int, faceLon: Int) -> SIMD2<Float> {
+                let v = Float(latRing) / Float(L)
+                // For the last column (faceLon == N-1), the "next" longitude wraps to
+                // slot 0, which should map to u=1.0, not u=0.0.
+                let effectiveLon: Float
+                if lonSlot == 0, faceLon == N - 1 {
+                    effectiveLon = Float(N)
+                } else {
+                    effectiveLon = Float(lonSlot)
+                }
+                let u = effectiveLon / Float(N)
+                return SIMD2<Float>(u, v)
             }
-            let u = effectiveLon / Float(N)
-            return SIMD2<Float>(u, v)
-        }
 
-        var faceIndex = 0
+            var faceIndex = 0
 
-        // Top cap triangles: face vertices are [pole, ring0+lon, ring0+nextLon]
-        for lon in 0..<N {
-            let nextLon = (lon + 1) % N
-            let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
-            // 3 half-edges: pole, ring0+lon, ring0+nextLon
-            // Pole gets u centered on this face's longitude column
-            let polU = (Float(lon) + 0.5) / Float(N)
-            uvs[heLoop[0].raw] = SIMD2<Float>(polU, 0)            // top pole
-            uvs[heLoop[1].raw] = uv(latRing: 1, lonSlot: lon, faceLon: lon)
-            uvs[heLoop[2].raw] = uv(latRing: 1, lonSlot: nextLon, faceLon: lon)
-            faceIndex += 1
-        }
-
-        // Quad strip faces
-        for lat in 0..<(L - 2) {
+            // Top cap triangles: face vertices are [pole, ring0+lon, ring0+nextLon]
             for lon in 0..<N {
                 let nextLon = (lon + 1) % N
                 let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
-                // 4 half-edges: ringStart+lon, nextRingStart+lon, nextRingStart+nextLon, ringStart+nextLon
-                let latRing = lat + 1
-                uvs[heLoop[0].raw] = uv(latRing: latRing, lonSlot: lon, faceLon: lon)
-                uvs[heLoop[1].raw] = uv(latRing: latRing + 1, lonSlot: lon, faceLon: lon)
-                uvs[heLoop[2].raw] = uv(latRing: latRing + 1, lonSlot: nextLon, faceLon: lon)
-                uvs[heLoop[3].raw] = uv(latRing: latRing, lonSlot: nextLon, faceLon: lon)
+                // 3 half-edges: pole, ring0+lon, ring0+nextLon
+                // Pole gets u centered on this face's longitude column
+                let polU = (Float(lon) + 0.5) / Float(N)
+                uvs[heLoop[0].raw] = SIMD2<Float>(polU, 0)            // top pole
+                uvs[heLoop[1].raw] = uv(latRing: 1, lonSlot: lon, faceLon: lon)
+                uvs[heLoop[2].raw] = uv(latRing: 1, lonSlot: nextLon, faceLon: lon)
                 faceIndex += 1
             }
-        }
 
-        // Bottom cap triangles: face vertices are [lastRing+lon, bottomPole, lastRing+nextLon]
-        for lon in 0..<N {
-            let nextLon = (lon + 1) % N
-            let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
-            // 3 half-edges: lastRing+lon, bottomPole, lastRing+nextLon
-            let polU = (Float(lon) + 0.5) / Float(N)
-            uvs[heLoop[0].raw] = uv(latRing: L - 1, lonSlot: lon, faceLon: lon)
-            uvs[heLoop[1].raw] = SIMD2<Float>(polU, 1)            // bottom pole
-            uvs[heLoop[2].raw] = uv(latRing: L - 1, lonSlot: nextLon, faceLon: lon)
-            faceIndex += 1
-        }
+            // Quad strip faces
+            for lat in 0..<(L - 2) {
+                for lon in 0..<N {
+                    let nextLon = (lon + 1) % N
+                    let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
+                    // 4 half-edges: ringStart+lon, nextRingStart+lon, nextRingStart+nextLon, ringStart+nextLon
+                    let latRing = lat + 1
+                    uvs[heLoop[0].raw] = uv(latRing: latRing, lonSlot: lon, faceLon: lon)
+                    uvs[heLoop[1].raw] = uv(latRing: latRing + 1, lonSlot: lon, faceLon: lon)
+                    uvs[heLoop[2].raw] = uv(latRing: latRing + 1, lonSlot: nextLon, faceLon: lon)
+                    uvs[heLoop[3].raw] = uv(latRing: latRing, lonSlot: nextLon, faceLon: lon)
+                    faceIndex += 1
+                }
+            }
 
-        mesh.textureCoordinates = uvs
+            // Bottom cap triangles: face vertices are [lastRing+lon, bottomPole, lastRing+nextLon]
+            for lon in 0..<N {
+                let nextLon = (lon + 1) % N
+                let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
+                // 3 half-edges: lastRing+lon, bottomPole, lastRing+nextLon
+                let polU = (Float(lon) + 0.5) / Float(N)
+                uvs[heLoop[0].raw] = uv(latRing: L - 1, lonSlot: lon, faceLon: lon)
+                uvs[heLoop[1].raw] = SIMD2<Float>(polU, 1)            // bottom pole
+                uvs[heLoop[2].raw] = uv(latRing: L - 1, lonSlot: nextLon, faceLon: lon)
+                faceIndex += 1
+            }
+
+            mesh.textureCoordinates = uvs
         } // end .textureCoordinates
 
         mesh.applyAttributes(attributes)
@@ -531,10 +531,10 @@ public extension Mesh {
         // For each of the 6 cube faces, generate a grid of vertices projected onto the sphere.
         let faceAxes: [(right: SIMD3<Float>, up: SIMD3<Float>, forward: SIMD3<Float>)] = [
             (SIMD3(0, 0, -1), SIMD3(0, 1, 0), SIMD3(1, 0, 0)),   // +X
-            (SIMD3(0, 0, 1),  SIMD3(0, 1, 0), SIMD3(-1, 0, 0)),  // -X
-            (SIMD3(1, 0, 0),  SIMD3(0, 0, -1), SIMD3(0, 1, 0)),  // +Y
-            (SIMD3(1, 0, 0),  SIMD3(0, 0, 1), SIMD3(0, -1, 0)),  // -Y
-            (SIMD3(1, 0, 0),  SIMD3(0, 1, 0), SIMD3(0, 0, 1)),   // +Z
+            (SIMD3(0, 0, 1), SIMD3(0, 1, 0), SIMD3(-1, 0, 0)),  // -X
+            (SIMD3(1, 0, 0), SIMD3(0, 0, -1), SIMD3(0, 1, 0)),  // +Y
+            (SIMD3(1, 0, 0), SIMD3(0, 0, 1), SIMD3(0, -1, 0)),  // -Y
+            (SIMD3(1, 0, 0), SIMD3(0, 1, 0), SIMD3(0, 0, 1)),   // +Z
             (SIMD3(-1, 0, 0), SIMD3(0, 1, 0), SIMD3(0, 0, -1))   // -Z
         ]
 
@@ -778,7 +778,7 @@ public extension Mesh {
             func uv(latRing: Int, lonSlot: Int, faceLon: Int) -> SIMD2<Float> {
                 let v = Float(latRing) / Float(L)
                 let effectiveLon: Float
-                if lonSlot == 0 && faceLon == N - 1 {
+                if lonSlot == 0, faceLon == N - 1 {
                     effectiveLon = Float(N)
                 } else {
                     effectiveLon = Float(lonSlot)
@@ -974,7 +974,7 @@ public extension Mesh {
             func uv(band: Int, lonSlot: Int, faceLon: Int) -> SIMD2<Float> {
                 let v = Float(band) / Float(totalBands)
                 let effectiveLon: Float
-                if lonSlot == 0 && faceLon == N - 1 {
+                if lonSlot == 0, faceLon == N - 1 {
                     effectiveLon = Float(N)
                 } else {
                     effectiveLon = Float(lonSlot)
@@ -1148,7 +1148,7 @@ public extension Mesh {
         // Caps
         if capped {
             // Bottom cap (winding inward)
-            let bottomCap = (0..<segments).reversed().map { $0 }
+            let bottomCap = (0..<segments).reversed().map(\.self)
             faces.append(bottomCap)
             // Top cap
             let topCap = (0..<segments).map { topRingStart + $0 }
@@ -1210,16 +1210,16 @@ public extension Mesh {
         // Bottom: 0-3, Top: 4-7
         let positions: [SIMD3<Float>] = [
             SIMD3(-bt.x, -halfHeight, -bt.y), SIMD3(bt.x, -halfHeight, -bt.y),
-            SIMD3(bt.x, -halfHeight, bt.y),   SIMD3(-bt.x, -halfHeight, bt.y),
-            SIMD3(-tt.x, halfHeight, -tt.y),   SIMD3(tt.x, halfHeight, -tt.y),
-            SIMD3(tt.x, halfHeight, tt.y),     SIMD3(-tt.x, halfHeight, tt.y)
+            SIMD3(bt.x, -halfHeight, bt.y), SIMD3(-bt.x, -halfHeight, bt.y),
+            SIMD3(-tt.x, halfHeight, -tt.y), SIMD3(tt.x, halfHeight, -tt.y),
+            SIMD3(tt.x, halfHeight, tt.y), SIMD3(-tt.x, halfHeight, tt.y)
         ]
 
         var faces: [[Int]] = [
             [0, 1, 5, 4], // front  (-Z)
             [2, 3, 7, 6], // back   (+Z)
             [3, 0, 4, 7], // left   (-X)
-            [1, 2, 6, 5], // right  (+X)
+            [1, 2, 6, 5] // right  (+X)
         ]
 
         if capped {

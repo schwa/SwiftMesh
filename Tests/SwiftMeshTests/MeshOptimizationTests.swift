@@ -26,12 +26,12 @@ struct MeshOptimizationTests {
             SIMD3(1, 0, 0),
             SIMD3(1, 1, 0),
             SIMD3(0, 1, 0),
-            SIMD3(-1, 0, 0),
+            SIMD3(-1, 0, 0)
         ], faces: [
             [0, 1, 2],
             [0, 2, 3],
             [0, 3, 4],
-            [0, 4, 1],
+            [0, 4, 1]
         ])
         #expect(mesh.faceCount == 4)
 
@@ -77,7 +77,7 @@ struct MeshOptimizationTests {
         // Two triangles with same normal but on different planes (z=0 and z=1)
         let mesh = Mesh(positions: [
             SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0),
-            SIMD3(0, 0, 1), SIMD3(1, 0, 1), SIMD3(0, 1, 1),
+            SIMD3(0, 0, 1), SIMD3(1, 0, 1), SIMD3(0, 1, 1)
         ], faces: [[0, 1, 2], [3, 4, 5]])
         let merged = mesh.mergingCoplanarFaces()
         // Not adjacent, so can't merge even if coplanar
@@ -91,11 +91,11 @@ struct MeshOptimizationTests {
         // Three triangles: first two coplanar (XY plane), third at an angle
         let mesh = Mesh(positions: [
             SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(1, 1, 0), SIMD3(0, 1, 0),
-            SIMD3(0, 0, 1),
+            SIMD3(0, 0, 1)
         ], faces: [
             [0, 1, 2], // XY plane
             [0, 2, 3], // XY plane (coplanar with above)
-            [0, 1, 4], // tilted face
+            [0, 1, 4] // tilted face
         ])
         #expect(mesh.faceCount == 3)
 
@@ -113,7 +113,7 @@ struct MeshOptimizationTests {
         // After merging, interior vertices should be removed if collinear
         let mesh = Mesh(positions: [
             SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(1, 1, 0),
-            SIMD3(2, 0, 0), SIMD3(2, 1, 0),
+            SIMD3(2, 0, 0), SIMD3(2, 1, 0)
         ], faces: [[0, 1, 2], [1, 3, 2], [2, 3, 4]])
         #expect(mesh.faceCount == 3)
 
@@ -204,10 +204,10 @@ struct MeshOptimizationTests {
         // A grid of 4 coplanar triangles
         let mesh = Mesh(positions: [
             SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(2, 0, 0),
-            SIMD3(0, 1, 0), SIMD3(1, 1, 0), SIMD3(2, 1, 0),
+            SIMD3(0, 1, 0), SIMD3(1, 1, 0), SIMD3(2, 1, 0)
         ], faces: [
             [0, 1, 4], [0, 4, 3],
-            [1, 2, 5], [1, 5, 4],
+            [1, 2, 5], [1, 5, 4]
         ])
         let merged1 = mesh.mergingCoplanarFaces()
         let merged2 = merged1.mergingCoplanarFaces()

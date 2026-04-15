@@ -224,7 +224,7 @@ extension HalfEdgeTopology {
 
         // Check 2: Each half-edge should be in at least one face (unless boundary)
         for edge in halfEdges {
-            if edge.face == nil && edge.twin == nil {
+            if edge.face == nil, edge.twin == nil {
                 issues.append(.init(severity: .error, location: .edge(edge.id), message: "Has no face and no twin"))
             }
         }
@@ -308,7 +308,7 @@ extension HalfEdgeTopology {
             }
             if loopCount >= maxLoopCount {
                 issues.append(.init(severity: .error, location: .face(face.id), message: "Boundary appears to be infinite or malformed"))
-            } else if !loopBroken && visited.count < 3 {
+            } else if !loopBroken, visited.count < 3 {
                 issues.append(.init(severity: .error, location: .face(face.id), message: "Degenerate boundary with only \(visited.count) edges"))
             }
         }

@@ -48,9 +48,9 @@ private struct Quadric: Sendable {
     func error(at v: SIMD3<Float>) -> Float {
         let x = v.x, y = v.y, z = v.z
         return a * x * x + 2 * b * x * y + 2 * c * x * z + 2 * d * x
-             + e * y * y + 2 * f * y * z + 2 * g * y
-             + h * z * z + 2 * i * z
-             + j
+            + e * y * y + 2 * f * y * z + 2 * g * y
+            + h * z * z + 2 * i * z
+            + j
     }
 
     /// Find the point that minimizes the quadric error.

@@ -92,7 +92,7 @@ public extension Mesh {
                 let ej = boundaryEdgeList[j]
                 guard ei.faceID != ej.faceID else { continue }
                 let d = simd_distance(ei.origin, ej.dest) + simd_distance(ei.dest, ej.origin)
-                if d < edgeMatchTolerance && areCoplanar(ei.faceID.raw, ej.faceID.raw) {
+                if d < edgeMatchTolerance, areCoplanar(ei.faceID.raw, ej.faceID.raw) {
                     union(ei.faceID.raw, ej.faceID.raw)
                 }
             }
@@ -246,7 +246,7 @@ private func removeCollinearVertices(_ indices: [Int], positions: [SIMD3<Float>]
         let cross = simd_cross(edge1, edge2)
         let crossLen = simd_length(cross)
         let edgeLen = simd_length(edge1) * simd_length(edge2)
-        if edgeLen > 0 && crossLen / edgeLen < tolerance {
+        if edgeLen > 0, crossLen / edgeLen < tolerance {
             continue
         }
         result.append(indices[i])

@@ -228,14 +228,12 @@ public extension Mesh {
             mdlSubmeshes.append(mdlSubmesh)
         }
 
-        let mdlMesh = MDLMesh(
+        return MDLMesh(
             vertexBuffer: mdlVertexBuffer,
             vertexCount: metalMesh.vertexCount,
             descriptor: mdlDescriptor,
             submeshes: mdlSubmeshes
         )
-
-        return mdlMesh
     }
 
     /// Convert an MTLVertexFormat to the equivalent MDLVertexFormat.

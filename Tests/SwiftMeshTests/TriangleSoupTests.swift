@@ -107,7 +107,7 @@ struct TriangleSoupTests {
         soup.positions = [SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0), SIMD3(0, 0, 0)]
         soup.triangles = [
             (0, 1, 2),  // valid
-            (0, 3, 1),  // after welding, index 3 → 0, making this (0, 0, 1) — degenerate
+            (0, 3, 1)  // after welding, index 3 → 0, making this (0, 0, 1) — degenerate
         ]
         let mesh = soup.toMesh()
         #expect(mesh.faceCount == 1) // degenerate triangle should be filtered

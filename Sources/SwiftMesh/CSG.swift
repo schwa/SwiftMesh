@@ -26,15 +26,15 @@ struct AABB: Sendable {
         self.max = simd_max(self.max, point)
     }
 
-    mutating func expandToInclude(_ other: AABB) {
+    mutating func expandToInclude(_ other: Self) {
         self.min = simd_min(self.min, other.min)
         self.max = simd_max(self.max, other.max)
     }
 
-    func overlaps(_ other: AABB) -> Bool {
+    func overlaps(_ other: Self) -> Bool {
         min.x <= other.max.x && max.x >= other.min.x &&
-        min.y <= other.max.y && max.y >= other.min.y &&
-        min.z <= other.max.z && max.z >= other.min.z
+            min.y <= other.max.y && max.y >= other.min.y &&
+            min.z <= other.max.z && max.z >= other.min.z
     }
 }
 
@@ -127,7 +127,7 @@ final class CSGNode: @unchecked Sendable {
     var back: CSGNode?
     var polygons: [CSGPolygon]
     /// Bounding box of all geometry in this subtree (this node + children).
-    var bounds: AABB = AABB()
+    var bounds = AABB()
 
     init(polygons: [CSGPolygon] = []) {
         self.polygons = []
@@ -174,7 +174,7 @@ final class CSGNode: @unchecked Sendable {
             // classify it by which side of the splitting plane it falls on
             // without recursing deeper or splitting it.
             let polyBounds = AABB(polygon: polygon)
-            if !bounds.isEmpty && !polyBounds.overlaps(bounds) {
+            if !bounds.isEmpty, !polyBounds.overlaps(bounds) {
                 // Determine side by checking any vertex against the splitting plane
                 let d = plane.distanceTo(polygon.vertices[0])
                 if d >= 0 {

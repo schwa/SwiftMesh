@@ -43,9 +43,11 @@ struct ContentView: View {
             switch selection {
             case .all:
                 GalleryGridView()
+
             case .item(let item):
                 MeshDetailView(item: item)
                     .id(item.id)
+
             case nil:
                 ContentUnavailableView("Select a Mesh", systemImage: "square.grid.2x2", description: Text("Choose a mesh from the sidebar"))
             }
@@ -141,6 +143,7 @@ struct MeshDetailView: View {
                             Button("Select Connected Edges") {
                                 selectConnectedEdges(vertex: idx)
                             }
+
                         case .edges(let edges):
                             LabeledContent("Type", value: "Edge\(edges.count == 1 ? "" : "s")")
                             LabeledContent("Count", value: "\(edges.count)")
@@ -280,15 +283,15 @@ struct MeshGallerySection: Identifiable {
         self.items = items
     }
 
-    static let all: [MeshGallerySection] = [
-        MeshGallerySection("Platonic Solids", items: [
+    static let all: [Self] = [
+        Self("Platonic Solids", items: [
             MeshGalleryItem("Tetrahedron", mesh: .tetrahedron()),
             MeshGalleryItem("Cube", mesh: .cube()),
             MeshGalleryItem("Octahedron", mesh: .octahedron()),
             MeshGalleryItem("Icosahedron", mesh: .icosahedron()),
-            MeshGalleryItem("Dodecahedron", mesh: .dodecahedron()),
+            MeshGalleryItem("Dodecahedron", mesh: .dodecahedron())
         ]),
-        MeshGallerySection("Surfaces", items: [
+        Self("Surfaces", items: [
             MeshGalleryItem("Sphere", mesh: .sphere()),
             MeshGalleryItem("Torus", mesh: .torus()),
             MeshGalleryItem("Cylinder", mesh: .cylinder()),
@@ -302,9 +305,9 @@ struct MeshGallerySection: Identifiable {
             MeshGalleryItem("Circle", mesh: .circle()),
             MeshGalleryItem("Teapot", mesh: .teapot()),
             MeshGalleryItem("IcoSphere", mesh: .icoSphere()),
-            MeshGalleryItem("CubeSphere", mesh: .cubeSphere()),
+            MeshGalleryItem("CubeSphere", mesh: .cubeSphere())
         ]),
-        MeshGallerySection("CSG", items: {
+        Self("CSG", items: {
             let cubeA = Mesh.box(extents: [0.6, 0.6, 0.6], attributes: [])
             let cubeB = Mesh.box(extents: [0.6, 0.6, 0.6], attributes: []).translated(by: [0.3, 0.3, 0.3])
             let sphere = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 2, attributes: [])
@@ -318,10 +321,10 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("Difference: Sphere − Cube", subtitle: "Cube carved from sphere", mesh: sphere.difference(smallCube)),
                 MeshGalleryItem("Difference: Cube − Sphere", subtitle: "Sphere carved from cube", mesh: smallCube.difference(
                     Mesh.icoSphere(extents: [0.45, 0.45, 0.45], subdivisions: 2, attributes: [])
-                )),
+                ))
             ]
         }()),
-        MeshGallerySection("Subdivision", items: [
+        Self("Subdivision", items: [
             MeshGalleryItem("Tetrahedron", subtitle: "Original (4 faces)", mesh: .tetrahedron(attributes: [])),
             MeshGalleryItem("Loop ×1", subtitle: "16 faces", mesh: Mesh.tetrahedron(attributes: []).loopSubdivided(iterations: 1)),
             MeshGalleryItem("Loop ×2", subtitle: "64 faces", mesh: Mesh.tetrahedron(attributes: []).loopSubdivided(iterations: 2)),
@@ -333,18 +336,18 @@ struct MeshGallerySection: Identifiable {
             MeshGalleryItem("Dodecahedron", subtitle: "Original (12 pentagons)", mesh: .dodecahedron(attributes: [])),
             MeshGalleryItem("CC Dodecahedron ×2", subtitle: "240 quads", mesh: Mesh.dodecahedron(attributes: []).catmullClarkSubdivided(iterations: 2)),
             MeshGalleryItem("Icosahedron", subtitle: "Original (20 faces)", mesh: .icosahedron(attributes: [])),
-            MeshGalleryItem("Loop Icosahedron ×2", subtitle: "320 faces", mesh: Mesh.icosahedron(attributes: []).loopSubdivided(iterations: 2)),
+            MeshGalleryItem("Loop Icosahedron ×2", subtitle: "320 faces", mesh: Mesh.icosahedron(attributes: []).loopSubdivided(iterations: 2))
         ]),
-        MeshGallerySection("Decimation", items: {
+        Self("Decimation", items: {
             let sphere = Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 3, attributes: [])
             let sphereFaces = sphere.topology.faces.filter { $0.edge != nil }.count
             return [
                 MeshGalleryItem("IcoSphere", subtitle: "Original (\(sphereFaces) faces)", mesh: sphere),
                 MeshGalleryItem("50%", subtitle: "\(sphereFaces / 2) faces", mesh: sphere.decimated(ratio: 0.5)),
                 MeshGalleryItem("25%", subtitle: "\(sphereFaces / 4) faces", mesh: sphere.decimated(ratio: 0.25)),
-                MeshGalleryItem("10%", subtitle: "\(sphereFaces / 10) faces", mesh: sphere.decimated(ratio: 0.1)),
+                MeshGalleryItem("10%", subtitle: "\(sphereFaces / 10) faces", mesh: sphere.decimated(ratio: 0.1))
             ]
-        }()),
+        }())
     ]
 }
 

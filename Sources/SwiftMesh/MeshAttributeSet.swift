@@ -7,22 +7,22 @@ public struct MeshAttributes: OptionSet, Sendable {
     }
 
     /// Generate flat (per-face) normals.
-    public static let flatNormals = MeshAttributes(rawValue: 1 << 0)
+    public static let flatNormals = Self(rawValue: 1 << 0)
 
     /// Generate smooth (averaged) normals.
-    public static let smoothNormals = MeshAttributes(rawValue: 1 << 1)
+    public static let smoothNormals = Self(rawValue: 1 << 1)
 
     /// Generate texture coordinates.
-    public static let textureCoordinates = MeshAttributes(rawValue: 1 << 2)
+    public static let textureCoordinates = Self(rawValue: 1 << 2)
 
     /// Generate tangents (requires both normals and texture coordinates).
-    public static let tangents = MeshAttributes(rawValue: 1 << 3)
+    public static let tangents = Self(rawValue: 1 << 3)
 
     /// Generate bitangents (requires both normals and texture coordinates).
-    public static let bitangents = MeshAttributes(rawValue: 1 << 4)
+    public static let bitangents = Self(rawValue: 1 << 4)
 
     /// Invert normals (face inward). Requires `.flatNormals` or `.smoothNormals`.
-    public static let invertedNormals = MeshAttributes(rawValue: 1 << 5)
+    public static let invertedNormals = Self(rawValue: 1 << 5)
 
     public static let `default`: MeshAttributes = [.flatNormals, .textureCoordinates]
 

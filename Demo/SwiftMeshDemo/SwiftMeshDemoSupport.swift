@@ -59,7 +59,7 @@ struct MeshInteractiveView: View {
     var showVertexDots: Bool = false
     @Binding var selection: MeshSelection?
 
-    @State private var cameraRotation: simd_quatf = simd_quatf(angle: 0, axis: [0, 1, 0])
+    @State private var cameraRotation = simd_quatf(angle: 0, axis: [0, 1, 0])
     @State private var cameraDistance: Float = 4
     @State private var cameraTarget: SIMD3<Float> = .zero
     @State private var viewSize: CGSize = .zero
@@ -96,6 +96,7 @@ struct MeshInteractiveView: View {
                         let rect = CGRect(x: pt.x - 4, y: pt.y - 4, width: 8, height: 8)
                         context.fill(Path(ellipseIn: rect), with: .color(.red))
                     }
+
                 case .edges(let edges):
                     for edge in edges {
                         if let ptA = renderer.project(mesh.positions[edge.a]),
@@ -148,7 +149,7 @@ struct MeshInteractiveView: View {
         for (idx, pos) in mesh.positions.enumerated() {
             guard let pt = renderer.project(pos) else { continue }
             let dist = hypot(pt.x - location.x, pt.y - location.y)
-            if dist < hitThreshold && dist < bestVertexDist {
+            if dist < hitThreshold, dist < bestVertexDist {
                 bestVertexDist = dist
                 bestVertexIdx = idx
             }
@@ -166,7 +167,7 @@ struct MeshInteractiveView: View {
             guard let ptA = renderer.project(mesh.positions[vA.raw]),
                   let ptB = renderer.project(mesh.positions[vB.raw]) else { continue }
             let dist = pointToSegmentDistance(point: location, segA: ptA, segB: ptB)
-            if dist < hitThreshold && dist < bestEdgeDist {
+            if dist < hitThreshold, dist < bestEdgeDist {
                 bestEdgeDist = dist
                 bestEdge = MeshEdge(vA.raw, vB.raw)
             }

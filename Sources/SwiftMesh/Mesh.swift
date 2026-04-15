@@ -199,7 +199,7 @@ public extension Mesh {
         // Compute per-axis scale, ignoring axes with zero current or target extent
         var scale: SIMD3<Float> = [1, 1, 1]
         for i in 0..<3 {
-            if currentSize[i] > 0 && extents[i] > 0 {
+            if currentSize[i] > 0, extents[i] > 0 {
                 scale[i] = extents[i] / currentSize[i]
             }
         }

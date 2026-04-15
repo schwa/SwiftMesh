@@ -256,7 +256,7 @@ struct HalfEdgeTopologyEdgeCollapseTests {
             .init(outer: [0, 1, 4]),
             .init(outer: [1, 2, 4]),
             .init(outer: [2, 3, 4]),
-            .init(outer: [3, 0, 4]),
+            .init(outer: [3, 0, 4])
         ])
     }
 
@@ -266,7 +266,7 @@ struct HalfEdgeTopologyEdgeCollapseTests {
             .init(outer: [0, 1, 2]),
             .init(outer: [0, 3, 1]),
             .init(outer: [0, 2, 3]),
-            .init(outer: [1, 3, 2]),
+            .init(outer: [1, 3, 2])
         ])
     }
 
@@ -278,7 +278,7 @@ struct HalfEdgeTopologyEdgeCollapseTests {
         HalfEdgeTopology(vertexCount: 7, faces: [
             .init(outer: [0, 1, 4]),
             .init(outer: [1, 2, 5]),
-            .init(outer: [2, 3, 6]),
+            .init(outer: [2, 3, 6])
         ])
     }
 
