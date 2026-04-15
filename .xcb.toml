@@ -1,0 +1,15 @@
+[defaults]
+destination = "mac"
+scheme = "SwiftMeshDemo"
+extra_args = []
+
+[defaults.build]
+
+[defaults.test]
+scheme = "SwiftMesh"
+
+[defaults.run]
+
+[output]
+
+[new.blueprint_defaults]
