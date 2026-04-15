@@ -20,88 +20,6 @@ enum MeshSelection: Equatable {
     case edges(Set<MeshEdge>)
 }
 
-// MARK: - Edge Loop
-
-extension HalfEdgeTopology {
-    /// Find the edge loop passing through the given edge.
-    ///
-    /// An edge loop crosses through quad faces perpendicular to the selected edge.
-    /// For edge A→B in quad [.., A, B, ..], the loop continues across the twin
-    /// of edge B→nextVertex, finding the matching perpendicular edge in the
-    /// adjacent quad. Stops at non-quad faces or boundaries.
-    func edgeLoop(from vA: VertexID, to vB: VertexID) -> [(VertexID, VertexID)] {
-        var loop: [(VertexID, VertexID)] = [(vA, vB)]
-        var visited = Set<MeshEdge>()
-        visited.insert(MeshEdge(vA.raw, vB.raw))
-
-        // Walk in both directions from the selected edge
-        for forward in [true, false] {
-            var curA = forward ? vA : vB
-            var curB = forward ? vB : vA
-
-            while true {
-                // Find the half-edge curA → curB
-                guard let heAB = findHalfEdge(from: curA, to: curB) else { break }
-                guard let faceID = halfEdges[heAB.raw].face else { break }
-                let faceVerts = vertexLoop(for: faceID)
-                guard faceVerts.count == 4 else { break }
-
-                // In quad [V0, V1, V2, V3], if our edge is Vi→Vi+1,
-                // the perpendicular exit edge is Vi+1→Vi+2.
-                guard let idx = faceVerts.firstIndex(where: { $0 == curA }) else { break }
-                let nextIdx = (idx + 1) % 4
-                assert(faceVerts[nextIdx] == curB)
-                let exitA = faceVerts[(nextIdx) % 4]     // curB
-                let exitB = faceVerts[(nextIdx + 1) % 4] // next vertex after curB
-
-                // Cross through the twin of exitA→exitB to the adjacent face
-                guard let heExit = findHalfEdge(from: exitA, to: exitB) else { break }
-                guard let twinID = halfEdges[heExit.raw].twin else { break }
-                let twinHE = halfEdges[twinID.raw]
-                guard let adjFaceID = twinHE.face else { break }
-                let adjVerts = vertexLoop(for: adjFaceID)
-                guard adjVerts.count == 4 else { break }
-
-                // In the adjacent quad, find the edge opposite to the shared edge.
-                // Shared edge in adj face is exitB→exitA (twin direction).
-                // We want the edge perpendicular continuing the loop: exitB's next edge.
-                guard let adjIdx = adjVerts.firstIndex(where: { $0 == exitB }) else { break }
-                let nextA = adjVerts[adjIdx]
-                let nextB = adjVerts[(adjIdx + 1) % 4]
-
-                let edge = MeshEdge(nextA.raw, nextB.raw)
-                guard !visited.contains(edge) else {
-                    // We've looped back around — we're done
-                    break
-                }
-                visited.insert(edge)
-
-                if forward {
-                    loop.append((nextA, nextB))
-                } else {
-                    loop.insert((nextA, nextB), at: 0)
-                }
-
-                curA = nextA
-                curB = nextB
-            }
-        }
-
-        return loop
-    }
-
-    /// Find the half-edge going from `origin` to the vertex that follows it
-    /// (where next.origin == dest).
-    private func findHalfEdge(from origin: VertexID, to dest: VertexID) -> HalfEdgeID? {
-        for he in halfEdges where he.origin == origin {
-            if let next = he.next, halfEdges[next.raw].origin == dest {
-                return he.id
-            }
-        }
-        return nil
-    }
-}
-
 // MARK: - Inspector View
 
 struct InspectorView: View {
@@ -228,8 +146,8 @@ struct InspectorMeshView: View {
             if selection != nil {
                 HStack(spacing: 12) {
                     if case .edges(let edges) = selection, edges.count == 1 {
-                        Button("Select Loop") {
-                            selectEdgeLoop()
+                        Button("Select Face Edges") {
+                            selectFaceEdges()
                         }
                     }
                     Button("Clear") {
@@ -293,14 +211,24 @@ struct InspectorMeshView: View {
         selection = nil
     }
 
-    private func selectEdgeLoop() {
+    private func selectFaceEdges() {
         guard case .edges(let edges) = selection, edges.count == 1, let edge = edges.first else { return }
-        let loop = mesh.topology.edgeLoop(
-            from: HalfEdgeTopology.VertexID(raw: edge.a),
-            to: HalfEdgeTopology.VertexID(raw: edge.b)
-        )
-        let loopEdges = Set(loop.map { MeshEdge($0.0.raw, $0.1.raw) })
-        selection = .edges(loopEdges)
+        var result = Set<MeshEdge>()
+        // Find all faces containing this edge, add all their edges
+        for face in mesh.topology.faces {
+            let verts = mesh.topology.vertexLoop(for: face.id)
+            let hasEdge = (0..<verts.count).contains { i in
+                let next = (i + 1) % verts.count
+                return MeshEdge(verts[i].raw, verts[next].raw) == edge
+            }
+            if hasEdge {
+                for i in 0..<verts.count {
+                    let next = (i + 1) % verts.count
+                    result.insert(MeshEdge(verts[i].raw, verts[next].raw))
+                }
+            }
+        }
+        selection = .edges(result)
     }
 
     private func pointToSegmentDistance(point: CGPoint, segA: CGPoint, segB: CGPoint) -> CGFloat {
