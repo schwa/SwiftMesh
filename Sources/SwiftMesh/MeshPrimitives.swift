@@ -254,6 +254,52 @@ public extension Mesh {
         mesh.applyAttributes(attributes)
         return mesh
     }
+    /// A circle (flat disc) in the XY plane, centered at the origin.
+    ///
+    /// Built as a single n-gon fan. `segments` controls the number of edges.
+    static func circle(extents: SIMD2<Float> = [1, 1], segments: Int = 32, attributes: MeshAttributes = .default) -> Mesh {
+        let hw = extents.x / 2
+        let hh = extents.y / 2
+        var positions: [SIMD3<Float>] = []
+
+        // Center vertex
+        positions.append(SIMD3(0, 0, 0))
+
+        // Rim vertices
+        for seg in 0..<segments {
+            let angle = 2 * Float.pi * Float(seg) / Float(segments)
+            positions.append(SIMD3(hw * cos(angle), hh * sin(angle), 0))
+        }
+
+        // Triangle fan faces
+        var faces: [[Int]] = []
+        for seg in 0..<segments {
+            let nextSeg = (seg + 1) % segments
+            faces.append([0, 1 + seg, 1 + nextSeg])
+        }
+
+        var mesh = Mesh(positions: positions, faces: faces)
+
+        if attributes.contains(.textureCoordinates) {
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            for seg in 0..<segments {
+                let faceID = HalfEdgeTopology.FaceID(raw: seg)
+                let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
+                // Center
+                uvs[heLoop[0].raw] = SIMD2(0.5, 0.5)
+                // Current rim vertex
+                let angle0 = 2 * Float.pi * Float(seg) / Float(segments)
+                uvs[heLoop[1].raw] = SIMD2(0.5 + 0.5 * cos(angle0), 0.5 + 0.5 * sin(angle0))
+                // Next rim vertex
+                let angle1 = 2 * Float.pi * Float(seg + 1) / Float(segments)
+                uvs[heLoop[2].raw] = SIMD2(0.5 + 0.5 * cos(angle1), 0.5 + 0.5 * sin(angle1))
+            }
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
+    }
 }
 
 // MARK: - Parametric Surfaces
@@ -396,6 +442,129 @@ public extension Mesh {
 
         mesh.textureCoordinates = uvs
         } // end .textureCoordinates
+
+        mesh.applyAttributes(attributes)
+        return mesh
+    }
+
+    /// An icosphere built by subdividing an icosahedron and projecting vertices
+    /// onto a sphere. Produces a more uniform triangle distribution than a UV sphere.
+    ///
+    /// - Parameter subdivisions: Number of subdivision iterations (0 = icosahedron, each step ×4 faces).
+    static func icoSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 3, attributes: MeshAttributes = .default) -> Mesh {
+        // Start from icosahedron vertices on the unit sphere
+        let phi: Float = (1.0 + sqrt(5.0)) / 2.0
+        var positions: [SIMD3<Float>] = [
+            SIMD3(-1, phi, 0), SIMD3(1, phi, 0), SIMD3(-1, -phi, 0), SIMD3(1, -phi, 0),
+            SIMD3(0, -1, phi), SIMD3(0, 1, phi), SIMD3(0, -1, -phi), SIMD3(0, 1, -phi),
+            SIMD3(phi, 0, -1), SIMD3(phi, 0, 1), SIMD3(-phi, 0, -1), SIMD3(-phi, 0, 1)
+        ].map { simd_normalize($0) }
+
+        var triangles: [[Int]] = [
+            [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+            [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+            [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+            [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
+        ]
+
+        // Subdivide
+        var vertexCount = positions.count
+        for _ in 0..<subdivisions {
+            var midpointCache: [Int64: Int] = [:]
+            var newTriangles: [[Int]] = []
+
+            func midpoint(_ a: Int, _ b: Int) -> Int {
+                let key = Int64(min(a, b)) * Int64(vertexCount + triangles.count * 3) + Int64(max(a, b))
+                if let cached = midpointCache[key] {
+                    return cached
+                }
+                let mid = simd_normalize((positions[a] + positions[b]) / 2)
+                let idx = positions.count
+                positions.append(mid)
+                midpointCache[key] = idx
+                return idx
+            }
+
+            for tri in triangles {
+                let a = tri[0], b = tri[1], c = tri[2]
+                let ab = midpoint(a, b)
+                let bc = midpoint(b, c)
+                let ca = midpoint(c, a)
+                newTriangles.append([a, ab, ca])
+                newTriangles.append([b, bc, ab])
+                newTriangles.append([c, ca, bc])
+                newTriangles.append([ab, bc, ca])
+            }
+
+            triangles = newTriangles
+            vertexCount = positions.count
+        }
+
+        // Scale to extents
+        let radii = extents / 2
+        positions = positions.map { $0 * radii }
+
+        var mesh = Mesh(positions: positions, faces: triangles)
+
+        if attributes.contains(.textureCoordinates) {
+            mesh = mesh.withSphericalUVs()
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
+    }
+
+    /// A cube sphere built by subdividing a cube's faces into grids and projecting
+    /// vertices onto a sphere. Produces quad faces with relatively uniform sizing.
+    ///
+    /// - Parameter subdivisions: Number of subdivisions per cube face edge (minimum 1).
+    static func cubeSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 8, attributes: MeshAttributes = .default) -> Mesh {
+        let segs = max(1, subdivisions)
+        let radii = extents / 2
+
+        var positions: [SIMD3<Float>] = []
+        var faces: [[Int]] = []
+
+        // For each of the 6 cube faces, generate a grid of vertices projected onto the sphere.
+        let faceAxes: [(right: SIMD3<Float>, up: SIMD3<Float>, forward: SIMD3<Float>)] = [
+            (SIMD3(0, 0, -1), SIMD3(0, 1, 0), SIMD3(1, 0, 0)),   // +X
+            (SIMD3(0, 0, 1),  SIMD3(0, 1, 0), SIMD3(-1, 0, 0)),  // -X
+            (SIMD3(1, 0, 0),  SIMD3(0, 0, -1), SIMD3(0, 1, 0)),  // +Y
+            (SIMD3(1, 0, 0),  SIMD3(0, 0, 1), SIMD3(0, -1, 0)),  // -Y
+            (SIMD3(1, 0, 0),  SIMD3(0, 1, 0), SIMD3(0, 0, 1)),   // +Z
+            (SIMD3(-1, 0, 0), SIMD3(0, 1, 0), SIMD3(0, 0, -1))   // -Z
+        ]
+
+        for (right, up, forward) in faceAxes {
+            let baseIndex = positions.count
+
+            for row in 0...segs {
+                for col in 0...segs {
+                    let u = Float(col) / Float(segs) * 2 - 1
+                    let v = Float(row) / Float(segs) * 2 - 1
+                    let cubePos = forward + right * u + up * v
+                    let spherePos = simd_normalize(cubePos) * radii
+                    positions.append(spherePos)
+                }
+            }
+
+            let stride = segs + 1
+            for row in 0..<segs {
+                for col in 0..<segs {
+                    let bl = baseIndex + row * stride + col
+                    let br = bl + 1
+                    let tl = bl + stride
+                    let tr = tl + 1
+                    faces.append([bl, br, tr, tl])
+                }
+            }
+        }
+
+        var mesh = Mesh(positions: positions, faces: faces)
+
+        if attributes.contains(.textureCoordinates) {
+            mesh = mesh.withSphericalUVs()
+        }
 
         mesh.applyAttributes(attributes)
         return mesh

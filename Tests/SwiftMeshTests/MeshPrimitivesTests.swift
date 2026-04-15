@@ -223,6 +223,69 @@ struct MeshPrimitivesTests {
         #expect(mesh.faceCount == 8)
     }
 
+    // MARK: - Circle
+
+    @Test("circle()")
+    func circle() {
+        let mesh = Mesh.circle(segments: 8, attributes: [])
+        #expect(mesh.validate() == nil)
+        #expect(mesh.vertexCount == 9) // center + 8 rim
+        #expect(mesh.faceCount == 8)
+    }
+
+    @Test("circle(attributes: .textureCoordinates) has UVs")
+    func circleUVs() {
+        let mesh = Mesh.circle(segments: 8, attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    // MARK: - IcoSphere & CubeSphere
+
+    @Test("icoSphere() subdivisions=0 is icosahedron")
+    func icoSphereZero() {
+        let mesh = Mesh.icoSphere(subdivisions: 0, attributes: [])
+        #expect(mesh.validate() == nil)
+        #expect(mesh.vertexCount == 12)
+        #expect(mesh.faceCount == 20)
+        #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
+    }
+
+    @Test("icoSphere() subdivisions=1")
+    func icoSphereOne() {
+        let mesh = Mesh.icoSphere(subdivisions: 1, attributes: [])
+        #expect(mesh.validate() == nil)
+        #expect(mesh.faceCount == 80) // 20 × 4
+        #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
+    }
+
+    @Test("icoSphere(attributes: .textureCoordinates) has UVs")
+    func icoSphereUVs() {
+        let mesh = Mesh.icoSphere(subdivisions: 1, attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("cubeSphere()")
+    func cubeSphere() {
+        let mesh = Mesh.cubeSphere(subdivisions: 2, attributes: [])
+        #expect(mesh.validate() == nil)
+        #expect(mesh.faceCount == 6 * 4) // 6 faces × 2×2 quads
+        // Vertices are not shared across cube face seams, so Euler != 2.
+        // Verify vertex count: 6 faces × (2+1)² = 54
+        #expect(mesh.vertexCount == 54)
+    }
+
+    @Test("cubeSphere(attributes: .textureCoordinates) has UVs")
+    func cubeSphereUVs() {
+        let mesh = Mesh.cubeSphere(subdivisions: 2, attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
     // MARK: - Hemisphere & Capsule
 
     @Test("hemisphere() capped")

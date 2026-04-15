@@ -90,7 +90,10 @@ struct ParametricSurfacesGallery: View {
             ("Cone", .cone(), .indigo),
             ("Box", .box(), .teal),
             ("Hemisphere", .hemisphere(), .orange),
-            ("Capsule", .capsule(), .purple)
+            ("Capsule", .capsule(), .purple),
+            ("Circle", .circle(), .yellow),
+            ("IcoSphere", .icoSphere(), .red),
+            ("CubeSphere", .cubeSphere(), .green)
         ]
 
         ScrollView {

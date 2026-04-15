@@ -398,29 +398,38 @@ closed: 2026-04-15T04:16:36Z
 ---
 
 ## 37: Add icoSphere primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T04:12:03Z
+updated: 2026-04-15T04:22:43Z
+closed: 2026-04-15T04:22:43Z
 
+- `2026-04-15T04:22:43Z`: Implemented
 
 ---
 
 ## 38: Add cubeSphere primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T04:12:03Z
+updated: 2026-04-15T04:22:43Z
+closed: 2026-04-15T04:22:43Z
 
+- `2026-04-15T04:22:43Z`: Implemented
 
 ---
 
 ## 39: Add circle primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T04:12:03Z
+updated: 2026-04-15T04:22:43Z
+closed: 2026-04-15T04:22:43Z
 
+- `2026-04-15T04:22:43Z`: Implemented
 
 ---
 
