@@ -112,7 +112,15 @@ private struct MeshGallerySection: Identifiable {
                 ])
             }()
             let sphere = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 2, attributes: [])
-            let smallCube = Mesh.box(extents: [0.5, 0.5, 0.5], attributes: [])
+            let smallCube: Mesh = {
+                var positions = Mesh.box(extents: [0.5, 0.5, 0.5], attributes: []).positions
+                for i in positions.indices { positions[i] += [0.2, 0.2, 0.2] }
+                return Mesh(positions: positions, faces: [
+                    [0, 1, 2, 3], [5, 4, 7, 6],
+                    [4, 0, 3, 7], [1, 5, 6, 2],
+                    [3, 2, 6, 7], [4, 5, 1, 0]
+                ])
+            }()
             return [
                 MeshGalleryItem("Union: Cubes", subtitle: "Two overlapping cubes", mesh: cubeA.union(cubeB)),
                 MeshGalleryItem("Intersection: Cubes", subtitle: "Overlap region only", mesh: cubeA.intersection(cubeB)),
