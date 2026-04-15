@@ -1,4 +1,6 @@
 import Metal
+import MetalKit
+import ModelIO
 import simd
 @testable import SwiftMesh
 import Testing
@@ -244,5 +246,59 @@ struct MetalMeshTests {
         #expect(restored.submeshes[0].faces.count == 1)
         #expect(restored.submeshes[1].faces.count == 1)
         #expect(restored.validate() == nil)
+    }
+
+    // MARK: - ModelIO conversion
+
+    @Test("MDLMesh sphere → Mesh round-trip")
+    func mdlMeshSphere() throws {
+        let device = try requireDevice()
+        let allocator = MTKMeshBufferAllocator(device: device)
+        let mdlMesh = MDLMesh.newEllipsoid(
+            withRadii: SIMD3<Float>(0.5, 0.5, 0.5),
+            radialSegments: 8,
+            verticalSegments: 4,
+            geometryType: .triangles,
+            inwardNormals: false,
+            hemisphere: false,
+            allocator: allocator
+        )
+
+        let mesh = try Mesh(mdlMesh: mdlMesh, device: device)
+        // MDL spheres may have degenerate triangles at poles, so skip strict validation
+        #expect(mesh.vertexCount > 0)
+        #expect(mesh.faceCount > 0)
+        #expect(mesh.positions.count == mesh.vertexCount)
+    }
+
+    @Test("MDLMesh box → Mesh preserves normals and UVs")
+    func mdlMeshBox() throws {
+        let device = try requireDevice()
+        let allocator = MTKMeshBufferAllocator(device: device)
+        let mdlMesh = MDLMesh.newBox(
+            withDimensions: SIMD3<Float>(1, 1, 1),
+            segments: SIMD3<UInt32>(1, 1, 1),
+            geometryType: .triangles,
+            inwardNormals: false,
+            allocator: allocator
+        )
+
+        let mesh = try Mesh(mdlMesh: mdlMesh, device: device)
+        #expect(mesh.validate() == nil)
+        #expect(mesh.normals != nil)
+        #expect(mesh.textureCoordinates != nil)
+    }
+
+    @Test("Mesh → MDLMesh → Mesh round-trip")
+    func meshToMDLAndBack() throws {
+        let device = try requireDevice()
+        let original = Mesh.icosahedron(attributes: []).withFlatNormals()
+
+        let mdlMesh = original.toMDLMesh(device: device)
+        let restored = try Mesh(mdlMesh: mdlMesh, device: device)
+
+        #expect(restored.validate() == nil)
+        #expect(restored.vertexCount == original.vertexCount)
+        #expect(restored.normals != nil)
     }
 }

@@ -77,13 +77,16 @@ MetalMesh should be in a separate target (e.g. SwiftMeshMetal) so the core Swift
 ---
 
 ## 7: ModelIO import (OBJ, PLY, USD)
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T00:51:16Z
-updated: 2026-04-15T01:22:56Z
+updated: 2026-04-15T05:04:43Z
+closed: 2026-04-15T05:04:43Z
 
 Bidirectional ModelIO conversion. MDLMesh → Mesh (import positions, normals, UVs, submeshes, reconstruct topology) and Mesh → MDLMesh (export for SceneKit/RealityKit/USD). Should live in SwiftMeshIO.
+
+- `2026-04-15T05:04:43Z`: Implemented bidirectional ModelIO conversion: MDLMesh → MTKMesh → MetalMesh → Mesh, and Mesh → MDLMesh
 
 ---
 
