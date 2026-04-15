@@ -90,7 +90,7 @@ public extension Mesh {
             let pts = vertexIDs.map { positions[$0.raw] }
 
             let isFront = renderer.isFrontFacing(vertices: pts, modelMatrix: modelMatrix)
-            if backfaceCull && !isFront {
+            if backfaceCull, !isFront {
                 continue
             }
 

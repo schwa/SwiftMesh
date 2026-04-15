@@ -58,7 +58,7 @@ public struct PlatonicSolidsGallery: View {
             ("Cube", .cube, .blue),
             ("Octahedron", .octahedron, .green),
             ("Icosahedron", .icosahedron, .orange),
-            ("Dodecahedron", .dodecahedron, .purple),
+            ("Dodecahedron", .dodecahedron, .purple)
         ]
 
         ScrollView {
@@ -88,7 +88,7 @@ public struct ParametricSurfacesGallery: View {
             ("Torus", .torus(), .pink),
             ("Cylinder", .cylinder(), .mint),
             ("Cone", .cone(), .indigo),
-            ("Box", .box(), .teal),
+            ("Box", .box(), .teal)
         ]
 
         ScrollView {

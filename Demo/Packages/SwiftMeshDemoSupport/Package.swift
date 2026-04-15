@@ -6,25 +6,25 @@ let package = Package(
     name: "SwiftMeshDemoSupport",
     platforms: [
         .macOS(.v26),
-        .iOS(.v26),
+        .iOS(.v26)
     ],
     products: [
-        .library(name: "SwiftMeshDemoSupport", targets: ["SwiftMeshDemoSupport"]),
+        .library(name: "SwiftMeshDemoSupport", targets: ["SwiftMeshDemoSupport"])
     ],
     dependencies: [
-        .package(path: "../../.."),
+        .package(path: "../../..")
     ],
     targets: [
         .target(
             name: "SwiftMeshDemoSupport",
             dependencies: [
-                .product(name: "SwiftMesh", package: "SwiftMesh"),
+                .product(name: "SwiftMesh", package: "SwiftMesh")
             ]
         ),
         .testTarget(
             name: "SwiftMeshDemoSupportTests",
             dependencies: ["SwiftMeshDemoSupport"]
-        ),
+        )
     ],
     swiftLanguageModes: [.v6]
 )
