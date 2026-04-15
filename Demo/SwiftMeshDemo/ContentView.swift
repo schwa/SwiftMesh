@@ -2,16 +2,24 @@ import simd
 import SwiftMesh
 import SwiftUI
 
+enum SidebarSelection: Hashable {
+    case all
+    case item(MeshGalleryItem)
+}
+
 struct ContentView: View {
-    @State private var selectedItem: MeshGalleryItem?
+    @State private var selection: SidebarSelection? = .all
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $selectedItem) {
+            List(selection: $selection) {
+                NavigationLink(value: SidebarSelection.all) {
+                    Label("All", systemImage: "square.grid.2x2")
+                }
                 ForEach(MeshGallerySection.all) { section in
                     Section(section.name) {
                         ForEach(section.items) { item in
-                            NavigationLink(value: item) {
+                            NavigationLink(value: SidebarSelection.item(item)) {
                                 HStack {
                                     MeshPreviewView(mesh: item.mesh)
                                         .frame(width: 48, height: 48)
@@ -32,13 +40,52 @@ struct ContentView: View {
             .navigationTitle("SwiftMesh")
             .listStyle(.sidebar)
         } detail: {
-            if let item = selectedItem {
+            switch selection {
+            case .all:
+                GalleryGridView()
+            case .item(let item):
                 MeshDetailView(item: item)
                     .id(item.id)
-            } else {
+            case nil:
                 ContentUnavailableView("Select a Mesh", systemImage: "square.grid.2x2", description: Text("Choose a mesh from the sidebar"))
             }
         }
+    }
+}
+
+// MARK: - Gallery Grid
+
+struct GalleryGridView: View {
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200))], spacing: 20) {
+                ForEach(MeshGallerySection.all) { section in
+                    Section {
+                        ForEach(section.items) { item in
+                            VStack {
+                                MeshPreviewView(mesh: item.mesh)
+                                    .frame(height: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                Text(item.name)
+                                    .font(.headline)
+                                if let subtitle = item.subtitle {
+                                    Text(subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    } header: {
+                        Text(section.name)
+                            .font(.title2.bold())
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 10)
+                    }
+                }
+            }
+            .padding()
+        }
+        .navigationTitle("All Meshes")
     }
 }
 
