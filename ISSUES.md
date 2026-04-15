@@ -868,3 +868,22 @@ created: 2026-04-15T14:20:52Z
 
 ---
 
+## 73: Unify per-corner attribute handling into a reusable remapping layer
+status: new
+priority: medium
+kind: enhancement
+labels: architecture,refactor
+created: 2026-04-15T15:38:03Z
+
+Every file that touches per-corner attributes (normals, textureCoordinates, tangents, bitangents, colors) manually zips/copies/remaps 5–6 optional arrays in lockstep. This boilerplate is duplicated across welding, triangulation, MetalMesh conversion, PLY export, subdivision, and coplanar merge. Adding a new attribute (e.g. bone weights) requires touching 8+ files.
+
+Proposal: introduce a single abstraction (e.g. CornerAttributes or AttributeTable) that owns the optional per-corner arrays and exposes operations like remap(by:), subset(indices:), append(from:), and average(indices:). All current consumers would delegate to this layer instead of hand-rolling the same if-let/zip/copy loops.
+
+Affected files: Mesh.swift (welded), Triangulation.swift (triangulated), MetalMesh.swift (init, toMesh), MeshAttributes.swift (withTangents), MeshOptimization.swift (mergingCoplanarFaces), PLY.swift (write), Subdivision.swift (attributes stripped).
+
+Dependency category: In-process (pure data, no I/O).
+
+Test impact: A single boundary test on the attribute-remapping API would replace scattered attribute-plumbing assertions across MeshTests, MeshAttributesTests, TriangulationTests, MetalMeshTests, and PLYTests.
+
+---
+
