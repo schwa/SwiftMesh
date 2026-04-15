@@ -646,3 +646,43 @@ mergingCoplanarFaces() produces degenerate polygons with self-intersecting bound
 
 ---
 
+## 56: CSG over-splits faces that don't intersect the other solid
+status: new
+priority: medium
+kind: bug
+created: 2026-04-15T06:58:03Z
+
+BSP-based CSG splits cube faces even when the sphere is entirely interior and doesn't intersect those faces. This creates unnecessary triangulation on flat surfaces that coplanar merging can only partially clean up, since the BSP split introduces true boundary edges where none should exist.
+
+---
+
+## 57: Generic Mesh over Float/Double scalar type
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T07:09:54Z
+
+Make Mesh generic over scalar type (Float vs Double). Positions, normals, UVs etc would use the generic scalar. Enables double-precision meshes for CSG and other operations that accumulate floating point error.
+
+---
+
+## 58: CSG operations in Double precision
+status: new
+priority: medium
+kind: enhancement
+created: 2026-04-15T07:09:54Z
+
+Run CSG BSP internals in Double precision to reduce vertex drift from plane splitting. Convert back to Float (or keep as Double if Mesh supports it) at the end. Depends on generic Mesh or a separate DoubleMesh type.
+
+---
+
+## 59: Float/Double mesh conversion
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T07:09:54Z
+
+Add conversion between Float and Double precision meshes. MetalMesh only works with Float, so need a way to downconvert Double meshes for GPU use.
+
+---
+
