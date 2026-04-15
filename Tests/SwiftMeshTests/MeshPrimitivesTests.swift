@@ -326,9 +326,9 @@ struct MeshPrimitivesTests {
         let mesh = Mesh.cubeSphere(subdivisions: 2, attributes: [])
         #expect(mesh.validate() == nil)
         #expect(mesh.faceCount == 6 * 4) // 6 faces × 2×2 quads
-        // Vertices are not shared across cube face seams, so Euler != 2.
-        // Verify vertex count: 6 faces × (2+1)² = 54
-        #expect(mesh.vertexCount == 54)
+        // After welding: 8 corners + 12 edge midpoints + 6 face centers = 26
+        #expect(mesh.vertexCount == 26)
+        #expect(mesh.isManifold)
     }
 
     @Test("cubeSphere(attributes: .textureCoordinates) has UVs")

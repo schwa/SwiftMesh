@@ -713,12 +713,16 @@ Add a method to check whether a mesh is a closed 2-manifold (every edge has exac
 ---
 
 ## 62: cubeSphere has unwelded seam vertices, not manifold
-status: new
+status: closed
 priority: medium
 kind: bug
 created: 2026-04-15T07:46:38Z
+updated: 2026-04-15T07:53:40Z
+closed: 2026-04-15T07:53:40Z
 
 cubeSphere generates 6 independent grids projected onto a sphere but doesn't weld shared vertices at cube face edges/corners. This leaves 192 boundary half-edges with no twins. The mesh should be a closed manifold.
+
+- `2026-04-15T07:53:40Z`: Fixed by welding seam vertices during cubeSphere construction.
 
 ---
 
@@ -737,13 +741,16 @@ Mesh.teapot() has boundary edges from the OBJ import — likely unwelded seam ve
 ---
 
 ## 64: Add Mesh.welded(tolerance:) to merge near-duplicate vertices and rebuild topology
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T07:48:19Z
-updated: 2026-04-15T07:48:34Z
+updated: 2026-04-15T07:53:40Z
+closed: 2026-04-15T07:53:40Z
 
 TriangleSoup.welded(tolerance:) merges positions but doesn't rebuild half-edge topology. Need a Mesh-level weld that merges near-duplicate positions, remaps face indices, and rebuilds HalfEdgeTopology so twin edges form at seams. This would fix cubeSphere (#62).
+
+- `2026-04-15T07:53:40Z`: Implemented Mesh.welded(tolerance:) and used it to fix cubeSphere.
 
 ---
 

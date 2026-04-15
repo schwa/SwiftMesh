@@ -119,6 +119,7 @@ struct MeshDetailView: View {
     @State private var standaloneFaceIDs: Set<HalfEdgeTopology.FaceID>?
     @State private var decimationRatio: Float = 1.0
     @State private var subdivisionLevel: Int = 0
+    @State private var isWelded = false
 
     private var currentMesh: Mesh {
         displayMesh ?? mesh
@@ -132,6 +133,9 @@ struct MeshDetailView: View {
             )
             VStack(alignment: .trailing) {
                 HStack(spacing: 6) {
+                    Toggle("Weld", isOn: $isWelded)
+                        .onChange(of: isWelded) { rebuildDisplayMesh() }
+
                     Toggle("Triangulate", isOn: $isTriangulated)
                         .onChange(of: isTriangulated) { rebuildDisplayMesh() }
 
@@ -151,8 +155,9 @@ struct MeshDetailView: View {
                     }
                     .disabled(decimationRatio <= 0.05)
 
-                    if subdivisionLevel > 0 || decimationRatio < 1.0 {
+                    if isWelded || subdivisionLevel > 0 || decimationRatio < 1.0 {
                         Button("Reset") {
+                            isWelded = false
                             subdivisionLevel = 0
                             decimationRatio = 1.0
                             rebuildDisplayMesh()
@@ -173,6 +178,11 @@ struct MeshDetailView: View {
                 .padding()
                 Spacer()
                 HStack(spacing: 6) {
+                    if isWelded {
+                        Text("Welded")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     if isTriangulated {
                         Text("Triangulated")
                             .font(.caption)
@@ -214,11 +224,14 @@ struct MeshDetailView: View {
     }
 
     private var isModified: Bool {
-        isTriangulated || subdivisionLevel > 0 || decimationRatio < 1.0
+        isWelded || isTriangulated || subdivisionLevel > 0 || decimationRatio < 1.0
     }
 
     private func rebuildDisplayMesh() {
         var result = mesh
+        if isWelded {
+            result = result.welded(tolerance: 1e-4)
+        }
         if isTriangulated {
             result = result.triangulated()
         }

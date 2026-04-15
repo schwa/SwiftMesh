@@ -328,4 +328,38 @@ struct MeshTests {
             #expect(m.validate() == nil)
         }
     }
+
+    // MARK: - Welding
+
+    @Test("Welding mesh with no duplicates is a no-op")
+    func weldNoDuplicates() {
+        let cube = Mesh.cube(attributes: [])
+        let welded = cube.welded()
+        #expect(welded.vertexCount == cube.vertexCount)
+        #expect(welded.faceCount == cube.faceCount)
+    }
+
+    @Test("Welding cubeSphere is a no-op (already welded at construction)")
+    func weldCubeSphere() {
+        let cs = Mesh.cubeSphere(attributes: [])
+        #expect(cs.isManifold)
+        let welded = cs.welded(tolerance: 1e-4)
+        #expect(welded.isManifold)
+        #expect(welded.vertexCount == cs.vertexCount)
+        #expect(welded.faceCount == cs.faceCount)
+    }
+
+    @Test("Welding preserves face count")
+    func weldPreservesFaces() {
+        let cs = Mesh.cubeSphere(subdivisions: 4, attributes: [])
+        let welded = cs.welded(tolerance: 1e-4)
+        #expect(welded.faceCount == cs.faceCount)
+    }
+
+    @Test("Welding validates")
+    func weldValidates() {
+        let cs = Mesh.cubeSphere(attributes: [])
+        let welded = cs.welded(tolerance: 1e-4)
+        #expect(welded.topology.validate() == nil)
+    }
 }

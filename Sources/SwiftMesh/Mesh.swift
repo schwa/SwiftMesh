@@ -344,6 +344,128 @@ public extension Mesh {
     }
 }
 
+// MARK: - Welding
+
+public extension Mesh {
+    /// Returns a new mesh with near-duplicate positions merged and topology rebuilt.
+    ///
+    /// Positions within `tolerance` of each other are collapsed to a single vertex.
+    /// Face connectivity is remapped and the half-edge topology is rebuilt so that
+    /// previously-separated edges at seams gain proper twin links.
+    ///
+    /// Per-corner attributes (normals, UVs, tangents, colors) are preserved.
+    ///
+    /// - Parameter tolerance: Maximum distance between positions to consider
+    ///   them duplicates. Defaults to `1e-5`.
+    /// - Returns: A new mesh with deduplicated positions and rebuilt topology.
+    func welded(tolerance: Float = 1e-5) -> Mesh {
+        guard !positions.isEmpty else { return self }
+
+        // Spatial hashing to merge near-duplicate positions
+        let cellSize = max(tolerance * 2, 1e-7)
+        let invCell = 1.0 / cellSize
+
+        var buckets: [SIMD3<Int32>: [(Int, SIMD3<Float>)]] = [:]
+        var remap = [Int](repeating: 0, count: positions.count)
+        var newPositions: [SIMD3<Float>] = []
+
+        for (oldIdx, pos) in positions.enumerated() {
+            let cell = SIMD3<Int32>(
+                Int32(floor(pos.x * invCell)),
+                Int32(floor(pos.y * invCell)),
+                Int32(floor(pos.z * invCell))
+            )
+
+            var found = false
+            outer: for dx: Int32 in -1...1 {
+                for dy: Int32 in -1...1 {
+                    for dz: Int32 in -1...1 {
+                        let neighbor = cell &+ SIMD3<Int32>(dx, dy, dz)
+                        if let bucket = buckets[neighbor] {
+                            for (newIdx, existing) in bucket {
+                                if simd_distance(pos, existing) <= tolerance {
+                                    remap[oldIdx] = newIdx
+                                    found = true
+                                    break outer
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !found {
+                let newIdx = newPositions.count
+                newPositions.append(pos)
+                remap[oldIdx] = newIdx
+                buckets[cell, default: []].append((newIdx, pos))
+            }
+        }
+
+        // If nothing was merged, return self
+        if newPositions.count == positions.count {
+            return self
+        }
+
+        // Extract remapped face definitions from the old topology
+        var faceDefs: [HalfEdgeTopology.FaceDefinition] = []
+        for face in topology.faces {
+            let vertexIDs = topology.vertexLoop(for: face.id)
+            let remapped = vertexIDs.map { remap[$0.raw] }
+            let holes = topology.holeVertexLoops(for: face.id).map { loop in
+                loop.map { remap[$0.raw] }
+            }
+            if holes.isEmpty {
+                faceDefs.append(.init(outer: remapped))
+            } else {
+                faceDefs.append(.init(outer: remapped, holes: holes))
+            }
+        }
+
+        // Rebuild topology
+        let newTopology = HalfEdgeTopology(vertexCount: newPositions.count, faces: faceDefs)
+
+        // Map per-corner attributes from old half-edges to new ones.
+        // Walk old and new faces in parallel — face order and corner order are preserved.
+        var newNormals: [SIMD3<Float>]? = normals != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
+        var newTexCoords: [SIMD2<Float>]? = textureCoordinates != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
+        var newTangents: [SIMD3<Float>]? = tangents != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
+        var newBitangents: [SIMD3<Float>]? = bitangents != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
+        var newColors: [SIMD4<Float>]? = colors != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
+
+        for faceIdx in topology.faces.indices {
+            let oldFaceID = HalfEdgeTopology.FaceID(raw: faceIdx)
+            let newFaceID = HalfEdgeTopology.FaceID(raw: faceIdx)
+            let oldLoop = topology.halfEdgeLoop(for: oldFaceID)
+            let newLoop = newTopology.halfEdgeLoop(for: newFaceID)
+
+            for (oldHE, newHE) in zip(oldLoop, newLoop) {
+                if let n = normals { newNormals![newHE.raw] = n[oldHE.raw] }
+                if let tc = textureCoordinates { newTexCoords![newHE.raw] = tc[oldHE.raw] }
+                if let t = tangents { newTangents![newHE.raw] = t[oldHE.raw] }
+                if let b = bitangents { newBitangents![newHE.raw] = b[oldHE.raw] }
+                if let c = colors { newColors![newHE.raw] = c[oldHE.raw] }
+            }
+        }
+
+        // Remap submeshes (face indices are stable)
+        let newSubmeshes = submeshes.map { sub in
+            Submesh(label: sub.label, faces: sub.faces)
+        }
+
+        return Mesh(
+            topology: newTopology,
+            positions: newPositions,
+            normals: newNormals,
+            textureCoordinates: newTexCoords,
+            tangents: newTangents,
+            bitangents: newBitangents,
+            colors: newColors,
+            submeshes: newSubmeshes
+        )
+    }
+}
+
 // MARK: - Internal helpers
 
 private extension Mesh {

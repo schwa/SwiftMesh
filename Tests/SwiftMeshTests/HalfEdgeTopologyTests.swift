@@ -774,10 +774,13 @@ struct HalfEdgeTopologyManifoldTests {
         #expect(!Mesh.circle(attributes: []).isManifold)
     }
 
-    @Test("Known non-manifold primitives (unwelded seams)")
-    func knownNonManifoldPrimitives() {
-        // cubeSphere (#62) and teapot (#63) have unwelded seam vertices
-        #expect(!Mesh.cubeSphere(attributes: []).isManifold)
+    @Test("cubeSphere is manifold after welding fix")
+    func cubeSphereManifold() {
+        #expect(Mesh.cubeSphere(attributes: []).isManifold)
+    }
+
+    @Test("Teapot is not manifold (separate patches by design)")
+    func teapotNotManifold() {
         #expect(!Mesh.teapot(attributes: []).isManifold)
     }
 }

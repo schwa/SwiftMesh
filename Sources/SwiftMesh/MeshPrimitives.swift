@@ -563,7 +563,7 @@ public extension Mesh {
             }
         }
 
-        var mesh = Mesh(positions: positions, faces: faces)
+        var mesh = Mesh(positions: positions, faces: faces).welded(tolerance: 1e-6)
 
         if attributes.contains(.textureCoordinates) {
             mesh = mesh.withSphericalUVs()
