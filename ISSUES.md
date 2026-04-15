@@ -302,3 +302,12 @@ created: 2026-04-15T02:57:33Z
 
 ---
 
+## 30: Generate UVs for box() primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:33Z
+
+
+---
+
