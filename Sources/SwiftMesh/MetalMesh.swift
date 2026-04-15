@@ -12,9 +12,13 @@ import simd
 ///
 /// Faces are triangulated via earcut for n-gons, or passed through for triangles.
 public struct MetalMesh {
+    /// A group of triangles within a ``MetalMesh`` sharing the same material.
     public struct Submesh {
+        /// An optional human-readable name for the submesh.
         public var label: String?
+        /// The Metal buffer containing triangle indices (`UInt32`).
         public var indexBuffer: MTLBuffer
+        /// The number of indices in ``indexBuffer``.
         public var indexCount: Int
     }
 
@@ -26,11 +30,15 @@ public struct MetalMesh {
         case separateBuffers
     }
 
+    /// An optional human-readable name for the mesh.
     public var label: String?
     /// Vertex buffers keyed by buffer index.
     public var vertexBuffers: [Int: MTLBuffer]
+    /// The number of vertices across all buffers.
     public var vertexCount: Int
+    /// Describes the layout and semantics of vertex attributes.
     public var vertexDescriptor: VertexDescriptor
+    /// The triangle groups that make up the mesh.
     public var submeshes: [Submesh]
 
     /// Create a MetalMesh from a Mesh.
