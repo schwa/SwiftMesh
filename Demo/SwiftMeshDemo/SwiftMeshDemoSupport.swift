@@ -8,14 +8,16 @@ import SwiftUI
 struct MeshCanvasView: View {
     let mesh: Mesh
     let fillColor: Color
+    @Binding var showEdges: Bool
 
     @State private var cameraRotation: simd_quatf = simd_quatf(angle: 0, axis: [0, 1, 0])
     @State private var cameraDistance: Float = 4
     @State private var cameraTarget: SIMD3<Float> = .zero
 
-    init(mesh: Mesh, fillColor: Color = .blue) {
+    init(mesh: Mesh, fillColor: Color = .blue, showEdges: Binding<Bool> = .constant(true)) {
         self.mesh = mesh
         self.fillColor = fillColor
+        self._showEdges = showEdges
     }
 
     var body: some View {
@@ -36,8 +38,8 @@ struct MeshCanvasView: View {
                 in: &context,
                 renderer: renderer,
                 fillColor: fillColor,
-                strokeColor: .white,
-                lineWidth: 0.5
+                strokeColor: showEdges ? .white : .clear,
+                lineWidth: showEdges ? 0.5 : 0
             )
         }
         .interactiveCamera(
@@ -50,7 +52,7 @@ struct MeshCanvasView: View {
 
 /// A gallery view showing all Platonic solids.
 struct PlatonicSolidsGallery: View {
-    init() {}
+    @State private var showEdges = true
 
     var body: some View {
         let solids: [(String, Mesh, Color)] = [
@@ -65,7 +67,7 @@ struct PlatonicSolidsGallery: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 20) {
                 ForEach(solids, id: \.0) { name, mesh, color in
                     VStack {
-                        MeshCanvasView(mesh: mesh, fillColor: color)
+                        MeshCanvasView(mesh: mesh, fillColor: color, showEdges: $showEdges)
                             .frame(height: 250)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         Text(name)
@@ -75,12 +77,17 @@ struct PlatonicSolidsGallery: View {
             }
             .padding()
         }
+        .toolbar {
+            Toggle(isOn: $showEdges) {
+                Label("Edges", systemImage: "square.on.square")
+            }
+        }
     }
 }
 
 /// A gallery view showing parametric surfaces.
 struct ParametricSurfacesGallery: View {
-    init() {}
+    @State private var showEdges = true
 
     var body: some View {
         let surfaces: [(String, Mesh, Color)] = [
@@ -103,7 +110,7 @@ struct ParametricSurfacesGallery: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 20) {
                 ForEach(surfaces, id: \.0) { name, mesh, color in
                     VStack {
-                        MeshCanvasView(mesh: mesh, fillColor: color)
+                        MeshCanvasView(mesh: mesh, fillColor: color, showEdges: $showEdges)
                             .frame(height: 250)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         Text(name)
@@ -112,6 +119,11 @@ struct ParametricSurfacesGallery: View {
                 }
             }
             .padding()
+        }
+        .toolbar {
+            Toggle(isOn: $showEdges) {
+                Label("Edges", systemImage: "square.on.square")
+            }
         }
     }
 }
