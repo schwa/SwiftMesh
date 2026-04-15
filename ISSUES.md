@@ -115,12 +115,16 @@ Add binary PLY read/write to SwiftMeshIO. Needed for large meshes — ASCII PLY 
 ---
 
 ## 10: Subdivision surfaces (Catmull-Clark, Loop)
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T00:51:30Z
+updated: 2026-04-15T05:22:59Z
+closed: 2026-04-15T05:22:59Z
 
 Subdivision surface algorithms. Catmull-Clark for quad meshes, Loop for triangle meshes. Operate on Mesh, return a new refined Mesh.
+
+- `2026-04-15T05:22:59Z`: Implemented
 
 ---
 
@@ -139,12 +143,16 @@ Union, intersection, difference on Mesh. Requires robust intersection detection 
 ---
 
 ## 12: Mesh editing operations (split, collapse, extrude)
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T00:51:42Z
+updated: 2026-04-15T05:29:20Z
+closed: 2026-04-15T05:29:20Z
 
 Edge split, edge collapse, face extrude, vertex welding/deduplication. Core editing primitives for a mesh editor.
+
+- `2026-04-15T05:29:20Z`: Superseded by individual issues #40-#44
 
 ---
 
@@ -452,6 +460,66 @@ updated: 2026-04-15T04:22:43Z
 closed: 2026-04-15T04:22:43Z
 
 - `2026-04-15T04:22:43Z`: Implemented
+
+---
+
+## 40: Edge collapse operation on HalfEdgeTopology
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T05:24:28Z
+
+Merge two vertices connected by an edge into one, removing adjacent faces and rewiring topology. Prerequisite for mesh decimation (#17).
+
+---
+
+## 41: Edge flip operation on HalfEdgeTopology
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T05:24:28Z
+
+Swap the diagonal of two adjacent triangles. Useful for mesh quality improvement and Delaunay-like refinement.
+
+---
+
+## 42: Edge split operation on HalfEdgeTopology
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T05:25:32Z
+
+Insert a vertex at an edge midpoint, splitting the two adjacent faces into four. Core editing primitive.
+
+---
+
+## 43: Face extrude operation
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T05:25:33Z
+
+Push a face outward along its normal, creating side wall quads connecting the original boundary to the extruded face.
+
+---
+
+## 44: Vertex weld / deduplication
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T05:25:33Z
+
+Merge vertices that are within a tolerance distance of each other, rewiring topology. Useful for cleaning up imported meshes.
+
+---
+
+## 45: Use Interaction3D for gestures in demo
+status: new
+priority: low
+kind: enhancement
+created: 2026-04-15T05:30:18Z
+
+Replace manual DragGesture in demo with Interaction3D package (github.com/schwa/Interaction3D) for orbit/pan/zoom camera controls.
 
 ---
 
