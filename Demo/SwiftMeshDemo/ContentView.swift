@@ -16,6 +16,9 @@ struct ContentView: View {
     @State private var selection: SidebarSelection? = .all
     @State private var importedItems: [MeshGalleryItem] = []
     @State private var importError: String?
+    @AppStorage("useMetalRenderer") private var useMetalRenderer = false
+    @AppStorage("animateRotation") private var animateRotation = true
+    @State private var debugMode: MeshDebugMode = .shaded
 
     var body: some View {
         NavigationSplitView {
@@ -72,11 +75,27 @@ struct ContentView: View {
                 GalleryGridView()
 
             case .item(let item):
-                MeshDetailView(item: item)
+                MeshDetailView(item: item, useMetalRenderer: useMetalRenderer, animateRotation: animateRotation, debugMode: debugMode)
                     .id(item.id)
 
             case nil:
                 ContentUnavailableView("Select a Mesh", systemImage: "square.grid.2x2", description: Text("Choose a mesh from the sidebar"))
+            }
+        }
+        .toolbar {
+            Toggle(isOn: $useMetalRenderer) {
+                Label("Metal", systemImage: "cube")
+            }
+            if useMetalRenderer {
+                Picker("Mode", selection: $debugMode) {
+                    ForEach(MeshDebugMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .pickerStyle(.menu)
+                Toggle(isOn: $animateRotation) {
+                    Label("Animate", systemImage: "play")
+                }
             }
         }
         .dropDestination(for: URL.self) { urls, _ in
@@ -179,6 +198,9 @@ struct GalleryGridView: View {
 
 struct MeshDetailView: View {
     let item: MeshGalleryItem
+    var useMetalRenderer: Bool
+    var animateRotation: Bool
+    var debugMode: MeshDebugMode
 
     @State private var currentMesh: Mesh
     @State private var showStandalone = true
@@ -188,18 +210,19 @@ struct MeshDetailView: View {
     @State private var showVertexDots = false
     @State private var isModified = false
     @State private var isExporting = false
-    @AppStorage("useMetalRenderer") private var useMetalRenderer = false
-    @AppStorage("animateRotation") private var animateRotation = true
 
-    init(item: MeshGalleryItem) {
+    init(item: MeshGalleryItem, useMetalRenderer: Bool = false, animateRotation: Bool = true, debugMode: MeshDebugMode = .shaded) {
         self.item = item
+        self.useMetalRenderer = useMetalRenderer
+        self.animateRotation = animateRotation
+        self.debugMode = debugMode
         self._currentMesh = State(initialValue: item.mesh)
     }
 
     var body: some View {
         Group {
             if useMetalRenderer {
-                MetalMeshView(mesh: currentMesh, animating: animateRotation)
+                MetalMeshView(mesh: currentMesh, animating: animateRotation, debugMode: debugMode)
             } else {
                 MeshInteractiveView(
                     mesh: currentMesh,
@@ -293,14 +316,6 @@ struct MeshDetailView: View {
             .inspectorColumnWidth(min: 220, ideal: 260, max: 320)
         }
         .toolbar {
-            Toggle(isOn: $useMetalRenderer) {
-                Label("Metal", systemImage: "cube")
-            }
-            if useMetalRenderer {
-                Toggle(isOn: $animateRotation) {
-                    Label("Animate", systemImage: "play")
-                }
-            }
             Button {
                 isExporting = true
             } label: {
