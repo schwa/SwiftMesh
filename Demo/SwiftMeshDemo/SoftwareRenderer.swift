@@ -5,19 +5,19 @@ import SwiftUI
 
 // MARK: - Projection
 
-public struct SoftwareRenderer {
-    public var viewMatrix: float4x4
-    public var projectionMatrix: float4x4
-    public var viewportSize: CGSize
+struct SoftwareRenderer {
+    var viewMatrix: float4x4
+    var projectionMatrix: float4x4
+    var viewportSize: CGSize
 
-    public init(viewMatrix: float4x4, projectionMatrix: float4x4, viewportSize: CGSize) {
+    init(viewMatrix: float4x4, projectionMatrix: float4x4, viewportSize: CGSize) {
         self.viewMatrix = viewMatrix
         self.projectionMatrix = projectionMatrix
         self.viewportSize = viewportSize
     }
 
     /// Project a 3D point to 2D screen coordinates.
-    public func project(_ position: SIMD3<Float>, modelMatrix: float4x4 = .identity) -> CGPoint? {
+    func project(_ position: SIMD3<Float>, modelMatrix: float4x4 = .identity) -> CGPoint? {
         let clip = projectionMatrix * viewMatrix * modelMatrix * SIMD4(position, 1)
         guard abs(clip.w) > Float.leastNormalMagnitude else {
             return nil
@@ -30,7 +30,7 @@ public struct SoftwareRenderer {
     }
 
     /// Create a SwiftUI Path from a polygon of 3D points.
-    public func path(for points: [SIMD3<Float>], modelMatrix: float4x4 = .identity) -> Path {
+    func path(for points: [SIMD3<Float>], modelMatrix: float4x4 = .identity) -> Path {
         let projected = points.compactMap { project($0, modelMatrix: modelMatrix) }
         guard projected.count >= 3 else {
             return Path()
@@ -45,7 +45,7 @@ public struct SoftwareRenderer {
     }
 
     /// Check if a face is front-facing (visible to camera).
-    public func isFrontFacing(vertices: [SIMD3<Float>], modelMatrix: float4x4 = .identity) -> Bool {
+    func isFrontFacing(vertices: [SIMD3<Float>], modelMatrix: float4x4 = .identity) -> Bool {
         guard vertices.count >= 3 else {
             return false
         }
@@ -64,7 +64,7 @@ public struct SoftwareRenderer {
 
 // MARK: - Mesh rendering into Canvas
 
-public extension Mesh {
+extension Mesh {
     /// Draw the mesh into a SwiftUI GraphicsContext using a software renderer.
     func draw(
         in context: inout GraphicsContext,

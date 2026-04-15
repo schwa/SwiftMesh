@@ -4,19 +4,19 @@ import SwiftMesh
 import SwiftUI
 
 /// A view that renders a Mesh in 3D using SwiftUI Canvas with painter's algorithm.
-public struct MeshCanvasView: View {
+struct MeshCanvasView: View {
     let mesh: Mesh
     let fillColor: Color
 
     @State private var rotation: SIMD2<Float> = .zero
     @State private var isDragging = false
 
-    public init(mesh: Mesh, fillColor: Color = .blue) {
+    init(mesh: Mesh, fillColor: Color = .blue) {
         self.mesh = mesh
         self.fillColor = fillColor
     }
 
-    public var body: some View {
+    var body: some View {
         Canvas { context, size in
             let fov = PerspectiveProjection(verticalAngleOfView: .degrees(45))
             let projectionMatrix = fov.projectionMatrix(width: Float(size.width), height: Float(size.height))
@@ -49,10 +49,10 @@ public struct MeshCanvasView: View {
 }
 
 /// A gallery view showing all Platonic solids.
-public struct PlatonicSolidsGallery: View {
-    public init() {}
+struct PlatonicSolidsGallery: View {
+    init() {}
 
-    public var body: some View {
+    var body: some View {
         let solids: [(String, Mesh, Color)] = [
             ("Tetrahedron", .tetrahedron, .red),
             ("Cube", .cube, .blue),
@@ -79,10 +79,10 @@ public struct PlatonicSolidsGallery: View {
 }
 
 /// A gallery view showing parametric surfaces.
-public struct ParametricSurfacesGallery: View {
-    public init() {}
+struct ParametricSurfacesGallery: View {
+    init() {}
 
-    public var body: some View {
+    var body: some View {
         let surfaces: [(String, Mesh, Color)] = [
             ("Sphere", .sphere(), .cyan),
             ("Torus", .torus(), .pink),

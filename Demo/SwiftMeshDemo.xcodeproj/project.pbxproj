@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		451594952F64AAE8005F944D /* SwiftMeshDemoSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 451594942F64AAE8005F944D /* SwiftMeshDemoSupport */; };
 		457F400F2F8F12FE00A9AC0B /* SwiftMesh in Frameworks */ = {isa = PBXBuildFile; productRef = 457F400E2F8F12FE00A9AC0B /* SwiftMesh */; };
 		457F40112F8F12FE00A9AC0B /* SwiftMeshIO in Frameworks */ = {isa = PBXBuildFile; productRef = 457F40102F8F12FE00A9AC0B /* SwiftMeshIO */; };
 		457F402A2F8F139400A9AC0B /* GeometryLite3D in Frameworks */ = {isa = PBXBuildFile; productRef = 457F40292F8F139400A9AC0B /* GeometryLite3D */; };
@@ -18,13 +17,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4515947D2F64AAA7005F944D /* Exceptions for "Packages" folder in "SwiftMeshDemo" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				SwiftMeshDemoSupport,
-			);
-			target = 451594462F64A8DC005F944D /* SwiftMeshDemo */;
-		};
 		451594922F64AAB2005F944D /* Exceptions for "Configuration" folder in "SwiftMeshDemo" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -53,14 +45,6 @@
 			path = Configuration;
 			sourceTree = "<group>";
 		};
-		4515947C2F64AAA6005F944D /* Packages */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				4515947D2F64AAA7005F944D /* Exceptions for "Packages" folder in "SwiftMeshDemo" target */,
-			);
-			path = Packages;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,7 +52,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				451594952F64AAE8005F944D /* SwiftMeshDemoSupport in Frameworks */,
 				457F40112F8F12FE00A9AC0B /* SwiftMeshIO in Frameworks */,
 				457F400F2F8F12FE00A9AC0B /* SwiftMesh in Frameworks */,
 				457F402A2F8F139400A9AC0B /* GeometryLite3D in Frameworks */,
@@ -82,7 +65,6 @@
 			isa = PBXGroup;
 			children = (
 				451594742F64AA9A005F944D /* Configuration */,
-				4515947C2F64AAA6005F944D /* Packages */,
 				451594492F64A8DC005F944D /* SwiftMeshDemo */,
 				451594482F64A8DC005F944D /* Products */,
 			);
@@ -114,11 +96,9 @@
 			fileSystemSynchronizedGroups = (
 				451594492F64A8DC005F944D /* SwiftMeshDemo */,
 				451594742F64AA9A005F944D /* Configuration */,
-				4515947C2F64AAA6005F944D /* Packages */,
 			);
 			name = SwiftMeshDemo;
 			packageProductDependencies = (
-				451594942F64AAE8005F944D /* SwiftMeshDemoSupport */,
 				457F400E2F8F12FE00A9AC0B /* SwiftMesh */,
 				457F40102F8F12FE00A9AC0B /* SwiftMeshIO */,
 				457F40292F8F139400A9AC0B /* GeometryLite3D */,
@@ -262,10 +242,6 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		451594942F64AAE8005F944D /* SwiftMeshDemoSupport */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SwiftMeshDemoSupport;
-		};
 		457F400E2F8F12FE00A9AC0B /* SwiftMesh */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftMesh;

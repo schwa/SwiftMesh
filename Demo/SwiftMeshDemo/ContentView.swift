@@ -1,4 +1,3 @@
-import SwiftMeshDemoSupport
 import SwiftUI
 
 struct ContentView: View {
