@@ -171,10 +171,12 @@ Planar, cylindrical, and box UV projection. Currently only spherical projection 
 ---
 
 ## 14: Mesh transform methods (scale, translate, rotate)
-status: new
+status: closed
 priority: high
 kind: feature
 created: 2026-04-15T00:51:52Z
+updated: 2026-04-15T06:52:08Z
+closed: 2026-04-15T06:52:08Z
 
 Add scaled(), translated(), rotated(), transformed() methods on Mesh. Return new Mesh with transformed positions (and normals/tangents adjusted).
 

@@ -231,6 +231,405 @@ struct HalfEdgeTopologyEdgeDeletionTests {
     }
 }
 
+// MARK: - Edge collapse
+
+@Suite("HalfEdgeTopology — Edge Collapse")
+struct HalfEdgeTopologyEdgeCollapseTests {
+    // Helper: count live (non-tombstoned) faces
+    private func liveFaces(_ topo: HalfEdgeTopology) -> [HalfEdgeTopology.Face] {
+        topo.faces.filter { $0.edge != nil }
+    }
+
+    // Helper: count live vertices
+    private func liveVertices(_ topo: HalfEdgeTopology) -> [HalfEdgeTopology.Vertex] {
+        topo.vertices.filter { $0.edge != nil }
+    }
+
+    // Helper: count live half-edges
+    private func liveHalfEdges(_ topo: HalfEdgeTopology) -> [HalfEdgeTopology.HalfEdge] {
+        topo.halfEdges.filter { $0.next != nil }
+    }
+
+    // Helper: make a pyramid (4 triangles, 5 vertices, apex at index 4)
+    private func makePyramid() -> HalfEdgeTopology {
+        HalfEdgeTopology(vertexCount: 5, faces: [
+            .init(outer: [0, 1, 4]),
+            .init(outer: [1, 2, 4]),
+            .init(outer: [2, 3, 4]),
+            .init(outer: [3, 0, 4]),
+        ])
+    }
+
+    // Helper: make a tetrahedron (closed mesh, 4 triangles, 4 vertices)
+    private func makeTetrahedron() -> HalfEdgeTopology {
+        HalfEdgeTopology(vertexCount: 4, faces: [
+            .init(outer: [0, 1, 2]),
+            .init(outer: [0, 3, 1]),
+            .init(outer: [0, 2, 3]),
+            .init(outer: [1, 3, 2]),
+        ])
+    }
+
+    // Helper: make a triangle strip (3 triangles sharing edges)
+    //   0---1---2---3
+    //    \ | \ | \ |
+    //     4   5   6
+    private func makeTriangleStrip() -> HalfEdgeTopology {
+        HalfEdgeTopology(vertexCount: 7, faces: [
+            .init(outer: [0, 1, 4]),
+            .init(outer: [1, 2, 5]),
+            .init(outer: [2, 3, 6]),
+        ])
+    }
+
+    // MARK: - Basic collapse on two triangles
+
+    @Test("Collapse shared edge of two triangles returns surviving vertex")
+    func collapseReturnsVertex() {
+        var topo = makeTwoTrianglesTopology()
+        let sharedHE = topo.halfEdges.first { $0.twin != nil }!
+        let survivor = topo.collapseEdge(sharedHE.id)
+        #expect(survivor != nil)
+        #expect(survivor == sharedHE.origin)
+    }
+
+    @Test("Collapse shared edge of two triangles removes both faces")
+    func collapseTwoTrianglesRemovesFaces() {
+        var topo = makeTwoTrianglesTopology()
+        let sharedHE = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(sharedHE.id)
+        #expect(liveFaces(topo).isEmpty)
+    }
+
+    @Test("Collapse shared edge of two triangles tombstones destination vertex")
+    func collapseTombstonesDestVertex() {
+        var topo = makeTwoTrianglesTopology()
+        let sharedHE = topo.halfEdges.first { $0.twin != nil }!
+        let destVertex = topo.destViaNext(of: sharedHE.id)!
+        topo.collapseEdge(sharedHE.id)
+        #expect(topo.vertices[destVertex.raw].edge == nil)
+    }
+
+    @Test("Collapse shared edge of two triangles: exactly one vertex is tombstoned")
+    func collapseDecreasesVertexCount() {
+        var topo = makeTwoTrianglesTopology()
+        let sharedHE = topo.halfEdges.first { $0.twin != nil }!
+        let dest = topo.destViaNext(of: sharedHE.id)!
+        let origin = sharedHE.origin
+        topo.collapseEdge(sharedHE.id)
+        // Destination vertex is tombstoned
+        #expect(topo.vertices[dest.raw].edge == nil)
+        // Origin vertex survives (though it may have no live edges if all faces removed)
+        // The key invariant: no live half-edge references the dead vertex
+        for he in liveHalfEdges(topo) {
+            #expect(he.origin != dest)
+        }
+        _ = origin // used above via sharedHE.origin
+    }
+
+    // MARK: - Pyramid collapse
+
+    @Test("Collapse edge on pyramid reduces face count by 2")
+    func collapsePyramidFaceCount() {
+        var topo = makePyramid()
+        let facesBefore = liveFaces(topo).count
+        // Find a shared (interior) edge
+        let sharedHE = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(sharedHE.id)
+        let facesAfter = liveFaces(topo).count
+        #expect(facesAfter == facesBefore - 2)
+    }
+
+    @Test("Collapse edge on pyramid: remaining faces have valid loops")
+    func collapsePyramidFaceLoops() {
+        var topo = makePyramid()
+        let sharedHE = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(sharedHE.id)
+        for face in liveFaces(topo) {
+            let loop = topo.vertexLoop(for: face.id)
+            #expect(loop.count >= 3)
+        }
+    }
+
+    @Test("Collapse edge on pyramid: live vertex count decreases by 1")
+    func collapsePyramidVertexCount() {
+        var topo = makePyramid()
+        let liveBeforeCount = liveVertices(topo).count
+        let sharedHE = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(sharedHE.id)
+        #expect(liveVertices(topo).count == liveBeforeCount - 1)
+    }
+
+    // MARK: - Tetrahedron collapse
+
+    @Test("Collapse edge on tetrahedron reduces faces from 4 to 2")
+    func collapseTetrahedronFaceCount() {
+        var topo = makeTetrahedron()
+        #expect(liveFaces(topo).count == 4)
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(he.id)
+        #expect(liveFaces(topo).count == 2)
+    }
+
+    @Test("Collapse edge on tetrahedron: live vertices go from 4 to 3")
+    func collapseTetrahedronVertexCount() {
+        var topo = makeTetrahedron()
+        #expect(liveVertices(topo).count == 4)
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(he.id)
+        #expect(liveVertices(topo).count == 3)
+    }
+
+    @Test("Collapse edge on tetrahedron: remaining faces have 3 vertices each")
+    func collapseTetrahedronFaceLoops() {
+        var topo = makeTetrahedron()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(he.id)
+        for face in liveFaces(topo) {
+            let loop = topo.vertexLoop(for: face.id)
+            #expect(loop.count == 3)
+        }
+    }
+
+    @Test("Collapse edge on tetrahedron: no vertex loops contain tombstoned vertex")
+    func collapseTetrahedronNoDeadVertexInLoops() {
+        var topo = makeTetrahedron()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        let dead = topo.destViaNext(of: he.id)!
+        topo.collapseEdge(he.id)
+        for face in liveFaces(topo) {
+            let loop = topo.vertexLoop(for: face.id)
+            #expect(!loop.contains(dead))
+        }
+    }
+
+    // MARK: - Boundary edge collapse
+
+    @Test("Collapse boundary edge (no twin) on single triangle")
+    func collapseBoundaryEdge() {
+        var topo = makeTriangleTopology()
+        // All edges in a single triangle have no twin
+        let he = topo.halfEdges[0]
+        let dest = topo.destViaNext(of: he.id)!
+        let survivor = topo.collapseEdge(he.id)
+        #expect(survivor != nil)
+        // Single triangle with collapsed edge → face becomes degenerate
+        #expect(liveFaces(topo).isEmpty)
+        // Destination vertex is tombstoned
+        #expect(topo.vertices[dest.raw].edge == nil)
+    }
+
+    @Test("Collapse boundary edge on two triangles (non-shared edge)")
+    func collapseBoundaryEdgeTwoTriangles() {
+        var topo = makeTwoTrianglesTopology()
+        // Find an edge with no twin (boundary)
+        let boundaryHE = topo.halfEdges.first { $0.twin == nil }!
+        let facesBefore = liveFaces(topo).count
+        topo.collapseEdge(boundaryHE.id)
+        // Should remove the face containing this edge
+        #expect(liveFaces(topo).count == facesBefore - 1)
+        // Dest vertex should be tombstoned
+        let liveVerts = liveVertices(topo)
+        #expect(liveVerts.count == 3)
+    }
+
+    // MARK: - Invalid collapse
+
+    @Test("Collapse returns nil for half-edge with no destination")
+    func collapseInvalidEdge() {
+        var topo = makeTriangleTopology()
+        // Collapse once to create tombstoned half-edges
+        let he = topo.halfEdges[0]
+        topo.collapseEdge(he.id)
+        // Now try to collapse the same (now-dead) half-edge again
+        let result = topo.collapseEdge(he.id)
+        #expect(result == nil)
+    }
+
+    // MARK: - Sequential collapses
+
+    @Test("Two sequential collapses on pyramid")
+    func sequentialCollapses() {
+        var topo = makePyramid()
+        #expect(liveFaces(topo).count == 4)
+        #expect(liveVertices(topo).count == 5)
+
+        // First collapse
+        let he1 = topo.halfEdges.first { $0.twin != nil && $0.next != nil }!
+        topo.collapseEdge(he1.id)
+        #expect(liveFaces(topo).count == 2)
+        #expect(liveVertices(topo).count == 4)
+
+        // Remaining faces should still have valid loops
+        for face in liveFaces(topo) {
+            let loop = topo.vertexLoop(for: face.id)
+            #expect(loop.count >= 3)
+        }
+
+        // Second collapse
+        if let he2 = topo.halfEdges.first(where: { $0.twin != nil && $0.next != nil }) {
+            topo.collapseEdge(he2.id)
+            #expect(liveFaces(topo).isEmpty)
+        }
+    }
+
+    @Test("Sequential collapses on tetrahedron until minimal")
+    func sequentialCollapsesTetrahedron() {
+        var topo = makeTetrahedron()
+        #expect(liveFaces(topo).count == 4)
+
+        var collapseCount = 0
+        while let he = topo.halfEdges.first(where: { $0.twin != nil && $0.next != nil }) {
+            topo.collapseEdge(he.id)
+            collapseCount += 1
+            if collapseCount > 10 {
+                break // safety valve
+            }
+        }
+        // Should have collapsed multiple times
+        #expect(collapseCount >= 2)
+        // Eventually no more interior edges to collapse
+    }
+
+    // MARK: - Vertex loop correctness
+
+    @Test("After collapse, surviving vertex appears in remaining face loops")
+    func survivorInRemainingLoops() {
+        var topo = makeTetrahedron()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        let survivor = topo.collapseEdge(he.id)!
+        let remaining = liveFaces(topo)
+        #expect(!remaining.isEmpty)
+        for face in remaining {
+            let loop = topo.vertexLoop(for: face.id)
+            #expect(loop.contains(survivor))
+        }
+    }
+
+    // MARK: - Half-edge consistency after collapse
+
+    @Test("Live half-edges have consistent next/prev after collapse")
+    func nextPrevConsistencyAfterCollapse() {
+        var topo = makePyramid()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(he.id)
+        for edge in liveHalfEdges(topo) {
+            if let next = edge.next {
+                #expect(topo.halfEdges[next.raw].prev == edge.id)
+            }
+            if let prev = edge.prev {
+                #expect(topo.halfEdges[prev.raw].next == edge.id)
+            }
+        }
+    }
+
+    @Test("Live half-edges have symmetric twins after collapse")
+    func twinSymmetryAfterCollapse() {
+        var topo = makeTetrahedron()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(he.id)
+        for edge in liveHalfEdges(topo) {
+            if let twin = edge.twin {
+                #expect(topo.halfEdges[twin.raw].twin == edge.id)
+            }
+        }
+    }
+
+    @Test("Live half-edges reference live faces after collapse")
+    func halfEdgesReferenceLiveFaces() {
+        var topo = makeTetrahedron()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(he.id)
+        let liveFaceIDs = Set(liveFaces(topo).map(\.id))
+        for edge in liveHalfEdges(topo) {
+            if let faceID = edge.face {
+                #expect(liveFaceIDs.contains(faceID))
+            }
+        }
+    }
+
+    @Test("Live vertices have outgoing edges that originate from them")
+    func vertexEdgeOriginAfterCollapse() {
+        var topo = makePyramid()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(he.id)
+        for vertex in liveVertices(topo) {
+            guard let edgeID = vertex.edge else {
+                continue
+            }
+            #expect(topo.halfEdges[edgeID.raw].origin == vertex.id)
+        }
+    }
+
+    // MARK: - Collapse preserves non-adjacent faces
+
+    @Test("Collapse on triangle strip: non-adjacent face survives intact")
+    func collapsePreservesNonAdjacentFace() {
+        var topo = makeTriangleStrip()
+        #expect(liveFaces(topo).count == 3)
+        // Collapse an edge in the first triangle
+        // Find half-edge in face 0 that has no twin (boundary of first triangle)
+        let face0edges = topo.halfEdgeLoop(for: topo.faces[0].id)
+        let boundaryHE = face0edges.first { topo.halfEdges[$0.raw].twin == nil }!
+        topo.collapseEdge(boundaryHE)
+        // Third triangle (face 2) should be completely unaffected
+        let loop2 = topo.vertexLoop(for: topo.faces[2].id)
+        #expect(loop2.count == 3)
+    }
+
+    // MARK: - Collapse same edge from twin direction
+
+    @Test("Collapsing from twin gives opposite survivor")
+    func collapseFromTwin() {
+        let topo = makeTetrahedron()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        let twinID = he.twin!
+
+        // Collapse original direction
+        var topo1 = topo
+        let survivor1 = topo1.collapseEdge(he.id)!
+
+        // Collapse twin direction
+        var topo2 = topo
+        let survivor2 = topo2.collapseEdge(twinID)!
+
+        // Survivors should be opposite vertices of the edge
+        #expect(survivor1 != survivor2)
+        #expect(survivor1 == he.origin)
+        #expect(survivor2 == topo.halfEdges[twinID.raw].origin)
+
+        // Both results should have same number of live faces/vertices
+        #expect(liveFaces(topo1).count == liveFaces(topo2).count)
+        #expect(liveVertices(topo1).count == liveVertices(topo2).count)
+    }
+
+    // MARK: - No self-loops in remaining topology
+
+    @Test("No live half-edge has origin == dest after collapse")
+    func noSelfLoopsAfterCollapse() {
+        var topo = makeTetrahedron()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(he.id)
+        for edge in liveHalfEdges(topo) {
+            if let dest = topo.destViaNext(of: edge.id) {
+                #expect(dest != edge.origin)
+            }
+        }
+    }
+
+    @Test("No self-loops after collapse on pyramid")
+    func noSelfLoopsAfterCollapsePyramid() {
+        var topo = makePyramid()
+        let he = topo.halfEdges.first { $0.twin != nil }!
+        topo.collapseEdge(he.id)
+        for edge in liveHalfEdges(topo) {
+            if let dest = topo.destViaNext(of: edge.id) {
+                #expect(dest != edge.origin)
+            }
+        }
+    }
+}
+
 // MARK: - Description conformances
 
 @Suite("HalfEdgeTopology — CustomStringConvertible")

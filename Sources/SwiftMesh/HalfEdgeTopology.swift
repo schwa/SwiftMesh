@@ -20,7 +20,7 @@ public struct HalfEdgeTopology: Sendable, Equatable {
 
     public struct HalfEdge: Sendable, Equatable {
         public let id: HalfEdgeID
-        public let origin: VertexID
+        public var origin: VertexID
         public var twin: HalfEdgeID?
         public var next: HalfEdgeID?
         public var prev: HalfEdgeID?
@@ -479,6 +479,121 @@ extension HalfEdgeTopology {
                 vertices[originB.raw].edge = halfEdges.first { $0.origin == originB && $0.next != nil }?.id
             }
         }
+    }
+
+    // MARK: - Edge collapse
+
+    /// Collapse an edge, merging its destination vertex into its origin vertex.
+    ///
+    /// The half-edge's origin is kept; the destination vertex is tombstoned.
+    /// Adjacent triangle faces that become degenerate (2 edges) are removed.
+    /// Returns the surviving vertex ID, or nil if the collapse is invalid.
+    @discardableResult
+    public mutating func collapseEdge(_ heID: HalfEdgeID) -> VertexID? {
+        let he = halfEdges[heID.raw]
+        let vertexA = he.origin // kept
+        guard let vertexB = destViaNext(of: heID) else {
+            return nil
+        }
+
+        // Repoint all half-edges originating from B to originate from A
+        for i in halfEdges.indices where halfEdges[i].origin == vertexB {
+            halfEdges[i].origin = vertexA
+        }
+
+        // Collect the faces adjacent to this edge (via he and twin)
+        // These triangle faces will become degenerate and need removal
+        var facesToRemove: [FaceID] = []
+        if let face = he.face {
+            facesToRemove.append(face)
+        }
+        if let twinID = he.twin, let face = halfEdges[twinID.raw].face {
+            facesToRemove.append(face)
+        }
+
+        // For each degenerate face, remove its edges from the topology
+        for faceID in facesToRemove {
+            let loop = halfEdgeLoop(for: faceID)
+
+            // Find the edges in this face loop that now have origin == dest (self-loops)
+            // After repointing B→A, the collapsed edge has origin A and dest A
+            // We need to remove the degenerate face and stitch the remaining edges
+
+            // Find half-edges in the loop that form the collapsed edge (origin == dest)
+            let degenerateHEs = loop.filter { hid in
+                let o = halfEdges[hid.raw].origin
+                let d = destViaNext(of: hid)
+                return d == o
+            }
+
+            if degenerateHEs.count == 1 {
+                // Triangle collapsed: one edge became a self-loop
+                // The other two edges become the same undirected edge — pair them as twins
+                let selfLoopHE = degenerateHEs[0]
+                let remaining = loop.filter { $0 != selfLoopHE }
+
+                if remaining.count == 2 {
+                    let edgeP = remaining[0]
+                    let edgeQ = remaining[1]
+
+                    // Unlink existing twins of P and Q, then pair their former twins together
+                    let twinP = halfEdges[edgeP.raw].twin
+                    let twinQ = halfEdges[edgeQ.raw].twin
+
+                    if let tP = twinP, let tQ = twinQ {
+                        halfEdges[tP.raw].twin = tQ
+                        halfEdges[tQ.raw].twin = tP
+                    } else if let tP = twinP {
+                        halfEdges[tP.raw].twin = nil
+                    } else if let tQ = twinQ {
+                        halfEdges[tQ.raw].twin = nil
+                    }
+
+                    // Tombstone P, Q, and the self-loop
+                    for hid in [selfLoopHE, edgeP, edgeQ] {
+                        tombstoneHalfEdge(hid)
+                    }
+                } else {
+                    // Unexpected topology — tombstone the self-loop at minimum
+                    tombstoneHalfEdge(selfLoopHE)
+                }
+            } else {
+                // Multiple degenerate edges or none — just tombstone the whole face's edges
+                for hid in loop {
+                    if let twinID = halfEdges[hid.raw].twin {
+                        halfEdges[twinID.raw].twin = nil
+                    }
+                    tombstoneHalfEdge(hid)
+                }
+            }
+
+            // Tombstone the face
+            faces[faceID.raw].edge = nil
+        }
+
+        // Tombstone vertex B
+        vertices[vertexB.raw].edge = nil
+
+        // Fix vertex A's outgoing edge to point to a live half-edge
+        vertices[vertexA.raw].edge = halfEdges.first { $0.origin == vertexA && $0.next != nil }?.id
+
+        // Fix outgoing edges for all neighbors whose edge ref may now be dead
+        for i in vertices.indices where vertices[i].edge != nil {
+            let eid = vertices[i].edge!
+            if halfEdges[eid.raw].next == nil {
+                vertices[i].edge = halfEdges.first { $0.origin == vertices[i].id && $0.next != nil }?.id
+            }
+        }
+
+        return vertexA
+    }
+
+    /// Tombstone a half-edge by clearing all its wiring.
+    private mutating func tombstoneHalfEdge(_ heID: HalfEdgeID) {
+        halfEdges[heID.raw].twin = nil
+        halfEdges[heID.raw].next = nil
+        halfEdges[heID.raw].prev = nil
+        halfEdges[heID.raw].face = nil
     }
 
     // MARK: - Internals
