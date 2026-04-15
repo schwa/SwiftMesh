@@ -12,6 +12,9 @@ struct ContentView: View {
             Tab("CSG", systemImage: "square.on.square.intersection.dashed") {
                 CSGGallery()
             }
+            Tab("Subdivision", systemImage: "circle.hexagongrid") {
+                SubdivisionGallery()
+            }
         }
     }
 }
