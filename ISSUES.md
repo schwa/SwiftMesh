@@ -1319,3 +1319,28 @@ PLY.write() already exists in SwiftMeshIO but isn't exposed in the demo app. Add
 - `2026-04-15T16:18:33Z`: Added Export PLY toolbar button using .fileExporter with a PLYDocument (FileDocument wrapping PLY.write).
 
 ---
+
+## 82: Decimation leaves tombstoned faces, fails validation
+
++++
+status: new
+priority: high
+kind: bug
+labels: decimation,topology
+created: 2026-04-15T17:48:08Z
++++
+
+After decimation, the mesh contains hundreds of tombstoned faces (face.edge == nil) that are never compacted out. These cause validation errors ('Has no boundary edge') and isManifold returns false even for meshes that should remain manifold.
+
+Reproduced with:
+- IcoSphere (subdivisions: 3) decimated to 50% → 2880 errors
+- IcoSphere (subdivisions: 3) decimated to 25% → 4320 errors
+
+The decimation algorithm (QEM edge collapse) tombstones faces and vertices but never rebuilds the topology arrays to remove them. Need a compaction pass after decimation that:
+1. Removes tombstoned faces (edge == nil)
+2. Removes tombstoned vertices (edge == nil) 
+3. Removes tombstoned half-edges (next == nil)
+4. Remaps all indices
+5. Remaps per-corner attributes if present
+
+---
