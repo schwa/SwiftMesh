@@ -320,3 +320,12 @@ created: 2026-04-15T02:57:33Z
 
 ---
 
+## 32: Generate UVs for cylinder() primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:34Z
+
+
+---
+
