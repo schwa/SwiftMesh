@@ -81,8 +81,9 @@ status: new
 priority: medium
 kind: feature
 created: 2026-04-15T00:51:16Z
+updated: 2026-04-15T01:22:56Z
 
-Import meshes via ModelIO. Convert MDLMesh to Mesh with positions, normals, UVs, and submeshes. Should live in SwiftMeshIO.
+Bidirectional ModelIO conversion. MDLMesh → Mesh (import positions, normals, UVs, submeshes, reconstruct topology) and Mesh → MDLMesh (export for SceneKit/RealityKit/USD). Should live in SwiftMeshIO.
 
 ---
 
