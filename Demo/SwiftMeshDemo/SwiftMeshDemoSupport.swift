@@ -4,20 +4,27 @@ import simd
 import SwiftMesh
 import SwiftUI
 
+/// Display options for ``MeshCanvasView``.
+struct MeshDisplayOptions {
+    var showEdges: Bool = true
+    var darkEdges: Bool = false
+    var showFill: Bool = true
+}
+
 /// A view that renders a Mesh in 3D using SwiftUI Canvas with painter's algorithm.
 struct MeshCanvasView: View {
     let mesh: Mesh
     let fillColor: Color
-    @Binding var showEdges: Bool
+    @Binding var displayOptions: MeshDisplayOptions
 
     @State private var cameraRotation: simd_quatf = simd_quatf(angle: 0, axis: [0, 1, 0])
     @State private var cameraDistance: Float = 4
     @State private var cameraTarget: SIMD3<Float> = .zero
 
-    init(mesh: Mesh, fillColor: Color = .blue, showEdges: Binding<Bool> = .constant(true)) {
+    init(mesh: Mesh, fillColor: Color = .blue, displayOptions: Binding<MeshDisplayOptions> = .constant(MeshDisplayOptions())) {
         self.mesh = mesh
         self.fillColor = fillColor
-        self._showEdges = showEdges
+        self._displayOptions = displayOptions
     }
 
     var body: some View {
@@ -34,12 +41,15 @@ struct MeshCanvasView: View {
                 viewportSize: size
             )
 
+            let edgeColor: Color = displayOptions.showEdges ? (displayOptions.darkEdges ? .black : .white) : .clear
+
             mesh.draw(
                 in: &context,
                 renderer: renderer,
-                fillColor: fillColor,
-                strokeColor: showEdges ? .white : .clear,
-                lineWidth: showEdges ? 0.5 : 0
+                fillColor: displayOptions.showFill ? fillColor : .clear,
+                strokeColor: edgeColor,
+                lineWidth: displayOptions.showEdges ? 0.5 : 0,
+                backfaceCull: displayOptions.showFill
             )
         }
         .interactiveCamera(
@@ -50,9 +60,30 @@ struct MeshCanvasView: View {
     }
 }
 
+/// Toolbar toggles for mesh display options.
+struct MeshDisplayToolbar: ToolbarContent {
+    @Binding var options: MeshDisplayOptions
+
+    var body: some ToolbarContent {
+        ToolbarItemGroup {
+            Toggle(isOn: $options.showFill) {
+                Label("Fill", systemImage: "square.fill")
+            }
+            Toggle(isOn: $options.showEdges) {
+                Label("Edges", systemImage: "square.on.square")
+            }
+            if options.showEdges {
+                Toggle(isOn: $options.darkEdges) {
+                    Label("Dark Edges", systemImage: "circle.lefthalf.filled")
+                }
+            }
+        }
+    }
+}
+
 /// A gallery view showing all Platonic solids.
 struct PlatonicSolidsGallery: View {
-    @State private var showEdges = true
+    @State private var displayOptions = MeshDisplayOptions()
 
     var body: some View {
         let solids: [(String, Mesh, Color)] = [
@@ -67,7 +98,7 @@ struct PlatonicSolidsGallery: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 20) {
                 ForEach(solids, id: \.0) { name, mesh, color in
                     VStack {
-                        MeshCanvasView(mesh: mesh, fillColor: color, showEdges: $showEdges)
+                        MeshCanvasView(mesh: mesh, fillColor: color, displayOptions: $displayOptions)
                             .frame(height: 250)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         Text(name)
@@ -78,16 +109,14 @@ struct PlatonicSolidsGallery: View {
             .padding()
         }
         .toolbar {
-            Toggle(isOn: $showEdges) {
-                Label("Edges", systemImage: "square.on.square")
-            }
+            MeshDisplayToolbar(options: $displayOptions)
         }
     }
 }
 
 /// A gallery view showing parametric surfaces.
 struct ParametricSurfacesGallery: View {
-    @State private var showEdges = true
+    @State private var displayOptions = MeshDisplayOptions()
 
     var body: some View {
         let surfaces: [(String, Mesh, Color)] = [
@@ -110,7 +139,7 @@ struct ParametricSurfacesGallery: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 20) {
                 ForEach(surfaces, id: \.0) { name, mesh, color in
                     VStack {
-                        MeshCanvasView(mesh: mesh, fillColor: color, showEdges: $showEdges)
+                        MeshCanvasView(mesh: mesh, fillColor: color, displayOptions: $displayOptions)
                             .frame(height: 250)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         Text(name)
@@ -121,9 +150,7 @@ struct ParametricSurfacesGallery: View {
             .padding()
         }
         .toolbar {
-            Toggle(isOn: $showEdges) {
-                Label("Edges", systemImage: "square.on.square")
-            }
+            MeshDisplayToolbar(options: $displayOptions)
         }
     }
 }

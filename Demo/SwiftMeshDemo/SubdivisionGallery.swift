@@ -3,14 +3,14 @@ import SwiftUI
 
 /// A gallery showing subdivision surface results.
 struct SubdivisionGallery: View {
-    @State private var showEdges = true
+    @State private var displayOptions = MeshDisplayOptions()
 
     var body: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 20) {
                 ForEach(SubdivisionExample.all) { example in
                     VStack {
-                        MeshCanvasView(mesh: example.mesh, fillColor: example.color, showEdges: $showEdges)
+                        MeshCanvasView(mesh: example.mesh, fillColor: example.color, displayOptions: $displayOptions)
                             .frame(height: 250)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         Text(example.name)
@@ -24,9 +24,7 @@ struct SubdivisionGallery: View {
             .padding()
         }
         .toolbar {
-            Toggle(isOn: $showEdges) {
-                Label("Edges", systemImage: "square.on.square")
-            }
+            MeshDisplayToolbar(options: $displayOptions)
         }
     }
 }
