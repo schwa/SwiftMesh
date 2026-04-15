@@ -275,3 +275,12 @@ created: 2026-04-15T02:57:33Z
 
 ---
 
+## 27: Generate UVs for dodecahedron primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:33Z
+
+
+---
+
