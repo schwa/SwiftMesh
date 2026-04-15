@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		452619932F8F5A6600E3ABFF /* Interaction3D in Frameworks */ = {isa = PBXBuildFile; productRef = 452619922F8F5A6600E3ABFF /* Interaction3D */; };
+		452619B62F90017B00E3ABFF /* MetalSprocketsAddOns in Frameworks */ = {isa = PBXBuildFile; productRef = 452619B52F90017B00E3ABFF /* MetalSprocketsAddOns */; };
+		452619B82F90017B00E3ABFF /* MetalSprocketsAddOnsShaders in Frameworks */ = {isa = PBXBuildFile; productRef = 452619B72F90017B00E3ABFF /* MetalSprocketsAddOnsShaders */; };
+		452619BB2F9002DC00E3ABFF /* MetalSprockets in Frameworks */ = {isa = PBXBuildFile; productRef = 452619BA2F9002DC00E3ABFF /* MetalSprockets */; };
+		452619BD2F9002DC00E3ABFF /* MetalSprocketsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 452619BC2F9002DC00E3ABFF /* MetalSprocketsUI */; };
 		457F400F2F8F12FE00A9AC0B /* SwiftMesh in Frameworks */ = {isa = PBXBuildFile; productRef = 457F400E2F8F12FE00A9AC0B /* SwiftMesh */; };
 		457F40112F8F12FE00A9AC0B /* SwiftMeshIO in Frameworks */ = {isa = PBXBuildFile; productRef = 457F40102F8F12FE00A9AC0B /* SwiftMeshIO */; };
 		457F402A2F8F139400A9AC0B /* GeometryLite3D in Frameworks */ = {isa = PBXBuildFile; productRef = 457F40292F8F139400A9AC0B /* GeometryLite3D */; };
@@ -53,10 +57,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				452619B62F90017B00E3ABFF /* MetalSprocketsAddOns in Frameworks */,
+				452619BB2F9002DC00E3ABFF /* MetalSprockets in Frameworks */,
 				452619932F8F5A6600E3ABFF /* Interaction3D in Frameworks */,
 				457F40112F8F12FE00A9AC0B /* SwiftMeshIO in Frameworks */,
 				457F400F2F8F12FE00A9AC0B /* SwiftMesh in Frameworks */,
 				457F402A2F8F139400A9AC0B /* GeometryLite3D in Frameworks */,
+				452619B82F90017B00E3ABFF /* MetalSprocketsAddOnsShaders in Frameworks */,
+				452619BD2F9002DC00E3ABFF /* MetalSprocketsUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -105,6 +113,10 @@
 				457F40102F8F12FE00A9AC0B /* SwiftMeshIO */,
 				457F40292F8F139400A9AC0B /* GeometryLite3D */,
 				452619922F8F5A6600E3ABFF /* Interaction3D */,
+				452619B52F90017B00E3ABFF /* MetalSprocketsAddOns */,
+				452619B72F90017B00E3ABFF /* MetalSprocketsAddOnsShaders */,
+				452619BA2F9002DC00E3ABFF /* MetalSprockets */,
+				452619BC2F9002DC00E3ABFF /* MetalSprocketsUI */,
 			);
 			productName = SwiftMeshDemo;
 			productReference = 451594472F64A8DC005F944D /* SwiftMeshDemo.app */;
@@ -138,6 +150,8 @@
 				457F400D2F8F12FE00A9AC0B /* XCLocalSwiftPackageReference ".." */,
 				457F40282F8F139400A9AC0B /* XCRemoteSwiftPackageReference "GeometryLite3D" */,
 				452619912F8F5A6600E3ABFF /* XCRemoteSwiftPackageReference "Interaction3D" */,
+				452619B42F90017B00E3ABFF /* XCRemoteSwiftPackageReference "MetalSprocketsAddons" */,
+				452619B92F9002DC00E3ABFF /* XCRemoteSwiftPackageReference "MetalSprockets" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 451594482F64A8DC005F944D /* Products */;
@@ -267,6 +281,22 @@
 				kind = branch;
 			};
 		};
+		452619B42F90017B00E3ABFF /* XCRemoteSwiftPackageReference "MetalSprocketsAddons" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/schwa/MetalSprocketsAddons";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+		452619B92F9002DC00E3ABFF /* XCRemoteSwiftPackageReference "MetalSprockets" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/schwa/MetalSprockets";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.8;
+			};
+		};
 		457F40282F8F139400A9AC0B /* XCRemoteSwiftPackageReference "GeometryLite3D" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/schwa/GeometryLite3D";
@@ -282,6 +312,26 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 452619912F8F5A6600E3ABFF /* XCRemoteSwiftPackageReference "Interaction3D" */;
 			productName = Interaction3D;
+		};
+		452619B52F90017B00E3ABFF /* MetalSprocketsAddOns */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 452619B42F90017B00E3ABFF /* XCRemoteSwiftPackageReference "MetalSprocketsAddons" */;
+			productName = MetalSprocketsAddOns;
+		};
+		452619B72F90017B00E3ABFF /* MetalSprocketsAddOnsShaders */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 452619B42F90017B00E3ABFF /* XCRemoteSwiftPackageReference "MetalSprocketsAddons" */;
+			productName = MetalSprocketsAddOnsShaders;
+		};
+		452619BA2F9002DC00E3ABFF /* MetalSprockets */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 452619B92F9002DC00E3ABFF /* XCRemoteSwiftPackageReference "MetalSprockets" */;
+			productName = MetalSprockets;
+		};
+		452619BC2F9002DC00E3ABFF /* MetalSprocketsUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 452619B92F9002DC00E3ABFF /* XCRemoteSwiftPackageReference "MetalSprockets" */;
+			productName = MetalSprocketsUI;
 		};
 		457F400E2F8F12FE00A9AC0B /* SwiftMesh */ = {
 			isa = XCSwiftPackageProductDependency;

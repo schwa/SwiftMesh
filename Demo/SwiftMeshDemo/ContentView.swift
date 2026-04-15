@@ -18,7 +18,7 @@ struct ContentView: View {
     @State private var importError: String?
     @AppStorage("useMetalRenderer") private var useMetalRenderer = false
     @AppStorage("animateRotation") private var animateRotation = true
-    @State private var debugMode: MeshDebugMode = .shaded
+    @State private var renderMode: MeshRenderMode = .blinnPhong
 
     var body: some View {
         NavigationSplitView {
@@ -75,7 +75,7 @@ struct ContentView: View {
                 GalleryGridView()
 
             case .item(let item):
-                MeshDetailView(item: item, useMetalRenderer: useMetalRenderer, animateRotation: animateRotation, debugMode: debugMode)
+                MeshDetailView(item: item, useMetalRenderer: useMetalRenderer, animateRotation: animateRotation, renderMode: renderMode)
                     .id(item.id)
 
             case nil:
@@ -87,9 +87,11 @@ struct ContentView: View {
                 Label("Metal", systemImage: "cube")
             }
             if useMetalRenderer {
-                Picker("Mode", selection: $debugMode) {
+                Picker("Mode", selection: $renderMode) {
+                    Text("Blinn-Phong").tag(MeshRenderMode.blinnPhong)
+                    Divider()
                     ForEach(MeshDebugMode.allCases) { mode in
-                        Text(mode.label).tag(mode)
+                        Text(mode.label).tag(MeshRenderMode.debug(mode))
                     }
                 }
                 .pickerStyle(.menu)
@@ -200,7 +202,7 @@ struct MeshDetailView: View {
     let item: MeshGalleryItem
     var useMetalRenderer: Bool
     var animateRotation: Bool
-    var debugMode: MeshDebugMode
+    var renderMode: MeshRenderMode
 
     @State private var currentMesh: Mesh
     @State private var showStandalone = true
@@ -211,18 +213,18 @@ struct MeshDetailView: View {
     @State private var isModified = false
     @State private var isExporting = false
 
-    init(item: MeshGalleryItem, useMetalRenderer: Bool = false, animateRotation: Bool = true, debugMode: MeshDebugMode = .shaded) {
+    init(item: MeshGalleryItem, useMetalRenderer: Bool = false, animateRotation: Bool = true, renderMode: MeshRenderMode = .blinnPhong) {
         self.item = item
         self.useMetalRenderer = useMetalRenderer
         self.animateRotation = animateRotation
-        self.debugMode = debugMode
+        self.renderMode = renderMode
         self._currentMesh = State(initialValue: item.mesh)
     }
 
     var body: some View {
         Group {
             if useMetalRenderer {
-                MetalMeshView(mesh: currentMesh, animating: animateRotation, debugMode: debugMode)
+                MetalMeshView(mesh: currentMesh, animating: animateRotation, renderMode: renderMode)
             } else {
                 MeshInteractiveView(
                     mesh: currentMesh,

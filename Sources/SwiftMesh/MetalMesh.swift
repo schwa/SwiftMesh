@@ -41,6 +41,16 @@ public struct MetalMesh {
     /// The triangle groups that make up the mesh.
     public var submeshes: [Submesh]
 
+    /// The primary vertex buffer (buffer index 0).
+    ///
+    /// Convenience accessor for interleaved layouts. Equivalent to `vertexBuffers[0]!`.
+    public var vertexBuffer: MTLBuffer {
+        guard let buffer = vertexBuffers[0] else {
+            fatalError("MetalMesh has no vertex buffer at index 0")
+        }
+        return buffer
+    }
+
     /// Create a MetalMesh from a Mesh.
     ///
     /// Each half-edge corner becomes a unique vertex in the output buffer(s).
