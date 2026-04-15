@@ -76,7 +76,20 @@ public extension Mesh {
             newFaces.append(cleaned)
         }
 
-        return Mesh(positions: positions, faces: newFaces)
+        // Compact: only keep positions that are referenced by at least one face
+        var usedVertices = Set<Int>()
+        for face in newFaces {
+            for idx in face { usedVertices.insert(idx) }
+        }
+        var remap = [Int](repeating: -1, count: positions.count)
+        var compactPositions: [SIMD3<Float>] = []
+        for idx in 0..<positions.count where usedVertices.contains(idx) {
+            remap[idx] = compactPositions.count
+            compactPositions.append(positions[idx])
+        }
+        let remappedFaces = newFaces.map { $0.map { remap[$0] } }
+
+        return Mesh(positions: compactPositions, faces: remappedFaces)
     }
 }
 
