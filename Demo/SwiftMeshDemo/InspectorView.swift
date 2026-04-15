@@ -145,6 +145,11 @@ struct InspectorMeshView: View {
             // Bottom overlay toolbar
             if selection != nil {
                 HStack(spacing: 12) {
+                    if case .vertex(let idx) = selection {
+                        Button("Select Connected Edges") {
+                            selectConnectedEdges(vertex: idx)
+                        }
+                    }
                     if case .edges(let edges) = selection, edges.count == 1 {
                         Button("Select Face Edges") {
                             selectFaceEdges()
@@ -209,6 +214,24 @@ struct InspectorMeshView: View {
         }
 
         selection = nil
+    }
+
+    private func selectConnectedEdges(vertex idx: Int) {
+        var result = Set<MeshEdge>()
+        let vid = HalfEdgeTopology.VertexID(raw: idx)
+        for he in mesh.topology.halfEdges where he.origin == vid {
+            if let next = he.next {
+                let dest = mesh.topology.halfEdges[next.raw].origin
+                result.insert(MeshEdge(idx, dest.raw))
+            }
+        }
+        // Also check edges arriving at this vertex
+        for he in mesh.topology.halfEdges {
+            if let next = he.next, mesh.topology.halfEdges[next.raw].origin == vid {
+                result.insert(MeshEdge(he.origin.raw, idx))
+            }
+        }
+        selection = .edges(result)
     }
 
     private func selectFaceEdges() {
