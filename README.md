@@ -15,6 +15,12 @@ Three layers:
 **`MetalMesh`**
 : GPU-ready export from `Mesh`. Triangulates faces, splits vertices per-corner, interleaves attributes into Metal buffers. Submeshes grouped by material tag.
 
+## Performance Notes
+
+**Mesh → MetalMesh** conversion is O(total triangles) with constant work per corner (attribute lookup, byte interleaving, buffer copy). For small meshes (Platonic solids, simple shapes) it's negligible. For large meshes (100K+ triangles), the per-corner dictionary lookups and byte-level interleaving will be the bottleneck — not yet optimized.
+
+**Triangulation** adds overhead for n-gon faces: each non-triangle face requires a 3D→2D projection and earcut pass. Triangle faces pass through with no extra work.
+
 ## Consumers
 
 - **Interaction3D** — 3D mesh rendering in SwiftUI Canvas (replaces inlined PolygonMesh)
