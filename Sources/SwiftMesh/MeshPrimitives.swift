@@ -715,7 +715,7 @@ public extension Mesh {
     /// The dome faces upward (+Y). Extents control the bounding box of the full
     /// hemisphere including the flat base.
     static func hemisphere(extents: SIMD3<Float> = [1, 1, 1], segments: Int = 32, latitudeSegments: Int = 8, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
-        let radii = SIMD3<Float>(extents.x / 2, extents.y, extents.z / 2)
+        let radii = extents / 2
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 

@@ -72,7 +72,7 @@ struct ContentView: View {
         } detail: {
             switch selection {
             case .all:
-                GalleryGridView()
+                GalleryGridView(selection: $selection)
 
             case .item(let item):
                 MeshDetailView(item: item, useMetalRenderer: useMetalRenderer, animateRotation: animateRotation, renderMode: renderMode)
@@ -163,24 +163,31 @@ enum MeshImportError: Error, LocalizedError {
 // MARK: - Gallery Grid
 
 struct GalleryGridView: View {
+    @Binding var selection: SidebarSelection?
+
     var body: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 200))], spacing: 20) {
                 ForEach(MeshGallerySection.all) { section in
                     Section {
                         ForEach(section.items) { item in
-                            VStack {
-                                MeshPreviewView(mesh: item.mesh)
-                                    .frame(height: 200)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                Text(item.name)
-                                    .font(.headline)
-                                if let subtitle = item.subtitle {
-                                    Text(subtitle)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                            Button {
+                                selection = .item(item)
+                            } label: {
+                                VStack {
+                                    MeshPreviewView(mesh: item.mesh)
+                                        .frame(height: 200)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    Text(item.name)
+                                        .font(.headline)
+                                    if let subtitle = item.subtitle {
+                                        Text(subtitle)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
+                            .buttonStyle(.plain)
                         }
                     } header: {
                         Text(section.name)
@@ -483,7 +490,7 @@ struct MeshGallerySection: Identifiable {
                     let inside = min(max(q.x, max(q.y, q.z)), Float(0))
                     return outside + inside - 0.05
                 }),
-                MeshGalleryItem("MC Gyroid", subtitle: "Triply periodic surface", mesh: .marchingCubes(resolution: 48, bounds: bounds) { p in
+                MeshGalleryItem("MC Gyroid", subtitle: "Triply periodic surface", mesh: .marchingCubes(resolution: 24, bounds: bounds) { p in
                     let s = p * (2 * .pi * 3)
                     let g = sin(s.x) * cos(s.y) + sin(s.y) * cos(s.z) + sin(s.z) * cos(s.x)
                     return abs(g) - 0.3

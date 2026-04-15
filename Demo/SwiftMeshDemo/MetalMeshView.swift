@@ -85,6 +85,12 @@ struct MetalMeshView: View {
     @State private var lighting: Lighting?
     @State private var meshYOffset: Float = 0
 
+    private static let lightPositions: [SIMD3<Float>] = [
+        [3, 5, 3],   // Key light — warm, upper right
+        [-4, 2, 1],  // Fill light — cool, left side
+        [0, 3, -4]   // Rim light — behind and above
+    ]
+
     private var cameraMatrix: simd_float4x4 {
         let rotation = float4x4(cameraRotation)
         let translation = float4x4(translation: cameraTarget)
@@ -112,6 +118,29 @@ struct MetalMeshView: View {
                         .init(axis: .x, position: 0, width: 0.02, color: [1, 0.3, 0.3, 1]),
                         .init(axis: .y, position: 0, width: 0.02, color: [0.3, 0.5, 1, 1])
                     ]
+                )
+
+                // Light position crosshairs
+                let lightMarker = GraphicsContext3D { ctx in
+                    let s: Float = 0.2
+                    for p in Self.lightPositions {
+                        for axis in [SIMD3<Float>(1, 0, 0), SIMD3<Float>(0, 1, 0), SIMD3<Float>(0, 0, 1)] {
+                            ctx.stroke(
+                                Path3D { path in
+                                    path.move(to: p - axis * s)
+                                    path.addLine(to: p + axis * s)
+                                },
+                                with: .yellow,
+                                lineWidth: 2
+                            )
+                        }
+                    }
+                }
+                let viewport = SIMD2<Float>(Float(drawableSize.width), Float(drawableSize.height))
+                GraphicsContext3DRenderPipeline(
+                    context: lightMarker,
+                    viewProjection: viewProjectionMatrix,
+                    viewport: viewport
                 )
 
                 if let metalMesh {
@@ -220,12 +249,9 @@ struct MetalMeshView: View {
         lighting = try? Lighting(
             ambientLightColor: [0.15, 0.15, 0.18],
             lights: [
-                // Key light — warm, upper right
-                ([3, 5, 3], Light(type: .spot, color: [1.0, 0.95, 0.85], intensity: 35)),
-                // Fill light — cool, left side
-                ([-4, 2, 1], Light(type: .spot, color: [0.6, 0.7, 0.9], intensity: 15)),
-                // Rim light — behind and above
-                ([0, 3, -4], Light(type: .spot, color: [0.9, 0.9, 1.0], intensity: 20))
+                (Self.lightPositions[0], Light(type: .spot, color: [1.0, 0.95, 0.85], intensity: 35)),
+                (Self.lightPositions[1], Light(type: .spot, color: [0.6, 0.7, 0.9], intensity: 15)),
+                (Self.lightPositions[2], Light(type: .spot, color: [0.9, 0.9, 1.0], intensity: 20))
             ]
         )
     }
