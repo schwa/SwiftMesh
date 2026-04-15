@@ -5,78 +5,145 @@ public extension Mesh {
     ///
     /// Faces whose normals are within `angleTolerance` radians and whose
     /// planes are within `distanceTolerance` are considered coplanar.
-    /// Shared edges between coplanar faces are removed, merging them
-    /// into single polygons.
+    /// Adjacent coplanar faces are grouped and replaced with a single polygon
+    /// formed from their outer boundary.
     ///
     /// This is useful as a post-processing step after CSG operations,
     /// which tend to over-triangulate flat surfaces.
     func mergingCoplanarFaces(angleTolerance: Float = 1e-4, distanceTolerance: Float = 1e-4) -> Mesh {
-        var topo = topology
         let positions = self.positions
 
         // Build face planes
         struct FacePlane {
             var normal: SIMD3<Float>
-            var distance: Float // dot(normal, pointOnFace)
+            var distance: Float
         }
 
-        var facePlanes: [HalfEdgeTopology.FaceID: FacePlane] = [:]
-        for face in topo.faces {
+        var facePlanes: [Int: FacePlane] = [:]
+        for face in topology.faces {
             let n = faceNormal(face.id)
-            let verts = topo.vertexLoop(for: face.id)
+            let verts = topology.vertexLoop(for: face.id)
             guard !verts.isEmpty else { continue }
             let d = simd_dot(n, positions[verts[0].raw])
-            facePlanes[face.id] = FacePlane(normal: n, distance: d)
+            facePlanes[face.id.raw] = FacePlane(normal: n, distance: d)
         }
 
-        func areCoplanar(_ a: HalfEdgeTopology.FaceID, _ b: HalfEdgeTopology.FaceID) -> Bool {
+        func areCoplanar(_ a: Int, _ b: Int) -> Bool {
             guard let pa = facePlanes[a], let pb = facePlanes[b] else { return false }
             let dot = simd_dot(pa.normal, pb.normal)
             guard dot >= cos(angleTolerance) else { return false }
             return abs(pa.distance - pb.distance) < distanceTolerance
         }
 
-        // Find interior edges between coplanar faces and delete them.
-        // Collect candidates first, then delete (modifying topology during iteration is unsafe).
-        var edgesToDelete: [HalfEdgeTopology.HalfEdgeID] = []
+        // Build adjacency and find coplanar groups using union-find
+        let faceCount = topology.faces.count
+        var parent = Array(0..<faceCount)
 
-        for he in topo.halfEdges {
-            // Only process each undirected edge once (use the one with the lower ID)
+        func find(_ x: Int) -> Int {
+            var x = x
+            while parent[x] != x {
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            }
+            return x
+        }
+
+        func union(_ a: Int, _ b: Int) {
+            let ra = find(a), rb = find(b)
+            if ra != rb { parent[ra] = rb }
+        }
+
+        // For each interior edge, if the two faces are coplanar, union them
+        for he in topology.halfEdges {
             guard let twinID = he.twin, he.id.raw < twinID.raw else { continue }
-            guard let faceA = he.face, let faceB = topo.halfEdges[twinID.raw].face else { continue }
+            guard let faceA = he.face, let faceB = topology.halfEdges[twinID.raw].face else { continue }
             guard faceA != faceB else { continue }
-            // Check both faces are still valid (have edges)
-            guard topo.faces[faceA.raw].edge != nil, topo.faces[faceB.raw].edge != nil else { continue }
-
-            if areCoplanar(faceA, faceB) {
-                edgesToDelete.append(he.id)
+            if areCoplanar(faceA.raw, faceB.raw) {
+                union(faceA.raw, faceB.raw)
             }
         }
 
-        // Delete edges one at a time. After each deletion the merged face inherits
-        // the ID of one of the two original faces, so subsequent deletions that
-        // reference the other face ID may now find it on the merged face.
-        for heID in edgesToDelete {
-            // Verify the edge is still valid (hasn't been removed by a prior deletion)
-            let he = topo.halfEdges[heID.raw]
-            guard he.next != nil, he.face != nil else { continue }
-            topo.deleteEdge(heID)
+        // Group faces by their root
+        var groups: [Int: [Int]] = [:]
+        for i in 0..<faceCount {
+            groups[find(i), default: []].append(i)
         }
 
-        // Rebuild mesh from modified topology, keeping only faces that still have edges.
-        // Remove collinear vertices from face boundaries — these are leftover from
-        // deleted interior edges and produce degenerate/crossed edges.
-        let liveFaces = topo.faces.filter { $0.edge != nil }
+        // For each group, either pass through unchanged (single face)
+        // or find the outer boundary of the merged region
         var newFaces: [[Int]] = []
-        for face in liveFaces {
-            let verts = topo.vertexLoop(for: face.id)
-            guard verts.count >= 3 else { continue }
-            let cleaned = removeCollinearVertices(verts.map(\.raw), positions: positions)
+
+        for (_, group) in groups {
+            if group.count == 1 {
+                // Single face — keep as-is
+                let verts = topology.vertexLoop(for: HalfEdgeTopology.FaceID(raw: group[0]))
+                guard verts.count >= 3 else { continue }
+                newFaces.append(verts.map(\.raw))
+                continue
+            }
+
+            // Find boundary edges of this group: edges where one face is in the group
+            // and the other is not (or is a boundary edge with no twin)
+            let groupSet = Set(group)
+            var boundaryEdges: [(Int, Int)] = [] // directed edges (origin, dest)
+
+            for faceIdx in group {
+                let faceID = HalfEdgeTopology.FaceID(raw: faceIdx)
+                let heLoop = topology.halfEdgeLoop(for: faceID)
+                for heID in heLoop {
+                    let he = topology.halfEdges[heID.raw]
+                    let origin = he.origin.raw
+                    let dest: Int
+                    if let next = he.next {
+                        dest = topology.halfEdges[next.raw].origin.raw
+                    } else {
+                        continue
+                    }
+
+                    let isBoundary: Bool
+                    if let twinID = he.twin {
+                        let twinFace = topology.halfEdges[twinID.raw].face
+                        isBoundary = twinFace == nil || !groupSet.contains(twinFace!.raw)
+                    } else {
+                        isBoundary = true
+                    }
+
+                    if isBoundary {
+                        boundaryEdges.append((origin, dest))
+                    }
+                }
+            }
+
+            // Chain boundary edges into an ordered loop
+            guard !boundaryEdges.isEmpty else { continue }
+
+            // Build adjacency: from vertex → next vertex
+            var nextVertex: [Int: Int] = [:]
+            for (a, b) in boundaryEdges {
+                nextVertex[a] = b
+            }
+
+            // Walk the loop
+            let start = boundaryEdges[0].0
+            var loop: [Int] = []
+            var current = start
+            var safety = nextVertex.count + 1
+            repeat {
+                loop.append(current)
+                guard let next = nextVertex[current] else { break }
+                current = next
+                safety -= 1
+            } while current != start && safety > 0
+
+            guard loop.count >= 3 else { continue }
+
+            // Remove collinear vertices
+            let cleaned = removeCollinearVertices(loop, positions: positions)
             guard cleaned.count >= 3 else { continue }
             newFaces.append(cleaned)
         }
 
-        // Compact: only keep positions that are referenced by at least one face
+        // Compact positions
         var usedVertices = Set<Int>()
         for face in newFaces {
             for idx in face { usedVertices.insert(idx) }
@@ -106,12 +173,10 @@ private func removeCollinearVertices(_ indices: [Int], positions: [SIMD3<Float>]
         let edge1 = curr - prev
         let edge2 = next - curr
         let cross = simd_cross(edge1, edge2)
-        // If cross product magnitude is near zero relative to edge lengths,
-        // the vertex is collinear and can be removed.
         let crossLen = simd_length(cross)
         let edgeLen = simd_length(edge1) * simd_length(edge2)
         if edgeLen > 0 && crossLen / edgeLen < tolerance {
-            continue // skip collinear vertex
+            continue
         }
         result.append(indices[i])
     }
