@@ -147,29 +147,29 @@ public extension Mesh {
     }
 
     /// Validates topology and attribute array sizes.
-    func validate() -> String? {
-        if let error = topology.validate() {
-            return error
-        }
+    ///
+    /// Returns an empty array if valid, or one ``ValidationIssue`` per problem found.
+    func validate() -> [ValidationIssue] {
+        var issues = topology.validate()
         if positions.count != topology.vertices.count {
-            return "positions.count (\(positions.count)) != vertex count (\(topology.vertices.count))"
+            issues.append(.init(severity: .error, location: .mesh, message: "positions.count (\(positions.count)) != vertex count (\(topology.vertices.count))"))
         }
         if let normals, normals.count != topology.halfEdges.count {
-            return "normals.count (\(normals.count)) != halfEdge count (\(topology.halfEdges.count))"
+            issues.append(.init(severity: .error, location: .mesh, message: "normals.count (\(normals.count)) != halfEdge count (\(topology.halfEdges.count))"))
         }
         if let textureCoordinates, textureCoordinates.count != topology.halfEdges.count {
-            return "textureCoordinates.count (\(textureCoordinates.count)) != halfEdge count (\(topology.halfEdges.count))"
+            issues.append(.init(severity: .error, location: .mesh, message: "textureCoordinates.count (\(textureCoordinates.count)) != halfEdge count (\(topology.halfEdges.count))"))
         }
         if let tangents, tangents.count != topology.halfEdges.count {
-            return "tangents.count (\(tangents.count)) != halfEdge count (\(topology.halfEdges.count))"
+            issues.append(.init(severity: .error, location: .mesh, message: "tangents.count (\(tangents.count)) != halfEdge count (\(topology.halfEdges.count))"))
         }
         if let bitangents, bitangents.count != topology.halfEdges.count {
-            return "bitangents.count (\(bitangents.count)) != halfEdge count (\(topology.halfEdges.count))"
+            issues.append(.init(severity: .error, location: .mesh, message: "bitangents.count (\(bitangents.count)) != halfEdge count (\(topology.halfEdges.count))"))
         }
         if let colors, colors.count != topology.halfEdges.count {
-            return "colors.count (\(colors.count)) != halfEdge count (\(topology.halfEdges.count))"
+            issues.append(.init(severity: .error, location: .mesh, message: "colors.count (\(colors.count)) != halfEdge count (\(topology.halfEdges.count))"))
         }
-        return nil
+        return issues
     }
 
     /// The axis-aligned bounding box of the mesh as (min, max).

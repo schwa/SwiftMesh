@@ -15,7 +15,7 @@ struct MeshOptimizationTests {
 
         let merged = mesh.mergingCoplanarFaces()
         #expect(merged.faceCount == 1)
-        #expect(merged.validate() == nil)
+        #expect(merged.validate().isEmpty)
     }
 
     @Test("Four coplanar triangles in a fan merge into one polygon")
@@ -37,7 +37,7 @@ struct MeshOptimizationTests {
 
         let merged = mesh.mergingCoplanarFaces()
         #expect(merged.faceCount < 4)
-        #expect(merged.validate() == nil)
+        #expect(merged.validate().isEmpty)
     }
 
     @Test("Triangulated box face merges back to one face")
@@ -102,7 +102,7 @@ struct MeshOptimizationTests {
         let merged = mesh.mergingCoplanarFaces()
         // Two coplanar merge into one, tilted stays → 2 faces
         #expect(merged.faceCount == 2)
-        #expect(merged.validate() == nil)
+        #expect(merged.validate().isEmpty)
     }
 
     // MARK: - Collinear vertex removal
@@ -119,7 +119,7 @@ struct MeshOptimizationTests {
 
         let merged = mesh.mergingCoplanarFaces()
         #expect(merged.faceCount < 3)
-        #expect(merged.validate() == nil)
+        #expect(merged.validate().isEmpty)
 
         // Check no face has collinear vertices
         for face in merged.topology.faces {
@@ -146,7 +146,7 @@ struct MeshOptimizationTests {
         let unmerged = a.difference(b, mergeCoplanar: false)
         let merged = a.difference(b, mergeCoplanar: true)
         #expect(merged.faceCount < unmerged.faceCount)
-        #expect(merged.validate() == nil)
+        #expect(merged.validate().isEmpty)
     }
 
     @Test("CSG union benefits from merging")

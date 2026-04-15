@@ -40,7 +40,7 @@ struct HalfEdgeTopologyConstructionTests {
 
     @Test("Triangle validates")
     func triangleValidates() {
-        #expect(makeTriangleTopology().validate() == nil)
+        #expect(makeTriangleTopology().validate().isEmpty)
     }
 
     @Test("Quad: correct counts")
@@ -53,7 +53,7 @@ struct HalfEdgeTopologyConstructionTests {
 
     @Test("Quad validates")
     func quadValidates() {
-        #expect(makeQuadTopology().validate() == nil)
+        #expect(makeQuadTopology().validate().isEmpty)
     }
 
     @Test("Two adjacent triangles: correct counts")
@@ -66,7 +66,7 @@ struct HalfEdgeTopologyConstructionTests {
 
     @Test("Two adjacent triangles validates")
     func twoTrianglesValidates() {
-        #expect(makeTwoTrianglesTopology().validate() == nil)
+        #expect(makeTwoTrianglesTopology().validate().isEmpty)
     }
 
     @Test("Face with hole: correct counts")
@@ -75,7 +75,7 @@ struct HalfEdgeTopologyConstructionTests {
         #expect(topo.vertices.count == 8)
         #expect(topo.faces.count == 1)
         #expect(topo.faces[0].holeEdges.count == 1)
-        #expect(topo.validate() == nil)
+        #expect(topo.validate().isEmpty)
     }
 
     @Test("Twin linking between adjacent faces")
@@ -223,7 +223,7 @@ struct HalfEdgeTopologyEdgeDeletionTests {
     @Test("Delete non-shared edge")
     func deleteNonSharedEdge() {
         var topo = makeTriangleTopology()
-        #expect(topo.validate() == nil)
+        #expect(topo.validate().isEmpty)
         // All edges in a single triangle have no twin
         let heID = topo.halfEdges[0].id
         topo.deleteEdge(heID)
@@ -657,7 +657,7 @@ struct HalfEdgeTopologyEulerTests {
             .init(outer: [0, 2, 3]),
             .init(outer: [1, 3, 2])
         ])
-        #expect(topo.validate() == nil)
+        #expect(topo.validate().isEmpty)
         #expect(topo.vertices.count == 4)
         #expect(topo.undirectedEdges().count == 6)
         #expect(topo.faces.count == 4)
@@ -674,7 +674,7 @@ struct HalfEdgeTopologyEulerTests {
             .init(outer: [1, 2, 6, 5]),
             .init(outer: [0, 4, 7, 3])
         ])
-        #expect(topo.validate() == nil)
+        #expect(topo.validate().isEmpty)
         #expect(topo.vertices.count == 8)
         #expect(topo.undirectedEdges().count == 12)
         #expect(topo.faces.count == 6)

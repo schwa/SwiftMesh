@@ -28,7 +28,7 @@ struct PLYTests {
         let mesh = try PLY.read(from: ply)
         #expect(mesh.vertexCount == 3)
         #expect(mesh.faceCount == 1)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
         #expect(mesh.positions[0] == SIMD3(0, 0, 0))
         #expect(mesh.positions[1] == SIMD3(1, 0, 0))
     }
@@ -188,7 +188,7 @@ struct PLYTests {
         let restored = try PLY.read(from: data)
         #expect(restored.vertexCount == Mesh.cube(attributes: []).vertexCount)
         #expect(restored.faceCount == Mesh.cube(attributes: []).faceCount)
-        #expect(restored.validate() == nil)
+        #expect(restored.validate().isEmpty)
     }
 
     @Test("Round-trip with normals")

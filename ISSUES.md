@@ -811,12 +811,16 @@ Add a comprehensive set of diagnostic properties and methods for detecting mesh 
 ---
 
 ## 68: Change validate() to return [ValidationIssue] instead of String?
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T14:12:38Z
+updated: 2026-04-15T14:17:18Z
+closed: 2026-04-15T14:17:18Z
 
 Currently `validate()` returns `String?` with the first error found. Change to return `[ValidationIssue]` so all issues are reported at once. ValidationIssue should be a structured type with severity, location (edge/face/vertex ID), and description.
+
+- `2026-04-15T14:17:18Z`: Implemented. validate() now returns [ValidationIssue] with severity, location, and message for every issue found.
 
 ---
 

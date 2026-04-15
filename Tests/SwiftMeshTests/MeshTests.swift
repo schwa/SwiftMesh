@@ -13,7 +13,7 @@ struct MeshTests {
         ], faces: [[0, 1, 2, 3]])
         #expect(mesh.vertexCount == 4)
         #expect(mesh.faceCount == 1)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
     }
 
     @Test("Init from topology + positions")
@@ -24,7 +24,7 @@ struct MeshTests {
         ])
         #expect(mesh.vertexCount == 3)
         #expect(mesh.faceCount == 1)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
     }
 
     // MARK: - Accessors
@@ -129,9 +129,9 @@ struct MeshTests {
     func validatePositionsMismatch() {
         let topo = HalfEdgeTopology(vertexCount: 3, faces: [.init(outer: [0, 1, 2])])
         let mesh = Mesh(topology: topo, positions: [SIMD3(0, 0, 0), SIMD3(1, 0, 0)])
-        let error = mesh.validate()
-        #expect(error != nil)
-        #expect(error!.contains("positions.count"))
+        let issues = mesh.validate()
+        #expect(!issues.isEmpty)
+        #expect(issues.contains { $0.message.contains("positions.count") })
     }
 
     @Test("Validate catches mismatched normals count")
@@ -142,9 +142,9 @@ struct MeshTests {
             positions: [SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0)],
             normals: [SIMD3(0, 0, 1)] // wrong count
         )
-        let error = mesh.validate()
-        #expect(error != nil)
-        #expect(error!.contains("normals.count"))
+        let issues = mesh.validate()
+        #expect(!issues.isEmpty)
+        #expect(issues.contains { $0.message.contains("normals.count") })
     }
 
     // MARK: - Platonic Solids
@@ -155,7 +155,7 @@ struct MeshTests {
         #expect(mesh.vertexCount == 4)
         #expect(mesh.faceCount == 4)
         #expect(mesh.edgeCount == 6)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
         #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
     }
 
@@ -165,7 +165,7 @@ struct MeshTests {
         #expect(mesh.vertexCount == 8)
         #expect(mesh.faceCount == 6)
         #expect(mesh.edgeCount == 12)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
         #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
     }
 
@@ -175,7 +175,7 @@ struct MeshTests {
         #expect(mesh.vertexCount == 6)
         #expect(mesh.faceCount == 8)
         #expect(mesh.edgeCount == 12)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
         #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
     }
 
@@ -185,7 +185,7 @@ struct MeshTests {
         #expect(mesh.vertexCount == 12)
         #expect(mesh.faceCount == 20)
         #expect(mesh.edgeCount == 30)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
         #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
     }
 
@@ -195,7 +195,7 @@ struct MeshTests {
         #expect(mesh.vertexCount == 20)
         #expect(mesh.faceCount == 12)
         #expect(mesh.edgeCount == 30)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
         #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
     }
 
@@ -325,7 +325,7 @@ struct MeshTests {
             #expect(m.vertexCount == mesh.vertexCount)
             #expect(m.faceCount == mesh.faceCount)
             #expect(m.edgeCount == mesh.edgeCount)
-            #expect(m.validate() == nil)
+            #expect(m.validate().isEmpty)
         }
     }
 
@@ -360,6 +360,6 @@ struct MeshTests {
     func weldValidates() {
         let cs = Mesh.cubeSphere(attributes: [])
         let welded = cs.welded(tolerance: 1e-4)
-        #expect(welded.topology.validate() == nil)
+        #expect(welded.topology.validate().isEmpty)
     }
 }

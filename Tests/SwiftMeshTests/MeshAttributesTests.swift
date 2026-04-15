@@ -18,7 +18,7 @@ struct MeshAttributesTests {
         for normal in mesh.normals! {
             #expect(abs(normal.z) > 0.9)
         }
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
     }
 
     @Test("withFlatNormals on cube gives 6 distinct normals")
@@ -135,7 +135,7 @@ struct MeshAttributesTests {
         #expect(mesh.bitangents != nil)
         #expect(mesh.tangents!.count == mesh.topology.halfEdges.count)
         #expect(mesh.bitangents!.count == mesh.topology.halfEdges.count)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
     }
 
     @Test("Tangents are roughly unit length")
@@ -166,6 +166,6 @@ struct MeshAttributesTests {
         #expect(mesh.textureCoordinates != nil)
         #expect(mesh.tangents != nil)
         #expect(mesh.bitangents != nil)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
     }
 }

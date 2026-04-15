@@ -156,10 +156,53 @@ extension HalfEdgeTopology.FaceID: CustomStringConvertible {
 
 // MARK: - Validation
 
+/// A problem found during topology or mesh validation.
+public struct ValidationIssue: Sendable, Equatable, CustomStringConvertible {
+    /// How severe the issue is.
+    public enum Severity: Sendable, Equatable, Comparable {
+        /// Informational — not necessarily wrong but worth noting.
+        case warning
+        /// Structural problem that will cause incorrect behavior.
+        case error
+    }
+
+    /// Where in the topology the issue was found.
+    public enum Location: Sendable, Equatable {
+        case vertex(HalfEdgeTopology.VertexID)
+        case edge(HalfEdgeTopology.HalfEdgeID)
+        case face(HalfEdgeTopology.FaceID)
+        case mesh
+    }
+
+    public var severity: Severity
+    public var location: Location
+    public var message: String
+
+    public init(severity: Severity, location: Location, message: String) {
+        self.severity = severity
+        self.location = location
+        self.message = message
+    }
+
+    public var description: String {
+        let loc: String
+        switch location {
+        case .vertex(let id): loc = "vertex \(id)"
+        case .edge(let id): loc = "edge \(id)"
+        case .face(let id): loc = "face \(id)"
+        case .mesh: loc = "mesh"
+        }
+        return "[\(severity)] \(loc): \(message)"
+    }
+}
+
 extension HalfEdgeTopology {
     /// Validates the consistency of the half-edge topology.
-    /// Returns nil if valid, or an error message describing the first issue found.
-    public func validate() -> String? {
+    ///
+    /// Returns an empty array if valid, or one ``ValidationIssue`` per problem found.
+    public func validate() -> [ValidationIssue] {
+        var issues: [ValidationIssue] = []
+
         // Check 1: All vertices should be referenced by at least one half-edge
         var verticesInEdges = Set<VertexID>()
         for edge in halfEdges {
@@ -168,24 +211,21 @@ extension HalfEdgeTopology {
 
         for vertex in vertices {
             if !verticesInEdges.contains(vertex.id) {
-                return "Vertex \(vertex.id) is not referenced by any half-edge"
+                issues.append(.init(severity: .error, location: .vertex(vertex.id), message: "Not referenced by any half-edge"))
             }
             if let edgeID = vertex.edge {
                 if edgeID.raw >= halfEdges.count {
-                    return "Vertex \(vertex.id) has invalid edge reference \(edgeID)"
-                }
-                if halfEdges[edgeID.raw].origin != vertex.id {
-                    return "Vertex \(vertex.id) references edge \(edgeID) which doesn't originate from it"
+                    issues.append(.init(severity: .error, location: .vertex(vertex.id), message: "Invalid edge reference \(edgeID)"))
+                } else if halfEdges[edgeID.raw].origin != vertex.id {
+                    issues.append(.init(severity: .error, location: .vertex(vertex.id), message: "References edge \(edgeID) which doesn't originate from it"))
                 }
             }
         }
 
         // Check 2: Each half-edge should be in at least one face (unless boundary)
         for edge in halfEdges {
-            if edge.face == nil {
-                if edge.twin == nil {
-                    return "Edge \(edge.id) has no face and no twin"
-                }
+            if edge.face == nil && edge.twin == nil {
+                issues.append(.init(severity: .error, location: .edge(edge.id), message: "Has no face and no twin"))
             }
         }
 
@@ -193,17 +233,18 @@ extension HalfEdgeTopology {
         for edge in halfEdges {
             if let twinID = edge.twin {
                 if twinID.raw >= halfEdges.count {
-                    return "Edge \(edge.id) has invalid twin reference \(twinID)"
+                    issues.append(.init(severity: .error, location: .edge(edge.id), message: "Invalid twin reference \(twinID)"))
+                    continue
                 }
                 let twin = halfEdges[twinID.raw]
                 if twin.twin != edge.id {
-                    return "Edge \(edge.id) has twin \(twinID), but that edge's twin is \(twin.twin?.description ?? "nil")"
+                    issues.append(.init(severity: .error, location: .edge(edge.id), message: "Twin \(twinID) points back to \(twin.twin?.description ?? "nil") instead of \(edge.id)"))
                 }
                 if let twinDest = dest(of: edge.id), twin.origin != twinDest {
-                    return "Edge \(edge.id) and its twin \(twinID) don't have opposite vertices"
+                    issues.append(.init(severity: .error, location: .edge(edge.id), message: "Twin \(twinID) doesn't have opposite vertices"))
                 }
                 if let edgeDest = dest(of: twinID), edge.origin != edgeDest {
-                    return "Edge \(edge.id) and its twin \(twinID) don't have opposite vertices"
+                    issues.append(.init(severity: .error, location: .edge(edge.id), message: "Twin \(twinID) doesn't have opposite vertices (reverse)"))
                 }
             }
         }
@@ -212,20 +253,16 @@ extension HalfEdgeTopology {
         for edge in halfEdges {
             if let nextID = edge.next {
                 if nextID.raw >= halfEdges.count {
-                    return "Edge \(edge.id) has invalid next reference \(nextID)"
-                }
-                let next = halfEdges[nextID.raw]
-                if next.prev != edge.id {
-                    return "Edge \(edge.id) has next \(nextID), but that edge's prev is \(next.prev?.description ?? "nil")"
+                    issues.append(.init(severity: .error, location: .edge(edge.id), message: "Invalid next reference \(nextID)"))
+                } else if halfEdges[nextID.raw].prev != edge.id {
+                    issues.append(.init(severity: .error, location: .edge(edge.id), message: "next \(nextID) has prev \(halfEdges[nextID.raw].prev?.description ?? "nil") instead of \(edge.id)"))
                 }
             }
             if let prevID = edge.prev {
                 if prevID.raw >= halfEdges.count {
-                    return "Edge \(edge.id) has invalid prev reference \(prevID)"
-                }
-                let prev = halfEdges[prevID.raw]
-                if prev.next != edge.id {
-                    return "Edge \(edge.id) has prev \(prevID), but that edge's next is \(prev.next?.description ?? "nil")"
+                    issues.append(.init(severity: .error, location: .edge(edge.id), message: "Invalid prev reference \(prevID)"))
+                } else if halfEdges[prevID.raw].next != edge.id {
+                    issues.append(.init(severity: .error, location: .edge(edge.id), message: "prev \(prevID) has next \(halfEdges[prevID.raw].next?.description ?? "nil") instead of \(edge.id)"))
                 }
             }
         }
@@ -233,39 +270,46 @@ extension HalfEdgeTopology {
         // Check 5: Face boundaries form closed loops
         for face in faces {
             guard let startEdge = face.edge else {
-                return "Face \(face.id) has no boundary edge"
+                issues.append(.init(severity: .error, location: .face(face.id), message: "Has no boundary edge"))
+                continue
             }
             if startEdge.raw >= halfEdges.count {
-                return "Face \(face.id) has invalid edge reference \(startEdge)"
+                issues.append(.init(severity: .error, location: .face(face.id), message: "Invalid edge reference \(startEdge)"))
+                continue
             }
             var visited = Set<HalfEdgeID>()
             var currentEdge = startEdge
             var loopCount = 0
             let maxLoopCount = halfEdges.count + 1
+            var loopBroken = false
 
             while loopCount < maxLoopCount {
                 if visited.contains(currentEdge) {
                     if currentEdge != startEdge {
-                        return "Face \(face.id) boundary doesn't form a proper closed loop (revisited \(currentEdge) before returning to start)"
+                        issues.append(.init(severity: .error, location: .face(face.id), message: "Boundary doesn't form a proper closed loop (revisited \(currentEdge) before returning to start)"))
+                        loopBroken = true
                     }
                     break
                 }
                 visited.insert(currentEdge)
                 let edge = halfEdges[currentEdge.raw]
                 if edge.face != face.id {
-                    return "Face \(face.id) references edge \(currentEdge) which belongs to face \(edge.face?.description ?? "nil")"
+                    issues.append(.init(severity: .error, location: .face(face.id), message: "Edge \(currentEdge) belongs to face \(edge.face?.description ?? "nil")"))
+                    loopBroken = true
+                    break
                 }
                 guard let nextEdge = edge.next else {
-                    return "Face \(face.id) has edge \(currentEdge) with no next pointer (open boundary)"
+                    issues.append(.init(severity: .error, location: .face(face.id), message: "Edge \(currentEdge) has no next pointer (open boundary)"))
+                    loopBroken = true
+                    break
                 }
                 currentEdge = nextEdge
                 loopCount += 1
             }
             if loopCount >= maxLoopCount {
-                return "Face \(face.id) boundary appears to be infinite or malformed"
-            }
-            if visited.count < 3 {
-                return "Face \(face.id) has degenerate boundary with only \(visited.count) edges"
+                issues.append(.init(severity: .error, location: .face(face.id), message: "Boundary appears to be infinite or malformed"))
+            } else if !loopBroken && visited.count < 3 {
+                issues.append(.init(severity: .error, location: .face(face.id), message: "Degenerate boundary with only \(visited.count) edges"))
             }
         }
 
@@ -273,12 +317,12 @@ extension HalfEdgeTopology {
         for edge in halfEdges {
             if let faceID = edge.face {
                 if faceID.raw >= faces.count {
-                    return "Edge \(edge.id) references non-existent face \(faceID)"
+                    issues.append(.init(severity: .error, location: .edge(edge.id), message: "References non-existent face \(faceID)"))
                 }
             }
         }
 
-        return nil
+        return issues
     }
 
     /// Whether this topology is a closed 2-manifold.

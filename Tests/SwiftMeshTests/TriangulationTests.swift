@@ -95,7 +95,7 @@ struct TriangulationTests {
         let result = mesh.triangulated()
         #expect(result.faceCount == mesh.faceCount)
         #expect(result.vertexCount == mesh.vertexCount)
-        #expect(result.validate() == nil)
+        #expect(result.validate().isEmpty)
     }
 
     @Test("triangulated() cube: 6 quads → 12 triangles")
@@ -104,7 +104,7 @@ struct TriangulationTests {
         let result = mesh.triangulated()
         #expect(result.faceCount == 12)
         #expect(result.vertexCount == mesh.vertexCount)
-        #expect(result.validate() == nil)
+        #expect(result.validate().isEmpty)
         // Every face should be a triangle
         for face in result.topology.faces {
             let loop = result.topology.vertexLoop(for: face.id)
@@ -138,7 +138,7 @@ struct TriangulationTests {
     func triangulatedValidates() {
         let mesh = Mesh.dodecahedron(attributes: [])
         let result = mesh.triangulated()
-        #expect(result.validate() == nil)
+        #expect(result.validate().isEmpty)
     }
 
     @Test("triangulated() mixed faces (triangle + quad)")

@@ -172,7 +172,7 @@ struct MetalMeshTests {
         #expect(restored.normals != nil)
         #expect(restored.vertexCount == original.vertexCount)
         #expect(restored.faceCount == original.faceCount)
-        #expect(restored.validate() == nil)
+        #expect(restored.validate().isEmpty)
     }
 
     // MARK: - MetalMesh → Mesh round-trip
@@ -186,7 +186,7 @@ struct MetalMeshTests {
 
         #expect(restored.vertexCount == original.vertexCount)
         #expect(restored.faceCount == original.faceCount)
-        #expect(restored.validate() == nil)
+        #expect(restored.validate().isEmpty)
     }
 
     @Test("Round-trip preserves normals")
@@ -197,7 +197,7 @@ struct MetalMeshTests {
         let restored = metalMesh.toMesh()
 
         #expect(restored.normals != nil)
-        #expect(restored.validate() == nil)
+        #expect(restored.validate().isEmpty)
         // All restored normals should be unit length
         for n in restored.normals! {
             let len = simd_length(n)
@@ -213,7 +213,7 @@ struct MetalMeshTests {
         let restored = metalMesh.toMesh()
 
         #expect(restored.textureCoordinates != nil)
-        #expect(restored.validate() == nil)
+        #expect(restored.validate().isEmpty)
         // UV values should be in [0,1]
         for uv in restored.textureCoordinates! {
             #expect(uv.x >= -1e-5 && uv.x <= 1.0 + 1e-5)
@@ -245,7 +245,7 @@ struct MetalMeshTests {
         #expect(restored.submeshes.count == 2)
         #expect(restored.submeshes[0].faces.count == 1)
         #expect(restored.submeshes[1].faces.count == 1)
-        #expect(restored.validate() == nil)
+        #expect(restored.validate().isEmpty)
     }
 
     // MARK: - ModelIO conversion
@@ -284,7 +284,7 @@ struct MetalMeshTests {
         )
 
         let mesh = try Mesh(mdlMesh: mdlMesh, device: device)
-        #expect(mesh.validate() == nil)
+        #expect(mesh.validate().isEmpty)
         #expect(mesh.normals != nil)
         #expect(mesh.textureCoordinates != nil)
     }
@@ -297,7 +297,7 @@ struct MetalMeshTests {
         let mdlMesh = original.toMDLMesh(device: device)
         let restored = try Mesh(mdlMesh: mdlMesh, device: device)
 
-        #expect(restored.validate() == nil)
+        #expect(restored.validate().isEmpty)
         #expect(restored.vertexCount == original.vertexCount)
         #expect(restored.normals != nil)
     }

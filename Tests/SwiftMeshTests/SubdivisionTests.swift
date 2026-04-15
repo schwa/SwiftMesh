@@ -12,7 +12,7 @@ struct SubdivisionTests {
         let subdivided = mesh.loopSubdivided(iterations: 1)
         // 4 faces × 4 = 16 faces
         #expect(subdivided.faceCount == 16)
-        #expect(subdivided.validate() == nil)
+        #expect(subdivided.validate().isEmpty)
     }
 
     @Test("Loop subdivision preserves closed manifold (Euler)")
@@ -31,7 +31,7 @@ struct SubdivisionTests {
         #expect(subdivided.faceCount == 80)
         // 12 original + 30 edge points = 42 vertices
         #expect(subdivided.vertexCount == 42)
-        #expect(subdivided.validate() == nil)
+        #expect(subdivided.validate().isEmpty)
         #expect(subdivided.vertexCount - subdivided.edgeCount + subdivided.faceCount == 2)
     }
 
@@ -43,7 +43,7 @@ struct SubdivisionTests {
         // Each iteration 4× the faces
         #expect(sub1.faceCount == 8 * 4)
         #expect(sub2.faceCount == 8 * 4 * 4)
-        #expect(sub2.validate() == nil)
+        #expect(sub2.validate().isEmpty)
     }
 
     @Test("Loop subdivision smooths toward sphere")
@@ -79,7 +79,7 @@ struct SubdivisionTests {
         let subdivided = mesh.catmullClarkSubdivided(iterations: 1)
         // 6 quad faces × 4 corners = 24 new quads
         #expect(subdivided.faceCount == 24)
-        #expect(subdivided.validate() == nil)
+        #expect(subdivided.validate().isEmpty)
     }
 
     @Test("Catmull-Clark preserves closed manifold (Euler)")
@@ -95,7 +95,7 @@ struct SubdivisionTests {
         let subdivided = mesh.catmullClarkSubdivided(iterations: 1)
         // 4 triangular faces × 3 edges each = 12 quads
         #expect(subdivided.faceCount == 12)
-        #expect(subdivided.validate() == nil)
+        #expect(subdivided.validate().isEmpty)
 
         // All faces should be quads (4 vertices)
         for face in subdivided.topology.faces {
@@ -113,7 +113,7 @@ struct SubdivisionTests {
         // Each quad → 4 quads: 24 × 4 = 96 quads
         #expect(sub1.faceCount == 24)
         #expect(sub2.faceCount == 96)
-        #expect(sub2.validate() == nil)
+        #expect(sub2.validate().isEmpty)
         #expect(sub2.vertexCount - sub2.edgeCount + sub2.faceCount == 2)
     }
 
@@ -146,7 +146,7 @@ struct SubdivisionTests {
         let subdivided = mesh.catmullClarkSubdivided(iterations: 1)
         // 12 pentagonal faces × 5 = 60 quads
         #expect(subdivided.faceCount == 60)
-        #expect(subdivided.validate() == nil)
+        #expect(subdivided.validate().isEmpty)
         #expect(subdivided.vertexCount - subdivided.edgeCount + subdivided.faceCount == 2)
     }
 }

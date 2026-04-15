@@ -90,7 +90,7 @@ struct TriangleSoupTests {
         let result = soup.toMesh()
         #expect(result.faceCount == 4)
         #expect(result.vertexCount == 4)
-        #expect(result.validate() == nil)
+        #expect(result.validate().isEmpty)
     }
 
     @Test("Cube triangulation produces 12 triangles")
