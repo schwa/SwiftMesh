@@ -94,6 +94,7 @@ struct ParametricSurfacesGallery: View {
             ("Conical Frustum", .conicalFrustum(), .brown),
             ("Rect Frustum", .rectangularFrustum(), .gray),
             ("Circle", .circle(), .yellow),
+            ("Teapot", .teapot(), .red),
             ("IcoSphere", .icoSphere(), .red),
             ("CubeSphere", .cubeSphere(), .green)
         ]

@@ -376,11 +376,14 @@ closed: 2026-04-15T03:39:51Z
 ---
 
 ## 34: Add teapot primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T04:11:12Z
+updated: 2026-04-15T05:12:44Z
+closed: 2026-04-15T05:12:44Z
 
+- `2026-04-15T05:12:44Z`: Implemented — loads bundled OBJ via ModelIO pipeline
 
 ---
 

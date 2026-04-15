@@ -388,6 +388,15 @@ struct MeshPrimitivesTests {
         #expect(mesh.validate() == nil)
     }
 
+    // MARK: - Bundled Meshes
+
+    @Test("teapot()")
+    func teapot() {
+        let mesh = Mesh.teapot(attributes: [])
+        #expect(mesh.vertexCount > 0)
+        #expect(mesh.faceCount > 0)
+    }
+
     // MARK: - Platonic Solids Euler formula
 
     @Test("All Platonic solids satisfy Euler formula")

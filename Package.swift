@@ -26,6 +26,9 @@ let package = Package(
                 .product(name: "MetalSupport", package: "MetalSupport"),
                 .product(name: "SwiftEarcut", package: "SwiftEarcut"),
                 "MikkTSpace"
+            ],
+            resources: [
+                .copy("Resources/teapot.obj")
             ]
         ),
         .target(

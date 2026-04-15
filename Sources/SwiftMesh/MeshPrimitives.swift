@@ -1,3 +1,6 @@
+import Metal
+import MetalKit
+import ModelIO
 import simd
 
 // MARK: - Platonic Solids
@@ -1240,6 +1243,44 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
+        mesh.applyAttributes(attributes)
+        return mesh
+    }
+}
+
+// MARK: - Bundled Meshes
+
+public extension Mesh {
+    /// The Utah teapot, loaded from a bundled OBJ file.
+    ///
+    /// The mesh is scaled to fit within `extents` and centered at the origin.
+    static func teapot(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh {
+        guard let url = Bundle.module.url(forResource: "teapot", withExtension: "obj") else {
+            fatalError("teapot.obj not found in bundle")
+        }
+        guard let device = MTLCreateSystemDefaultDevice() else {
+            fatalError("No Metal device available")
+        }
+        let allocator = MTKMeshBufferAllocator(device: device)
+        let asset = MDLAsset(url: url, vertexDescriptor: nil, bufferAllocator: allocator)
+        guard let mdlMesh = asset.childObjects(of: MDLMesh.self).first as? MDLMesh else {
+            fatalError("No mesh found in teapot.obj")
+        }
+        guard var mesh = try? Mesh(mdlMesh: mdlMesh, device: device) else {
+            fatalError("Failed to convert teapot MDLMesh to Mesh")
+        }
+        // Strip imported attributes — we'll apply the requested ones below
+        mesh.normals = nil
+        mesh.textureCoordinates = nil
+        mesh.tangents = nil
+        mesh.bitangents = nil
+        mesh.colors = nil
+
+        mesh.fitToExtents(extents)
+
+        if attributes.contains(.textureCoordinates) {
+            mesh = mesh.withSphericalUVs()
+        }
         mesh.applyAttributes(attributes)
         return mesh
     }
