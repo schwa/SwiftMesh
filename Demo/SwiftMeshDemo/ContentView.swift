@@ -47,21 +47,17 @@ struct ContentView: View {
 struct MeshDetailView: View {
     let item: MeshGalleryItem
 
-    @State private var displayMesh: Mesh?
-    @State private var isTriangulated = false
+    @State private var currentMesh: Mesh
     @State private var showStandalone = true
     @State private var standaloneFaceIDs: Set<HalfEdgeTopology.FaceID>?
-    @State private var decimationRatio: Float = 1.0
-    @State private var subdivisionLevel: Int = 0
-    @State private var isWelded = false
     @State private var showInspector = true
     @State private var selection: MeshSelection?
     @State private var showVertexDots = false
+    @State private var isModified = false
 
-    private var mesh: Mesh { item.mesh }
-
-    private var currentMesh: Mesh {
-        displayMesh ?? mesh
+    init(item: MeshGalleryItem) {
+        self.item = item
+        self._currentMesh = State(initialValue: item.mesh)
     }
 
     var body: some View {
@@ -126,42 +122,30 @@ struct MeshDetailView: View {
                 }
                 Section("Operations") {
                     Button("Weld") {
-                        isWelded = true
-                        rebuildDisplayMesh()
+                        applyOperation { $0.welded(tolerance: 1e-4) }
                     }
-                    .disabled(isWelded)
                     Button("Triangulate") {
-                        isTriangulated = true
-                        rebuildDisplayMesh()
+                        applyOperation { $0.triangulated() }
                     }
-                    .disabled(isTriangulated)
+                    Button("Subdivide (Loop)") {
+                        applyOperation { $0.loopSubdivided(iterations: 1) }
+                    }
+                    Button("Subdivide (CC)") {
+                        applyOperation { $0.catmullClarkSubdivided(iterations: 1) }
+                    }
+                    Button("Decimate 50%") {
+                        applyOperation { $0.decimated(ratio: 0.5) }
+                    }
+
                     Toggle("Standalone Faces", isOn: $showStandalone)
                         .onChange(of: showStandalone) { if showStandalone { recomputeStandalone() } }
                     Toggle("Vertex Dots", isOn: $showVertexDots)
 
-                    HStack {
-                        Text("Subdivide")
-                        Spacer()
-                        Stepper("\(subdivisionLevel)×", value: $subdivisionLevel, in: 0...4)
-                            .onChange(of: subdivisionLevel) { rebuildDisplayMesh() }
-                    }
-
-                    VStack(alignment: .leading) {
-                        Text("Decimate")
-                        Slider(value: $decimationRatio, in: 0.05...1.0, step: 0.05)
-                            .onChange(of: decimationRatio) { rebuildDisplayMesh() }
-                        Text("\(Int(decimationRatio * 100))%")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
                     if isModified {
-                        Button("Reset All") {
-                            isWelded = false
-                            isTriangulated = false
-                            subdivisionLevel = 0
-                            decimationRatio = 1.0
-                            rebuildDisplayMesh()
+                        Button("Reset") {
+                            currentMesh = item.mesh
+                            isModified = false
+                            recomputeStandalone()
                         }
                     }
                 }
@@ -176,29 +160,9 @@ struct MeshDetailView: View {
         .onAppear { recomputeStandalone() }
     }
 
-    private var isModified: Bool {
-        isWelded || isTriangulated || subdivisionLevel > 0 || decimationRatio < 1.0
-    }
-
-    private func rebuildDisplayMesh() {
-        var result = mesh
-        if isWelded {
-            result = result.welded(tolerance: 1e-4)
-        }
-        if isTriangulated {
-            result = result.triangulated()
-        }
-        if subdivisionLevel > 0 {
-            if isTriangulated {
-                result = result.loopSubdivided(iterations: subdivisionLevel)
-            } else {
-                result = result.catmullClarkSubdivided(iterations: subdivisionLevel)
-            }
-        }
-        if decimationRatio < 1.0 {
-            result = result.decimated(ratio: decimationRatio)
-        }
-        displayMesh = isModified ? result : nil
+    private func applyOperation(_ operation: (Mesh) -> Mesh) {
+        currentMesh = operation(currentMesh)
+        isModified = true
         recomputeStandalone()
     }
 
