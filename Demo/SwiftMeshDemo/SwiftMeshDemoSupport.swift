@@ -56,6 +56,7 @@ struct MeshPreviewView: View {
 struct MeshInteractiveView: View {
     let mesh: Mesh
     var highlightedFaces: Set<HalfEdgeTopology.FaceID>?
+    var showVertexDots: Bool = false
     @Binding var selection: MeshSelection?
 
     @State private var cameraRotation: simd_quatf = simd_quatf(angle: 0, axis: [0, 1, 0])
@@ -65,9 +66,10 @@ struct MeshInteractiveView: View {
 
     private let hitThreshold: CGFloat = 8
 
-    init(mesh: Mesh, highlightedFaces: Set<HalfEdgeTopology.FaceID>? = nil, selection: Binding<MeshSelection?> = .constant(nil)) {
+    init(mesh: Mesh, highlightedFaces: Set<HalfEdgeTopology.FaceID>? = nil, showVertexDots: Bool = false, selection: Binding<MeshSelection?> = .constant(nil)) {
         self.mesh = mesh
         self.highlightedFaces = highlightedFaces
+        self.showVertexDots = showVertexDots
         self._selection = selection
     }
 
@@ -108,10 +110,12 @@ struct MeshInteractiveView: View {
             }
 
             // Draw vertex dots
-            for pos in mesh.positions {
-                if let pt = renderer.project(pos) {
-                    let rect = CGRect(x: pt.x - 2, y: pt.y - 2, width: 4, height: 4)
-                    context.fill(Path(ellipseIn: rect), with: .color(.black.opacity(0.4)))
+            if showVertexDots {
+                for pos in mesh.positions {
+                    if let pt = renderer.project(pos) {
+                        let rect = CGRect(x: pt.x - 2, y: pt.y - 2, width: 4, height: 4)
+                        context.fill(Path(ellipseIn: rect), with: .color(.black.opacity(0.4)))
+                    }
                 }
             }
         }

@@ -56,6 +56,7 @@ struct MeshDetailView: View {
     @State private var isWelded = false
     @State private var showInspector = true
     @State private var selection: MeshSelection?
+    @State private var showVertexDots = false
 
     private var mesh: Mesh { item.mesh }
 
@@ -67,6 +68,7 @@ struct MeshDetailView: View {
         MeshInteractiveView(
             mesh: currentMesh,
             highlightedFaces: showStandalone ? standaloneFaceIDs : nil,
+            showVertexDots: showVertexDots,
             selection: $selection
         )
         .navigationTitle(item.name)
@@ -129,6 +131,7 @@ struct MeshDetailView: View {
                         .onChange(of: isTriangulated) { rebuildDisplayMesh() }
                     Toggle("Standalone Faces", isOn: $showStandalone)
                         .onChange(of: showStandalone) { if showStandalone { recomputeStandalone() } }
+                    Toggle("Vertex Dots", isOn: $showVertexDots)
 
                     HStack {
                         Text("Subdivide")
