@@ -1,3 +1,4 @@
+import simd
 import SwiftMesh
 import SwiftUI
 
@@ -54,6 +55,7 @@ struct MeshDetailView: View {
     @State private var subdivisionLevel: Int = 0
     @State private var isWelded = false
     @State private var showInspector = true
+    @State private var selection: MeshSelection?
 
     private var mesh: Mesh { item.mesh }
 
@@ -64,7 +66,8 @@ struct MeshDetailView: View {
     var body: some View {
         MeshInteractiveView(
             mesh: currentMesh,
-            highlightedFaces: showStandalone ? standaloneFaceIDs : nil
+            highlightedFaces: showStandalone ? standaloneFaceIDs : nil,
+            selection: $selection
         )
         .navigationTitle(item.name)
         .navigationSubtitle(item.subtitle ?? "")
@@ -82,6 +85,34 @@ struct MeshDetailView: View {
                     }
                     if showStandalone, let ids = standaloneFaceIDs {
                         LabeledContent("Standalone Faces", value: "\(ids.count)")
+                    }
+                }
+                if let selection {
+                    Section("Selection") {
+                        switch selection {
+                        case .vertex(let idx):
+                            LabeledContent("Type", value: "Vertex")
+                            LabeledContent("Index", value: "\(idx)")
+                            let pos = currentMesh.positions[idx]
+                            LabeledContent("Position", value: String(format: "(%.3f, %.3f, %.3f)", pos.x, pos.y, pos.z))
+                            Button("Select Connected Edges") {
+                                selectConnectedEdges(vertex: idx)
+                            }
+                        case .edges(let edges):
+                            LabeledContent("Type", value: "Edge\(edges.count == 1 ? "" : "s")")
+                            LabeledContent("Count", value: "\(edges.count)")
+                            if edges.count == 1, let edge = edges.first {
+                                LabeledContent("Vertices", value: "\(edge.a) — \(edge.b)")
+                                let length = simd_length(currentMesh.positions[edge.b] - currentMesh.positions[edge.a])
+                                LabeledContent("Length", value: String(format: "%.4f", length))
+                                Button("Select Face Edges") {
+                                    selectFaceEdges(edge: edge)
+                                }
+                            }
+                        }
+                        Button("Clear Selection") {
+                            self.selection = nil
+                        }
                     }
                 }
                 Section("Attributes") {
@@ -164,6 +195,41 @@ struct MeshDetailView: View {
 
     private func recomputeStandalone() {
         standaloneFaceIDs = currentMesh.standaloneFaces()
+    }
+
+    private func selectConnectedEdges(vertex idx: Int) {
+        var result = Set<MeshEdge>()
+        let vid = HalfEdgeTopology.VertexID(raw: idx)
+        for he in currentMesh.topology.halfEdges where he.origin == vid {
+            if let next = he.next {
+                let dest = currentMesh.topology.halfEdges[next.raw].origin
+                result.insert(MeshEdge(idx, dest.raw))
+            }
+        }
+        for he in currentMesh.topology.halfEdges {
+            if let next = he.next, currentMesh.topology.halfEdges[next.raw].origin == vid {
+                result.insert(MeshEdge(he.origin.raw, idx))
+            }
+        }
+        selection = .edges(result)
+    }
+
+    private func selectFaceEdges(edge: MeshEdge) {
+        var result = Set<MeshEdge>()
+        for face in currentMesh.topology.faces {
+            let verts = currentMesh.topology.vertexLoop(for: face.id)
+            let hasEdge = (0..<verts.count).contains { i in
+                let next = (i + 1) % verts.count
+                return MeshEdge(verts[i].raw, verts[next].raw) == edge
+            }
+            if hasEdge {
+                for i in 0..<verts.count {
+                    let next = (i + 1) % verts.count
+                    result.insert(MeshEdge(verts[i].raw, verts[next].raw))
+                }
+            }
+        }
+        selection = .edges(result)
     }
 }
 
