@@ -541,3 +541,63 @@ fitToExtents scales each axis independently to match the target extents, which d
 
 ---
 
+## 47: Coplanar face merging after CSG operations
+status: new
+priority: medium
+kind: enhancement
+created: 2026-04-15T05:55:25Z
+
+CSG boolean operations produce excessive triangulation on flat surfaces — e.g. a flat square face becomes a mosaic of many triangles. Add a post-processing pass that merges coplanar adjacent faces back into larger polygons.
+
+---
+
+## 48: Mesh from extruded text
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T05:55:51Z
+
+Generate meshes from text strings by converting font glyphs to paths, triangulating the 2D outline, and extruding to 3D. Should support font, size, and extrusion depth parameters.
+
+---
+
+## 49: Mesh from extruded SwiftUI.Path
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T05:56:16Z
+
+Generate meshes by triangulating a SwiftUI Path and extruding to 3D. Should handle holes, produce front/back caps and side walls. Could be the foundation for text extrusion (#48) as well.
+
+---
+
+## 50: Edge fillet (rounding)
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T05:57:13Z
+
+Round selected edges by replacing them with a smooth arc of faces. Requires edge split and vertex insertion along the edge neighborhood.
+
+---
+
+## 51: Edge chamfer (beveling)
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T05:57:13Z
+
+Bevel selected edges by cutting them at an angle, replacing each edge with a flat face. Simpler than fillet — no curvature, just a single angled cut.
+
+---
+
+## 52: Consolidate demo into single gallery with section groupings
+status: new
+priority: medium
+kind: enhancement
+created: 2026-04-15T05:57:53Z
+
+Replace the four separate tabs (Platonic Solids, Surfaces, CSG, Subdivision) with a single scrollable gallery using section headers to group the meshes. Reduces code duplication across gallery views.
+
+---
+
