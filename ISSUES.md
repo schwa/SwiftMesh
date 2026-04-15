@@ -1369,12 +1369,16 @@ Go through every mesh in the demo gallery and verify they render correctly in bo
 ## 84: border() with .textureCoordinates attribute doesn't generate UVs
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 created: 2026-04-15T22:53:05Z
+updated: 2026-04-15T23:01:06Z
+closed: 2026-04-15T23:01:06Z
 +++
 
 Mesh.border(attributes: .default) or .border(attributes: [.flatNormals, .textureCoordinates]) doesn't generate texture coordinates on the border geometry. The new border faces are created without UV assignment, so downstream consumers that require texcoords (e.g. FlatShader) fail with 'Vertex attribute 2 is not defined'. Workaround: call .withPlanarUVs() after .border(). Same issue exists with .wireframe().
+
+- `2026-04-15T23:01:06Z`: Fixed: both border() and wireframe() now generate box-projected UVs (withBoxUVs()) when attributes contain .textureCoordinates, before calling applyAttributes().
 
 ---

@@ -134,6 +134,9 @@ public extension Mesh {
         }
 
         var result = Mesh.merged(prisms)
+        if attributes.contains(.textureCoordinates) {
+            result = result.withBoxUVs()
+        }
         result.applyAttributes(attributes)
         return result
     }
@@ -321,6 +324,9 @@ public extension Mesh {
         }
 
         var result = Mesh(positions: allPositions, faces: allFaces)
+        if attributes.contains(.textureCoordinates) {
+            result = result.withBoxUVs()
+        }
         result.applyAttributes(attributes)
         return result
     }
