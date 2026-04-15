@@ -1235,17 +1235,19 @@ Split from #67. hasInconsistentFaceWinding — verify that for every pair of adj
 ## 77: Add convex hull from points
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:l
 created: 2026-04-15T16:08:54Z
-updated: 2026-04-15T17:03:10Z
+updated: 2026-04-15T17:09:27Z
+closed: 2026-04-15T17:09:27Z
 +++
 
 Compute the convex hull of a set of 3D points, returning a Mesh. Standard incremental or quickhull algorithm.
 
 - `2026-04-15T17:03:10Z`: Related: #78 (convex hull with radii) depends on this.
+- `2026-04-15T17:09:27Z`: Implemented in commit 'Add convex hull mesh generation with incremental algorithm and tests'.
 
 ---
 
@@ -1269,15 +1271,18 @@ Compute the convex hull of a set of 3D spheres (point + radius), returning a Mes
 ## 79: Add marching cubes
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:l
 created: 2026-04-15T16:09:04Z
-updated: 2026-04-15T17:03:00Z
+updated: 2026-04-15T17:09:27Z
+closed: 2026-04-15T17:09:27Z
 +++
 
 Implement marching cubes to generate a Mesh (or TriangleSoup) from a scalar field / signed distance function. Takes a grid resolution and a sampling closure (SIMD3<Float>) -> Float, produces an isosurface mesh at the zero crossing.
+
+- `2026-04-15T17:09:27Z`: Implemented in commit 'Add marching cubes isosurface generation'.
 
 ---
 
