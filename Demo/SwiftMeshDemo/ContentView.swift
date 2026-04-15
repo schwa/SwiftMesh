@@ -125,10 +125,16 @@ struct MeshDetailView: View {
                     LabeledContent("Colors", value: currentMesh.colors != nil ? "✓" : "—")
                 }
                 Section("Operations") {
-                    Toggle("Weld", isOn: $isWelded)
-                        .onChange(of: isWelded) { rebuildDisplayMesh() }
-                    Toggle("Triangulate", isOn: $isTriangulated)
-                        .onChange(of: isTriangulated) { rebuildDisplayMesh() }
+                    Button("Weld") {
+                        isWelded = true
+                        rebuildDisplayMesh()
+                    }
+                    .disabled(isWelded)
+                    Button("Triangulate") {
+                        isTriangulated = true
+                        rebuildDisplayMesh()
+                    }
+                    .disabled(isTriangulated)
                     Toggle("Standalone Faces", isOn: $showStandalone)
                         .onChange(of: showStandalone) { if showStandalone { recomputeStandalone() } }
                     Toggle("Vertex Dots", isOn: $showVertexDots)
