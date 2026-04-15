@@ -374,20 +374,26 @@ created: 2026-04-15T04:11:12Z
 ---
 
 ## 35: Add capsule primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T04:12:03Z
+updated: 2026-04-15T04:16:36Z
+closed: 2026-04-15T04:16:36Z
 
+- `2026-04-15T04:16:36Z`: Implemented hemisphere() and capsule() primitives with extents, UV support, and full test coverage
 
 ---
 
 ## 36: Add hemisphere primitive
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T04:12:03Z
+updated: 2026-04-15T04:16:36Z
+closed: 2026-04-15T04:16:36Z
 
+- `2026-04-15T04:16:36Z`: Implemented hemisphere() and capsule() primitives with extents, UV support, and full test coverage
 
 ---
 

@@ -8,7 +8,7 @@ struct MeshPrimitivesTests {
 
     @Test("triangle()")
     func triangle() {
-        let mesh = Mesh.triangle()
+        let mesh = Mesh.triangle(attributes: [])
         #expect(mesh.vertexCount == 3)
         #expect(mesh.faceCount == 1)
         #expect(mesh.validate() == nil)
@@ -16,7 +16,7 @@ struct MeshPrimitivesTests {
 
     @Test("quad()")
     func quad() {
-        let mesh = Mesh.quad()
+        let mesh = Mesh.quad(attributes: [])
         #expect(mesh.vertexCount == 4)
         #expect(mesh.faceCount == 1)
         #expect(mesh.validate() == nil)
@@ -24,7 +24,7 @@ struct MeshPrimitivesTests {
 
     @Test("box()")
     func box() {
-        let mesh = Mesh.box()
+        let mesh = Mesh.box(attributes: [])
         #expect(mesh.vertexCount == 8)
         #expect(mesh.faceCount == 6)
         #expect(mesh.edgeCount == 12)
@@ -32,9 +32,9 @@ struct MeshPrimitivesTests {
         #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
     }
 
-    @Test("cube() without attributes has no UVs")
+    @Test("cube(attributes: []) has no UVs or normals")
     func cubeNoAttributes() {
-        let mesh = Mesh.cube()
+        let mesh = Mesh.cube(attributes: [])
         #expect(mesh.textureCoordinates == nil)
         #expect(mesh.normals == nil)
     }
@@ -70,9 +70,9 @@ struct MeshPrimitivesTests {
         #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
     }
 
-    @Test("sphere() without attributes has no UVs")
+    @Test("sphere(attributes: []) has no UVs or normals")
     func sphereNoAttributes() {
-        let mesh = Mesh.sphere()
+        let mesh = Mesh.sphere(attributes: [])
         #expect(mesh.textureCoordinates == nil)
         #expect(mesh.normals == nil)
     }
@@ -164,7 +164,7 @@ struct MeshPrimitivesTests {
 
     @Test("sphere() default")
     func sphereDefault() {
-        let mesh = Mesh.sphere()
+        let mesh = Mesh.sphere(attributes: [])
         #expect(mesh.validate() == nil)
         #expect(mesh.vertexCount == 2 + (16 - 1) * 32) // poles + rings
         // Euler: V - E + F = 2
@@ -173,7 +173,7 @@ struct MeshPrimitivesTests {
 
     @Test("sphere() triangulates for MetalMesh")
     func sphereTriangulates() {
-        let mesh = Mesh.sphere(latitudeSegments: 4, longitudeSegments: 8)
+        let mesh = Mesh.sphere(latitudeSegments: 4, longitudeSegments: 8, attributes: [])
         let tris = mesh.triangulate()
         // Top cap: 8 triangles, bottom cap: 8 triangles, 2 quad rings × 8 = 16 quads → 32 triangles
         // Total: 8 + 32 + 8 = 48
@@ -182,7 +182,7 @@ struct MeshPrimitivesTests {
 
     @Test("torus() default")
     func torusDefault() {
-        let mesh = Mesh.torus()
+        let mesh = Mesh.torus(attributes: [])
         #expect(mesh.validate() == nil)
         #expect(mesh.faceCount == 32 * 16)
         // Torus Euler: V - E + F = 0
@@ -191,7 +191,7 @@ struct MeshPrimitivesTests {
 
     @Test("cylinder() capped")
     func cylinderCapped() {
-        let mesh = Mesh.cylinder(segments: 8, capped: true)
+        let mesh = Mesh.cylinder(segments: 8, capped: true, attributes: [])
         #expect(mesh.validate() == nil)
         // 8 side quads + 2 n-gon caps
         #expect(mesh.faceCount == 10)
@@ -201,14 +201,14 @@ struct MeshPrimitivesTests {
 
     @Test("cylinder() uncapped")
     func cylinderUncapped() {
-        let mesh = Mesh.cylinder(segments: 8, capped: false)
+        let mesh = Mesh.cylinder(segments: 8, capped: false, attributes: [])
         #expect(mesh.validate() == nil)
         #expect(mesh.faceCount == 8)
     }
 
     @Test("cone() capped")
     func coneCapped() {
-        let mesh = Mesh.cone(segments: 8, capped: true)
+        let mesh = Mesh.cone(segments: 8, capped: true, attributes: [])
         #expect(mesh.validate() == nil)
         // 8 side triangles + 1 base cap
         #expect(mesh.faceCount == 9)
@@ -218,9 +218,58 @@ struct MeshPrimitivesTests {
 
     @Test("cone() uncapped")
     func coneUncapped() {
-        let mesh = Mesh.cone(segments: 8, capped: false)
+        let mesh = Mesh.cone(segments: 8, capped: false, attributes: [])
         #expect(mesh.validate() == nil)
         #expect(mesh.faceCount == 8)
+    }
+
+    // MARK: - Hemisphere & Capsule
+
+    @Test("hemisphere() capped")
+    func hemisphereCapped() {
+        let mesh = Mesh.hemisphere(segments: 8, latitudeSegments: 4, capped: true, attributes: [])
+        #expect(mesh.validate() == nil)
+        // pole cap: 8 tri + 3 quad strips × 8 + 1 base cap = 8 + 24 + 1 = 33
+        #expect(mesh.faceCount == 33)
+        #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
+    }
+
+    @Test("hemisphere() uncapped")
+    func hemisphereUncapped() {
+        let mesh = Mesh.hemisphere(segments: 8, latitudeSegments: 4, capped: false, attributes: [])
+        #expect(mesh.validate() == nil)
+        #expect(mesh.faceCount == 32) // 8 tri + 3 × 8 quads
+    }
+
+    @Test("hemisphere(attributes: .textureCoordinates) has UVs")
+    func hemisphereUVs() {
+        let mesh = Mesh.hemisphere(segments: 8, latitudeSegments: 4, attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("capsule()")
+    func capsule() {
+        let mesh = Mesh.capsule(segments: 8, height: 1.0, radius: 0.25, latitudeSegments: 4, attributes: [])
+        #expect(mesh.validate() == nil)
+        #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
+    }
+
+    @Test("capsule() with zero cylinder height")
+    func capsuleZeroCylinder() {
+        // height <= 2*radius means no cylinder section, just a sphere
+        let mesh = Mesh.capsule(segments: 8, height: 0.5, radius: 0.25, latitudeSegments: 4, attributes: [])
+        #expect(mesh.validate() == nil)
+        #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
+    }
+
+    @Test("capsule(attributes: .textureCoordinates) has UVs")
+    func capsuleUVs() {
+        let mesh = Mesh.capsule(segments: 8, height: 1.0, radius: 0.25, latitudeSegments: 4, attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
     }
 
     // MARK: - Platonic Solids Euler formula
@@ -228,11 +277,11 @@ struct MeshPrimitivesTests {
     @Test("All Platonic solids satisfy Euler formula")
     func eulerFormula() {
         let solids: [(String, Mesh)] = [
-            ("tetrahedron", .tetrahedron()),
-            ("cube", .cube()),
-            ("octahedron", .octahedron()),
-            ("icosahedron", .icosahedron()),
-            ("dodecahedron", .dodecahedron())
+            ("tetrahedron", .tetrahedron(attributes: [])),
+            ("cube", .cube(attributes: [])),
+            ("octahedron", .octahedron(attributes: [])),
+            ("icosahedron", .icosahedron(attributes: [])),
+            ("dodecahedron", .dodecahedron(attributes: []))
         ]
         for (name, mesh) in solids {
             let euler = mesh.vertexCount - mesh.edgeCount + mesh.faceCount

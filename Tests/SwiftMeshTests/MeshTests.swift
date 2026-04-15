@@ -151,7 +151,7 @@ struct MeshTests {
 
     @Test("Tetrahedron")
     func tetrahedron() {
-        let mesh = Mesh.tetrahedron()
+        let mesh = Mesh.tetrahedron(attributes: [])
         #expect(mesh.vertexCount == 4)
         #expect(mesh.faceCount == 4)
         #expect(mesh.edgeCount == 6)
@@ -161,7 +161,7 @@ struct MeshTests {
 
     @Test("Cube")
     func cube() {
-        let mesh = Mesh.cube()
+        let mesh = Mesh.cube(attributes: [])
         #expect(mesh.vertexCount == 8)
         #expect(mesh.faceCount == 6)
         #expect(mesh.edgeCount == 12)
@@ -171,7 +171,7 @@ struct MeshTests {
 
     @Test("Octahedron")
     func octahedron() {
-        let mesh = Mesh.octahedron()
+        let mesh = Mesh.octahedron(attributes: [])
         #expect(mesh.vertexCount == 6)
         #expect(mesh.faceCount == 8)
         #expect(mesh.edgeCount == 12)
@@ -181,7 +181,7 @@ struct MeshTests {
 
     @Test("Icosahedron")
     func icosahedron() {
-        let mesh = Mesh.icosahedron()
+        let mesh = Mesh.icosahedron(attributes: [])
         #expect(mesh.vertexCount == 12)
         #expect(mesh.faceCount == 20)
         #expect(mesh.edgeCount == 30)
@@ -191,7 +191,7 @@ struct MeshTests {
 
     @Test("Dodecahedron")
     func dodecahedron() {
-        let mesh = Mesh.dodecahedron()
+        let mesh = Mesh.dodecahedron(attributes: [])
         #expect(mesh.vertexCount == 20)
         #expect(mesh.faceCount == 12)
         #expect(mesh.edgeCount == 30)
@@ -201,7 +201,7 @@ struct MeshTests {
 
     @Test("Euler formula for all Platonic solids")
     func eulerFormula() {
-        for solid in [Mesh.tetrahedron(), .cube(), .octahedron(), .icosahedron(), .dodecahedron()] {
+        for solid in [Mesh.tetrahedron(attributes: []), .cube(attributes: []), .octahedron(attributes: []), .icosahedron(attributes: []), .dodecahedron(attributes: [])] {
             #expect(solid.vertexCount - solid.edgeCount + solid.faceCount == 2)
         }
     }

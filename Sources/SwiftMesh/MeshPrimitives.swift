@@ -538,6 +538,350 @@ public extension Mesh {
         return mesh
     }
 
+    /// A hemisphere (top half of a UV sphere) with an optional base cap.
+    ///
+    /// The dome faces upward (+Y). Extents control the bounding box of the full
+    /// hemisphere including the flat base.
+    static func hemisphere(extents: SIMD3<Float> = [1, 1, 1], segments: Int = 32, latitudeSegments: Int = 8, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
+        let radii = SIMD3<Float>(extents.x / 2, extents.y, extents.z / 2)
+        var positions: [SIMD3<Float>] = []
+        var faces: [[Int]] = []
+
+        // Top pole
+        positions.append(SIMD3(0, radii.y, 0))
+
+        // Latitude rings (excluding pole and equator)
+        for lat in 1..<latitudeSegments {
+            let theta = Float.pi / 2 * Float(lat) / Float(latitudeSegments)
+            let sinTheta = sin(theta)
+            let cosTheta = cos(theta)
+            for lon in 0..<segments {
+                let phi = 2 * Float.pi * Float(lon) / Float(segments)
+                positions.append(SIMD3(radii.x * sinTheta * cos(phi), radii.y * cosTheta, radii.z * sinTheta * sin(phi)))
+            }
+        }
+
+        // Equator ring
+        let equatorStart = positions.count
+        for lon in 0..<segments {
+            let phi = 2 * Float.pi * Float(lon) / Float(segments)
+            positions.append(SIMD3(radii.x * cos(phi), 0, radii.z * sin(phi)))
+        }
+
+        // Top cap triangles
+        for lon in 0..<segments {
+            let nextLon = (lon + 1) % segments
+            faces.append([0, 1 + lon, 1 + nextLon])
+        }
+
+        // Quad strips between latitude rings
+        for lat in 0..<(latitudeSegments - 1) {
+            let ringStart = 1 + lat * segments
+            let nextRingStart = ringStart + segments
+            for lon in 0..<segments {
+                let nextLon = (lon + 1) % segments
+                faces.append([
+                    ringStart + lon,
+                    nextRingStart + lon,
+                    nextRingStart + nextLon,
+                    ringStart + nextLon
+                ])
+            }
+        }
+
+        // Base cap (flat bottom)
+        if capped {
+            let baseCap = (0..<segments).reversed().map { equatorStart + $0 }
+            faces.append(baseCap)
+        }
+
+        var mesh = Mesh(positions: positions, faces: faces)
+
+        if attributes.contains(.textureCoordinates) {
+            let N = segments
+            let L = latitudeSegments
+
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+
+            func uv(latRing: Int, lonSlot: Int, faceLon: Int) -> SIMD2<Float> {
+                let v = Float(latRing) / Float(L)
+                let effectiveLon: Float
+                if lonSlot == 0 && faceLon == N - 1 {
+                    effectiveLon = Float(N)
+                } else {
+                    effectiveLon = Float(lonSlot)
+                }
+                let u = effectiveLon / Float(N)
+                return SIMD2<Float>(u, v)
+            }
+
+            var faceIndex = 0
+
+            // Top cap triangles
+            for lon in 0..<N {
+                let nextLon = (lon + 1) % N
+                let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
+                let polU = (Float(lon) + 0.5) / Float(N)
+                uvs[heLoop[0].raw] = SIMD2<Float>(polU, 0)
+                uvs[heLoop[1].raw] = uv(latRing: 1, lonSlot: lon, faceLon: lon)
+                uvs[heLoop[2].raw] = uv(latRing: 1, lonSlot: nextLon, faceLon: lon)
+                faceIndex += 1
+            }
+
+            // Quad strips
+            for lat in 0..<(L - 1) {
+                for lon in 0..<N {
+                    let nextLon = (lon + 1) % N
+                    let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
+                    let latRing = lat + 1
+                    uvs[heLoop[0].raw] = uv(latRing: latRing, lonSlot: lon, faceLon: lon)
+                    uvs[heLoop[1].raw] = uv(latRing: latRing + 1, lonSlot: lon, faceLon: lon)
+                    uvs[heLoop[2].raw] = uv(latRing: latRing + 1, lonSlot: nextLon, faceLon: lon)
+                    uvs[heLoop[3].raw] = uv(latRing: latRing, lonSlot: nextLon, faceLon: lon)
+                    faceIndex += 1
+                }
+            }
+
+            // Base cap UVs
+            if capped {
+                let capFaceID = HalfEdgeTopology.FaceID(raw: faceIndex)
+                let capLoop = mesh.topology.halfEdgeLoop(for: capFaceID)
+                for (i, he) in capLoop.enumerated() {
+                    let seg = N - 1 - i
+                    let angle = 2 * Float.pi * Float(seg) / Float(N)
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                }
+            }
+
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
+    }
+
+    /// A capsule (cylinder with hemispherical caps on each end).
+    ///
+    /// The capsule is oriented along the Y axis. `height` is the total height
+    /// including the two hemispherical caps. `radius` is the radius of the
+    /// cylinder and caps.
+    static func capsule(segments: Int = 32, height: Float = 1.0, radius: Float = 0.25, latitudeSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh {
+        let cylinderHeight = max(0, height - 2 * radius)
+        let halfCylinder = cylinderHeight / 2
+        var positions: [SIMD3<Float>] = []
+        var faces: [[Int]] = []
+
+        // Top pole
+        positions.append(SIMD3(0, halfCylinder + radius, 0))
+
+        // Top hemisphere rings (excluding pole, from pole toward equator)
+        for lat in 1..<latitudeSegments {
+            let theta = Float.pi / 2 * Float(lat) / Float(latitudeSegments)
+            let sinTheta = sin(theta)
+            let cosTheta = cos(theta)
+            for lon in 0..<segments {
+                let phi = 2 * Float.pi * Float(lon) / Float(segments)
+                positions.append(SIMD3(
+                    radius * sinTheta * cos(phi),
+                    halfCylinder + radius * cosTheta,
+                    radius * sinTheta * sin(phi)
+                ))
+            }
+        }
+
+        // Top equator ring (top of cylinder)
+        let topEquatorStart = positions.count
+        for lon in 0..<segments {
+            let phi = 2 * Float.pi * Float(lon) / Float(segments)
+            positions.append(SIMD3(radius * cos(phi), halfCylinder, radius * sin(phi)))
+        }
+
+        // Bottom equator ring (bottom of cylinder)
+        let bottomEquatorStart = positions.count
+        for lon in 0..<segments {
+            let phi = 2 * Float.pi * Float(lon) / Float(segments)
+            positions.append(SIMD3(radius * cos(phi), -halfCylinder, radius * sin(phi)))
+        }
+
+        // Bottom hemisphere rings (from equator toward pole)
+        let bottomHemiStart = positions.count
+        for lat in 1..<latitudeSegments {
+            let theta = Float.pi / 2 + Float.pi / 2 * Float(lat) / Float(latitudeSegments)
+            let sinTheta = sin(theta)
+            let cosTheta = cos(theta)
+            for lon in 0..<segments {
+                let phi = 2 * Float.pi * Float(lon) / Float(segments)
+                positions.append(SIMD3(
+                    radius * sinTheta * cos(phi),
+                    -halfCylinder + radius * cosTheta,
+                    radius * sinTheta * sin(phi)
+                ))
+            }
+        }
+
+        // Bottom pole
+        let bottomPole = positions.count
+        positions.append(SIMD3(0, -halfCylinder - radius, 0))
+
+        // === Faces ===
+
+        // Top hemisphere: pole cap triangles
+        for lon in 0..<segments {
+            let nextLon = (lon + 1) % segments
+            faces.append([0, 1 + lon, 1 + nextLon])
+        }
+
+        // Top hemisphere: quad strips between rings
+        for lat in 0..<(latitudeSegments - 1) {
+            let ringStart = 1 + lat * segments
+            let nextRingStart = ringStart + segments
+            for lon in 0..<segments {
+                let nextLon = (lon + 1) % segments
+                faces.append([
+                    ringStart + lon,
+                    nextRingStart + lon,
+                    nextRingStart + nextLon,
+                    ringStart + nextLon
+                ])
+            }
+        }
+
+        // Cylinder: quads between top equator and bottom equator
+        for lon in 0..<segments {
+            let nextLon = (lon + 1) % segments
+            faces.append([
+                topEquatorStart + lon,
+                bottomEquatorStart + lon,
+                bottomEquatorStart + nextLon,
+                topEquatorStart + nextLon
+            ])
+        }
+
+        // Bottom hemisphere: quad strips between rings
+        // First strip: bottom equator to first bottom hemi ring
+        for lon in 0..<segments {
+            let nextLon = (lon + 1) % segments
+            faces.append([
+                bottomEquatorStart + lon,
+                bottomHemiStart + lon,
+                bottomHemiStart + nextLon,
+                bottomEquatorStart + nextLon
+            ])
+        }
+        // Remaining bottom hemi quad strips
+        for lat in 0..<(latitudeSegments - 2) {
+            let ringStart = bottomHemiStart + lat * segments
+            let nextRingStart = ringStart + segments
+            for lon in 0..<segments {
+                let nextLon = (lon + 1) % segments
+                faces.append([
+                    ringStart + lon,
+                    nextRingStart + lon,
+                    nextRingStart + nextLon,
+                    ringStart + nextLon
+                ])
+            }
+        }
+
+        // Bottom pole cap triangles
+        let lastRingStart = bottomHemiStart + (latitudeSegments - 2) * segments
+        for lon in 0..<segments {
+            let nextLon = (lon + 1) % segments
+            faces.append([lastRingStart + lon, bottomPole, lastRingStart + nextLon])
+        }
+
+        var mesh = Mesh(positions: positions, faces: faces)
+
+        if attributes.contains(.textureCoordinates) {
+            let N = segments
+            // Total latitude bands: top hemi (latSegs) + cylinder (1) + bottom hemi (latSegs)
+            let totalBands = latitudeSegments * 2 + 1
+
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+
+            func uv(band: Int, lonSlot: Int, faceLon: Int) -> SIMD2<Float> {
+                let v = Float(band) / Float(totalBands)
+                let effectiveLon: Float
+                if lonSlot == 0 && faceLon == N - 1 {
+                    effectiveLon = Float(N)
+                } else {
+                    effectiveLon = Float(lonSlot)
+                }
+                let u = effectiveLon / Float(N)
+                return SIMD2<Float>(u, v)
+            }
+
+            var faceIndex = 0
+
+            // Top pole triangles (band 0 → 1)
+            for lon in 0..<N {
+                let nextLon = (lon + 1) % N
+                let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
+                let polU = (Float(lon) + 0.5) / Float(N)
+                uvs[heLoop[0].raw] = SIMD2<Float>(polU, 0)
+                uvs[heLoop[1].raw] = uv(band: 1, lonSlot: lon, faceLon: lon)
+                uvs[heLoop[2].raw] = uv(band: 1, lonSlot: nextLon, faceLon: lon)
+                faceIndex += 1
+            }
+
+            // Top hemisphere quad strips (bands 1..latSegs)
+            for lat in 0..<(latitudeSegments - 1) {
+                for lon in 0..<N {
+                    let nextLon = (lon + 1) % N
+                    let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
+                    let band = lat + 1
+                    uvs[heLoop[0].raw] = uv(band: band, lonSlot: lon, faceLon: lon)
+                    uvs[heLoop[1].raw] = uv(band: band + 1, lonSlot: lon, faceLon: lon)
+                    uvs[heLoop[2].raw] = uv(band: band + 1, lonSlot: nextLon, faceLon: lon)
+                    uvs[heLoop[3].raw] = uv(band: band, lonSlot: nextLon, faceLon: lon)
+                    faceIndex += 1
+                }
+            }
+
+            // Cylinder quads (band latSegs → latSegs+1)
+            let cylBand = latitudeSegments
+            for lon in 0..<N {
+                let nextLon = (lon + 1) % N
+                let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
+                uvs[heLoop[0].raw] = uv(band: cylBand, lonSlot: lon, faceLon: lon)
+                uvs[heLoop[1].raw] = uv(band: cylBand + 1, lonSlot: lon, faceLon: lon)
+                uvs[heLoop[2].raw] = uv(band: cylBand + 1, lonSlot: nextLon, faceLon: lon)
+                uvs[heLoop[3].raw] = uv(band: cylBand, lonSlot: nextLon, faceLon: lon)
+                faceIndex += 1
+            }
+
+            // Bottom hemisphere quad strips (bands latSegs+1 .. totalBands-1)
+            for lat in 0..<(latitudeSegments - 1) {
+                for lon in 0..<N {
+                    let nextLon = (lon + 1) % N
+                    let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
+                    let band = latitudeSegments + 1 + lat
+                    uvs[heLoop[0].raw] = uv(band: band, lonSlot: lon, faceLon: lon)
+                    uvs[heLoop[1].raw] = uv(band: band + 1, lonSlot: lon, faceLon: lon)
+                    uvs[heLoop[2].raw] = uv(band: band + 1, lonSlot: nextLon, faceLon: lon)
+                    uvs[heLoop[3].raw] = uv(band: band, lonSlot: nextLon, faceLon: lon)
+                    faceIndex += 1
+                }
+            }
+
+            // Bottom pole triangles
+            for lon in 0..<N {
+                let nextLon = (lon + 1) % N
+                let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
+                let polU = (Float(lon) + 0.5) / Float(N)
+                uvs[heLoop[0].raw] = uv(band: totalBands - 1, lonSlot: lon, faceLon: lon)
+                uvs[heLoop[1].raw] = SIMD2<Float>(polU, 1)
+                uvs[heLoop[2].raw] = uv(band: totalBands - 1, lonSlot: nextLon, faceLon: lon)
+                faceIndex += 1
+            }
+
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
+    }
+
     /// A cone with triangle sides and an optional n-gon base cap.
     static func cone(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
         var positions: [SIMD3<Float>] = []
