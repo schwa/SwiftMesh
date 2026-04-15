@@ -1326,7 +1326,7 @@ PLY.write() already exists in SwiftMeshIO but isn't exposed in the demo app. Add
 status: new
 priority: high
 kind: bug
-labels: decimation,topology
+labels: decimation, topology
 created: 2026-04-15T17:48:08Z
 +++
 
@@ -1342,5 +1342,26 @@ The decimation algorithm (QEM edge collapse) tombstones faces and vertices but n
 3. Removes tombstoned half-edges (next == nil)
 4. Remaps all indices
 5. Remaps per-corner attributes if present
+
+---
+
+## 83: Visually validate all mesh primitives in demo app
+
++++
+status: new
+priority: medium
+kind: task
+labels: qa,demo
+created: 2026-04-15T18:06:36Z
++++
+
+Go through every mesh in the demo gallery and verify they render correctly in both wireframe and Metal (Blinn-Phong) modes. Check for:
+- Correct shape and proportions
+- No inside-out faces or flipped normals
+- Proper UV mapping (use Tex Coords / Checkerboard debug modes)
+- Capped vs uncapped variants look right
+- CSG results are clean
+- Subdivision results are smooth
+- Decimated meshes degrade gracefully
 
 ---
