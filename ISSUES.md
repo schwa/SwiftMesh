@@ -914,3 +914,20 @@ Test impact: Existing CSGTests already test at the boundary (union/intersection/
 
 ---
 
+## 75: Implement Euler characteristic and genus computation
+status: new
+priority: low
+kind: feature
+labels: topology,diagnostics
+created: 2026-04-15T15:43:32Z
+
+Split from #67. Compute eulerCharacteristic (V - E + F) and hasConsistentGenus. Non-trivial because:
+- Disconnected meshes: need to compute per-component, not globally
+- Non-orientable surfaces: genus formula differs (χ = 2 - 2g for orientable, χ = 2 - g for non-orientable)
+- Meshes with boundary: χ = 2 - 2g - b where b = number of boundary loops
+- Need to decide what 'expected surface type' means for hasConsistentGenus — user-supplied, or inferred?
+
+Depends on boundaryLoopCount from #67.
+
+---
+
