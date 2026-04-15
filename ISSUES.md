@@ -329,3 +329,12 @@ created: 2026-04-15T02:57:34Z
 
 ---
 
+## 33: Generate UVs for cone() primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:34Z
+
+
+---
+
