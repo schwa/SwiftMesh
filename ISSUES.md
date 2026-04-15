@@ -257,3 +257,12 @@ created: 2026-04-15T02:57:32Z
 
 ---
 
+## 25: Generate UVs for octahedron primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:33Z
+
+
+---
+
