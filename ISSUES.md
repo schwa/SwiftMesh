@@ -207,10 +207,12 @@ Port capsule, hemisphere, icoSphere, cubeSphere, circle from old TrivialMesh+Sha
 ---
 
 ## 17: Mesh simplification / decimation
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T00:52:14Z
+updated: 2026-04-15T07:05:32Z
+closed: 2026-04-15T07:05:32Z
 
 Reduce mesh polygon count while preserving shape. Quadric error metrics or similar.
 
@@ -687,6 +689,61 @@ kind: feature
 created: 2026-04-15T07:09:54Z
 
 Add conversion between Float and Double precision meshes. MetalMesh only works with Float, so need a way to downconvert Double meshes for GPU use.
+
+---
+
+## 60: Decimation damages CSG difference mesh (sphere − cube)
+status: new
+priority: high
+kind: bug
+created: 2026-04-15T07:40:25Z
+
+Decimating the 'Difference: Sphere − Cube' gallery mesh produces a gaping hole. The decimation algorithm likely collapses edges on the CSG boundary where the carved-out region meets the sphere surface, breaking the manifold.
+
+---
+
+## 61: Add isManifold method
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T07:40:38Z
+
+Add a method to check whether a mesh is a closed 2-manifold (every edge has exactly one twin, no boundary edges, consistent orientation).
+
+---
+
+## 62: cubeSphere has unwelded seam vertices, not manifold
+status: new
+priority: medium
+kind: bug
+created: 2026-04-15T07:46:38Z
+
+cubeSphere generates 6 independent grids projected onto a sphere but doesn't weld shared vertices at cube face edges/corners. This leaves 192 boundary half-edges with no twins. The mesh should be a closed manifold.
+
+---
+
+## 63: teapot mesh is not manifold
+status: closed
+priority: low
+kind: bug
+created: 2026-04-15T07:47:21Z
+updated: 2026-04-15T07:48:30Z
+closed: 2026-04-15T07:48:30Z
+
+Mesh.teapot() has boundary edges from the OBJ import — likely unwelded seam vertices, similar to cubeSphere (#62).
+
+- `2026-04-15T07:48:30Z`: Not a bug — the Utah teapot is intentionally composed of separate patches with open boundaries.
+
+---
+
+## 64: Add Mesh.welded(tolerance:) to merge near-duplicate vertices and rebuild topology
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T07:48:19Z
+updated: 2026-04-15T07:48:34Z
+
+TriangleSoup.welded(tolerance:) merges positions but doesn't rebuild half-edge topology. Need a Mesh-level weld that merges near-duplicate positions, remaps face indices, and rebuilds HalfEdgeTopology so twin edges form at seams. This would fix cubeSphere (#62).
 
 ---
 
