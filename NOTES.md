@@ -29,6 +29,19 @@ Three layers:
 - **MetalSprocketsSceneGraph** — scene graph mesh nodes
 - **GeometryLite2D** — has redundant HalfEdgeMesh/PolygonMesh copies to remove
 
+## Design decisions
+
+- Faces are n-gon. Triangulation only happens at MetalMesh export.
+- HalfEdgeTopology stores no geometry. Pure wiring.
+- Mesh is a thin wrapper: topology + SoA attribute arrays.
+- Per-corner attributes use HalfEdgeID as key (each half-edge = one vertex in one face).
+- MetalMesh layout doesn't matter — write-once export, interleave however the vertex descriptor dictates.
+- Submeshes on Mesh are face groups (list of FaceIDs). MetalMesh maps 1:1.
+
+## Open questions
+
+- 2D support: keep 2D factories/queries as extensions? Separate module?
+
 ## Dependencies
 
 - [GeometryLite3D](https://github.com/schwa/GeometryLite3D) — `Packed3` type for Metal buffer packing
