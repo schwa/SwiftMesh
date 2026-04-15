@@ -311,3 +311,12 @@ created: 2026-04-15T02:57:33Z
 
 ---
 
+## 31: Generate UVs for torus() primitive
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T02:57:33Z
+
+
+---
+
