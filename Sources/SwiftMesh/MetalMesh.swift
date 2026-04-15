@@ -24,8 +24,7 @@ public struct MetalMesh {
     /// Create a MetalMesh from a Mesh.
     ///
     /// Each half-edge corner becomes a unique vertex in the output buffer.
-    /// Faces are grouped by material tag into submeshes.
-    /// Currently only supports triangle faces.
+    /// Each `Mesh.Submesh` becomes a `MetalMesh.Submesh` with its own index buffer.
     public init(mesh: Mesh, device: MTLDevice, label: String? = nil) {
         self.label = label
 
@@ -52,29 +51,21 @@ public struct MetalMesh {
 
         let stride = descriptor.layouts[0]!.stride
 
-        // Group faces by material
-        var facesByMaterial: [Int: [HalfEdgeTopology.FaceID]] = [:]
-        for face in mesh.topology.faces {
-            let mat = mesh.faceMaterial(face.id)
-            facesByMaterial[mat, default: []].append(face.id)
-        }
-
-        // Walk all faces to build interleaved vertex data and per-material index arrays
+        // Walk submeshes to build interleaved vertex data and per-submesh index arrays
         var vertexData = [UInt8]()
         var currentVertexIndex: UInt32 = 0
-        var submeshIndices: [Int: [UInt32]] = [:]
+        var builtSubmeshes: [(label: String?, indices: [UInt32])] = []
 
-        for (mat, faceIDs) in facesByMaterial.sorted(by: { $0.key < $1.key }) {
+        for submesh in mesh.submeshes {
             var indices: [UInt32] = []
 
-            for faceID in faceIDs {
+            for faceID in submesh.faces {
                 // Triangulate the face
                 let vertexIDs = mesh.topology.vertexLoop(for: faceID)
                 let faceTriangles: [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
                 if vertexIDs.count == 3 {
                     faceTriangles = [(vertexIDs[0], vertexIDs[1], vertexIDs[2])]
                 } else {
-                    // Use Mesh.triangulate() logic for this face
                     faceTriangles = mesh.triangulateFace(vertexIDs: vertexIDs)
                 }
 
@@ -137,7 +128,7 @@ public struct MetalMesh {
                 }
             }
 
-            submeshIndices[mat] = indices
+            builtSubmeshes.append((label: submesh.label, indices: indices))
         }
 
         self.vertexCount = Int(currentVertexIndex)
@@ -153,17 +144,17 @@ public struct MetalMesh {
         self.vertexBuffer = vtxBuffer
 
         // Create submeshes
-        self.submeshes = submeshIndices.sorted(by: { $0.key < $1.key }).map { mat, indices in
+        self.submeshes = builtSubmeshes.map { sub in
             let idxBuffer = device.makeBuffer(
-                bytes: indices,
-                length: MemoryLayout<UInt32>.stride * indices.count,
+                bytes: sub.indices,
+                length: MemoryLayout<UInt32>.stride * sub.indices.count,
                 options: []
             )!
-            idxBuffer.label = label.map { "\($0) Indices [material \(mat)]" }
+            idxBuffer.label = sub.label ?? label.map { "\($0) Indices" }
             return Submesh(
-                label: label,
+                label: sub.label,
                 indexBuffer: idxBuffer,
-                indexCount: indices.count
+                indexCount: sub.indices.count
             )
         }
     }

@@ -51,8 +51,8 @@ struct MetalMeshTests {
         #expect(metalMesh.submeshes[0].indexCount == 60)
     }
 
-    @Test("Material tags produce multiple submeshes")
-    func materialSubmeshes() throws {
+    @Test("Mesh submeshes produce MetalMesh submeshes")
+    func meshSubmeshes() throws {
         let device = try requireDevice()
         let topo = HalfEdgeTopology(vertexCount: 6, faces: [
             .init(outer: [0, 1, 2]),
@@ -64,7 +64,10 @@ struct MetalMeshTests {
                 SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0),
                 SIMD3(2, 0, 0), SIMD3(3, 0, 0), SIMD3(2.5, 1, 0)
             ],
-            faceMaterials: [0, 1]
+            submeshes: [
+                .init(label: "A", faces: [topo.faces[0].id]),
+                .init(label: "B", faces: [topo.faces[1].id])
+            ]
         )
         let metalMesh = MetalMesh(mesh: mesh, device: device)
         #expect(metalMesh.submeshes.count == 2)

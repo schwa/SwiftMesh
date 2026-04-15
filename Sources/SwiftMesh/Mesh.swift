@@ -26,12 +26,24 @@ public struct Mesh: Sendable, Equatable {
     /// Per-corner colors. When nil, colors are not assigned.
     public var colors: [SIMD4<Float>]?
 
-    // MARK: - Per-face attributes (indexed by FaceID.raw)
+    // MARK: - Submeshes
 
-    /// Per-face material slot index. When nil, all faces use material 0.
-    public var faceMaterials: [Int]?
+    /// Face groups. Each submesh references a subset of faces.
+    /// Default: one submesh containing all faces.
+    public var submeshes: [Submesh]
 
     // MARK: - Init
+
+    /// A named group of faces within the mesh.
+    public struct Submesh: Sendable, Equatable {
+        public var label: String?
+        public var faces: [HalfEdgeTopology.FaceID]
+
+        public init(label: String? = nil, faces: [HalfEdgeTopology.FaceID]) {
+            self.label = label
+            self.faces = faces
+        }
+    }
 
     public init(
         topology: HalfEdgeTopology,
@@ -39,27 +51,27 @@ public struct Mesh: Sendable, Equatable {
         normals: [SIMD3<Float>]? = nil,
         textureCoordinates: [SIMD2<Float>]? = nil,
         colors: [SIMD4<Float>]? = nil,
-        faceMaterials: [Int]? = nil
+        submeshes: [Submesh]? = nil
     ) {
         self.topology = topology
         self.positions = positions
         self.normals = normals
         self.textureCoordinates = textureCoordinates
         self.colors = colors
-        self.faceMaterials = faceMaterials
+        self.submeshes = submeshes ?? [Submesh(faces: topology.faces.map(\.id))]
     }
 
     /// Build from indexed vertex positions and face definitions.
     public init(positions: [SIMD3<Float>], faces: [[Int]]) {
         let faceDefs = faces.map { HalfEdgeTopology.FaceDefinition(outer: $0) }
-        self.topology = HalfEdgeTopology(vertexCount: positions.count, faces: faceDefs)
-        self.positions = positions
+        let topo = HalfEdgeTopology(vertexCount: positions.count, faces: faceDefs)
+        self.init(topology: topo, positions: positions)
     }
 
     /// Build from indexed vertex positions and face definitions with holes.
     public init(positions: [SIMD3<Float>], faces: [HalfEdgeTopology.FaceDefinition]) {
-        self.topology = HalfEdgeTopology(vertexCount: positions.count, faces: faces)
-        self.positions = positions
+        let topo = HalfEdgeTopology(vertexCount: positions.count, faces: faces)
+        self.init(topology: topo, positions: positions)
     }
 }
 
@@ -122,11 +134,6 @@ public extension Mesh {
         return pts.reduce(.zero, +) / Float(pts.count)
     }
 
-    /// Material slot for a face. Returns 0 if no material tags are assigned.
-    func faceMaterial(_ face: HalfEdgeTopology.FaceID) -> Int {
-        faceMaterials?[face.raw] ?? 0
-    }
-
     /// Validates topology and attribute array sizes.
     func validate() -> String? {
         if let error = topology.validate() {
@@ -143,9 +150,6 @@ public extension Mesh {
         }
         if let colors, colors.count != topology.halfEdges.count {
             return "colors.count (\(colors.count)) != halfEdge count (\(topology.halfEdges.count))"
-        }
-        if let faceMaterials, faceMaterials.count != topology.faces.count {
-            return "faceMaterials.count (\(faceMaterials.count)) != face count (\(topology.faces.count))"
         }
         return nil
     }

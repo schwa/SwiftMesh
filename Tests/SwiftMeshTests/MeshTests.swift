@@ -96,16 +96,17 @@ struct MeshTests {
 
     // MARK: - Materials
 
-    @Test("faceMaterial defaults to 0")
-    func defaultMaterial() {
+    @Test("Default submesh contains all faces")
+    func defaultSubmesh() {
         let mesh = Mesh(positions: [
             SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0)
         ], faces: [[0, 1, 2]])
-        #expect(mesh.faceMaterial(mesh.topology.faces[0].id) == 0)
+        #expect(mesh.submeshes.count == 1)
+        #expect(mesh.submeshes[0].faces.count == 1)
     }
 
-    @Test("faceMaterial with explicit assignment")
-    func explicitMaterial() {
+    @Test("Explicit submeshes")
+    func explicitSubmeshes() {
         let topo = HalfEdgeTopology(vertexCount: 4, faces: [
             .init(outer: [0, 1, 2]),
             .init(outer: [0, 2, 3])
@@ -113,10 +114,14 @@ struct MeshTests {
         let mesh = Mesh(
             topology: topo,
             positions: [SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(1, 1, 0), SIMD3(0, 1, 0)],
-            faceMaterials: [0, 1]
+            submeshes: [
+                .init(label: "A", faces: [topo.faces[0].id]),
+                .init(label: "B", faces: [topo.faces[1].id])
+            ]
         )
-        #expect(mesh.faceMaterial(mesh.topology.faces[0].id) == 0)
-        #expect(mesh.faceMaterial(mesh.topology.faces[1].id) == 1)
+        #expect(mesh.submeshes.count == 2)
+        #expect(mesh.submeshes[0].faces.count == 1)
+        #expect(mesh.submeshes[1].faces.count == 1)
     }
 
     // MARK: - Validation
@@ -143,18 +148,7 @@ struct MeshTests {
         #expect(error!.contains("normals.count"))
     }
 
-    @Test("Validate catches mismatched faceMaterials count")
-    func validateMaterialsMismatch() {
-        let topo = HalfEdgeTopology(vertexCount: 3, faces: [.init(outer: [0, 1, 2])])
-        let mesh = Mesh(
-            topology: topo,
-            positions: [SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0)],
-            faceMaterials: [0, 1] // wrong count
-        )
-        let error = mesh.validate()
-        #expect(error != nil)
-        #expect(error!.contains("faceMaterials.count"))
-    }
+
 
     // MARK: - Platonic Solids
 
