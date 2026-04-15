@@ -470,7 +470,55 @@ struct MeshGallerySection: Identifiable {
                     let s = p * (2 * .pi * 3)
                     let g = sin(s.x) * cos(s.y) + sin(s.y) * cos(s.z) + sin(s.z) * cos(s.x)
                     return abs(g) - 0.3
-                }),
+                })
+            ]
+        }()),
+        Self("Convex Hull", items: {
+            // Random point cloud
+            var randomPoints: [SIMD3<Float>] = []
+            var seed: UInt32 = 12_345
+            for _ in 0..<80 {
+                seed = seed &* 1_664_525 &+ 1_013_904_223
+                let x = Float(seed % 1_000) / 500.0 - 1.0
+                seed = seed &* 1_664_525 &+ 1_013_904_223
+                let y = Float(seed % 1_000) / 500.0 - 1.0
+                seed = seed &* 1_664_525 &+ 1_013_904_223
+                let z = Float(seed % 1_000) / 500.0 - 1.0
+                randomPoints.append(SIMD3(x, y, z) * 0.4)
+            }
+
+            // Points on a sphere (golden spiral)
+            var spherePoints: [SIMD3<Float>] = []
+            let n = 40
+            let phi: Float = (1 + sqrt(5)) / 2
+            for i in 0..<n {
+                let theta = acos(1 - 2 * (Float(i) + 0.5) / Float(n))
+                let angle = 2 * Float.pi * Float(i) / phi
+                spherePoints.append(SIMD3(sin(theta) * cos(angle), sin(theta) * sin(angle), cos(theta)) * 0.4)
+            }
+
+            // Cube corners + noisy interior
+            var noisyCubePoints: [SIMD3<Float>] = [
+                SIMD3(-1, -1, -1), SIMD3(1, -1, -1), SIMD3(1, 1, -1), SIMD3(-1, 1, -1),
+                SIMD3(-1, -1, 1), SIMD3(1, -1, 1), SIMD3(1, 1, 1), SIMD3(-1, 1, 1)
+            ].map { $0 * 0.4 }
+            for _ in 0..<30 {
+                seed = seed &* 1_664_525 &+ 1_013_904_223
+                let x = Float(seed % 1_000) / 500.0 - 1.0
+                seed = seed &* 1_664_525 &+ 1_013_904_223
+                let y = Float(seed % 1_000) / 500.0 - 1.0
+                seed = seed &* 1_664_525 &+ 1_013_904_223
+                let z = Float(seed % 1_000) / 500.0 - 1.0
+                noisyCubePoints.append(SIMD3(x, y, z) * 0.3)
+            }
+
+            return [
+                MeshGalleryItem("Random Cloud", subtitle: "80 random points",
+                    mesh: Mesh.convexHull(of: randomPoints, attributes: []) ?? .tetrahedron(attributes: [])),
+                MeshGalleryItem("Sphere Points", subtitle: "40 points on sphere",
+                    mesh: Mesh.convexHull(of: spherePoints, attributes: []) ?? .tetrahedron(attributes: [])),
+                MeshGalleryItem("Noisy Cube", subtitle: "Cube corners + 30 interior",
+                    mesh: Mesh.convexHull(of: noisyCubePoints, attributes: []) ?? .tetrahedron(attributes: []))
             ]
         }()),
         Self("Decimation", items: {
