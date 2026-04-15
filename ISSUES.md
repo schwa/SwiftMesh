@@ -619,3 +619,12 @@ New tab with a single mesh (cylinder) and a .inspector() sidebar showing vertex 
 
 ---
 
+## 54: Add Select Loop to demo inspector
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T06:39:36Z
+
+
+---
+
