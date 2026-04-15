@@ -38,6 +38,12 @@ public struct MetalMesh {
         if mesh.textureCoordinates != nil {
             attributes.append(.init(semantic: .texcoord, format: .float2, offset: 0, bufferIndex: 0))
         }
+        if mesh.tangents != nil {
+            attributes.append(.init(semantic: .tangent, format: .float3, offset: 0, bufferIndex: 0))
+        }
+        if mesh.bitangents != nil {
+            attributes.append(.init(semantic: .bitangent, format: .float3, offset: 0, bufferIndex: 0))
+        }
         if mesh.colors != nil {
             attributes.append(.init(semantic: .color, format: .float4, offset: 0, bufferIndex: 0))
         }
@@ -105,6 +111,20 @@ public struct MetalMesh {
                                     if let uvs = mesh.textureCoordinates, let heID {
                                         var uv = uvs[heID.raw]
                                         withUnsafeBytes(of: &uv) { src in
+                                            dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
+                                        }
+                                    }
+                                case .tangent:
+                                    if let tangents = mesh.tangents, let heID {
+                                        var packed = Packed3<Float>(tangents[heID.raw])
+                                        withUnsafeBytes(of: &packed) { src in
+                                            dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
+                                        }
+                                    }
+                                case .bitangent:
+                                    if let bitangents = mesh.bitangents, let heID {
+                                        var packed = Packed3<Float>(bitangents[heID.raw])
+                                        withUnsafeBytes(of: &packed) { src in
                                             dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
                                         }
                                     }

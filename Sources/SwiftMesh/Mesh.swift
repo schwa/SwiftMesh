@@ -23,6 +23,12 @@ public struct Mesh: Sendable, Equatable {
     /// Per-corner texture coordinates. When nil, UVs are not assigned.
     public var textureCoordinates: [SIMD2<Float>]?
 
+    /// Per-corner tangents. When nil, tangents are not assigned.
+    public var tangents: [SIMD3<Float>]?
+
+    /// Per-corner bitangents. When nil, bitangents are not assigned.
+    public var bitangents: [SIMD3<Float>]?
+
     /// Per-corner colors. When nil, colors are not assigned.
     public var colors: [SIMD4<Float>]?
 
@@ -50,6 +56,8 @@ public struct Mesh: Sendable, Equatable {
         positions: [SIMD3<Float>],
         normals: [SIMD3<Float>]? = nil,
         textureCoordinates: [SIMD2<Float>]? = nil,
+        tangents: [SIMD3<Float>]? = nil,
+        bitangents: [SIMD3<Float>]? = nil,
         colors: [SIMD4<Float>]? = nil,
         submeshes: [Submesh]? = nil
     ) {
@@ -57,6 +65,8 @@ public struct Mesh: Sendable, Equatable {
         self.positions = positions
         self.normals = normals
         self.textureCoordinates = textureCoordinates
+        self.tangents = tangents
+        self.bitangents = bitangents
         self.colors = colors
         self.submeshes = submeshes ?? [Submesh(faces: topology.faces.map(\.id))]
     }
@@ -147,6 +157,12 @@ public extension Mesh {
         }
         if let textureCoordinates, textureCoordinates.count != topology.halfEdges.count {
             return "textureCoordinates.count (\(textureCoordinates.count)) != halfEdge count (\(topology.halfEdges.count))"
+        }
+        if let tangents, tangents.count != topology.halfEdges.count {
+            return "tangents.count (\(tangents.count)) != halfEdge count (\(topology.halfEdges.count))"
+        }
+        if let bitangents, bitangents.count != topology.halfEdges.count {
+            return "bitangents.count (\(bitangents.count)) != halfEdge count (\(topology.halfEdges.count))"
         }
         if let colors, colors.count != topology.halfEdges.count {
             return "colors.count (\(colors.count)) != halfEdge count (\(topology.halfEdges.count))"
