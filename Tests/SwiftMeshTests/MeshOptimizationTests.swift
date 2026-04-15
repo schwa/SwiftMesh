@@ -32,9 +32,9 @@ struct MeshOptimizationTests {
     func csgMerging() {
         let a = Mesh.box(extents: [1, 1, 1], attributes: [])
         let b = Mesh.box(extents: [0.5, 0.5, 0.5], attributes: [])
-        let diff = a.difference(b)
-        let merged = diff.mergingCoplanarFaces()
-        // Merged should have fewer faces than the raw CSG result
-        #expect(merged.faceCount < diff.faceCount)
+        let unmerged = a.difference(b, mergeCoplanar: false)
+        let merged = a.difference(b, mergeCoplanar: true)
+        // Merged should have fewer faces than the unmerged CSG result
+        #expect(merged.faceCount < unmerged.faceCount)
     }
 }

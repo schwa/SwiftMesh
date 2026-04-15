@@ -432,9 +432,10 @@ public extension Mesh {
     ///
     /// - Parameter other: The mesh to union with.
     /// - Returns: A new mesh representing the combined volume.
-    func union(_ other: Mesh) -> Mesh {
-        let result = TriangleSoup(mesh: self).union(TriangleSoup(mesh: other))
-        return result.toMesh()
+    func union(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh {
+        var result = TriangleSoup(mesh: self).union(TriangleSoup(mesh: other)).toMesh()
+        if mergeCoplanar { result = result.mergingCoplanarFaces() }
+        return result
     }
 
     /// Returns the CSG intersection of this mesh with another (A ∩ B).
@@ -446,9 +447,10 @@ public extension Mesh {
     ///
     /// - Parameter other: The mesh to intersect with.
     /// - Returns: A new mesh containing only the shared volume.
-    func intersection(_ other: Mesh) -> Mesh {
-        let result = TriangleSoup(mesh: self).intersection(TriangleSoup(mesh: other))
-        return result.toMesh()
+    func intersection(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh {
+        var result = TriangleSoup(mesh: self).intersection(TriangleSoup(mesh: other)).toMesh()
+        if mergeCoplanar { result = result.mergingCoplanarFaces() }
+        return result
     }
 
     /// Returns the CSG difference of this mesh minus another (A − B).
@@ -460,8 +462,9 @@ public extension Mesh {
     ///
     /// - Parameter other: The mesh volume to subtract.
     /// - Returns: A new mesh with the other's volume carved out.
-    func difference(_ other: Mesh) -> Mesh {
-        let result = TriangleSoup(mesh: self).difference(TriangleSoup(mesh: other))
-        return result.toMesh()
+    func difference(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh {
+        var result = TriangleSoup(mesh: self).difference(TriangleSoup(mesh: other)).toMesh()
+        if mergeCoplanar { result = result.mergingCoplanarFaces() }
+        return result
     }
 }
