@@ -75,6 +75,53 @@ struct MeshAttributesTests {
         }
     }
 
+    // MARK: - Planar UVs
+
+    @Test("withPlanarUVs produces UVs in [0,1]")
+    func planarUVs() {
+        let mesh = Mesh.cube(attributes: []).withPlanarUVs(axis: .z)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates!.count == mesh.topology.halfEdges.count)
+        for uv in mesh.textureCoordinates! {
+            #expect(uv.x >= -1e-5 && uv.x <= 1.0 + 1e-5)
+            #expect(uv.y >= -1e-5 && uv.y <= 1.0 + 1e-5)
+        }
+    }
+
+    @Test("withPlanarUVs works for all axes")
+    func planarUVsAllAxes() {
+        let mesh = Mesh.box(attributes: [])
+        for axis: ProjectionAxis in [.x, .y, .z] {
+            let projected = mesh.withPlanarUVs(axis: axis)
+            #expect(projected.textureCoordinates != nil)
+        }
+    }
+
+    // MARK: - Cylindrical UVs
+
+    @Test("withCylindricalUVs produces UVs in [0,1]")
+    func cylindricalUVs() {
+        let mesh = Mesh.cylinder(segments: 8, attributes: []).withCylindricalUVs(axis: .y)
+        #expect(mesh.textureCoordinates != nil)
+        for uv in mesh.textureCoordinates! {
+            #expect(uv.x >= -1e-5 && uv.x <= 1.0 + 1e-5)
+            #expect(uv.y >= -1e-5 && uv.y <= 1.0 + 1e-5)
+        }
+    }
+
+    // MARK: - Box UVs
+
+    @Test("withBoxUVs produces UVs in [0,1]")
+    func boxUVs() {
+        let mesh = Mesh.cube(attributes: []).withBoxUVs()
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates!.count == mesh.topology.halfEdges.count)
+        for uv in mesh.textureCoordinates! {
+            #expect(uv.x >= -1e-5 && uv.x <= 1.0 + 1e-5)
+            #expect(uv.y >= -1e-5 && uv.y <= 1.0 + 1e-5)
+        }
+    }
+
     // MARK: - Tangents
 
     @Test("withTangents requires normals and UVs")

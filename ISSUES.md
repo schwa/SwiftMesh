@@ -149,12 +149,16 @@ Edge split, edge collapse, face extrude, vertex welding/deduplication. Core edit
 ---
 
 ## 13: Additional UV projection methods
-status: new
+status: closed
 priority: low
 kind: feature
 created: 2026-04-15T00:51:47Z
+updated: 2026-04-15T05:20:20Z
+closed: 2026-04-15T05:20:20Z
 
 Planar, cylindrical, and box UV projection. Currently only spherical projection is supported.
+
+- `2026-04-15T05:20:20Z`: Implemented planar, cylindrical, and box UV projection
 
 ---
 

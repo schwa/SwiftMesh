@@ -83,6 +83,130 @@ public extension Mesh {
     }
 }
 
+/// The axis used for UV projection.
+public enum ProjectionAxis: Sendable {
+    case x, y, z
+}
+
+public extension Mesh {
+    /// Returns a new mesh with planar UV coordinates projected along `axis`.
+    ///
+    /// The two axes perpendicular to `axis` are mapped to U and V,
+    /// normalized to the mesh's bounding box.
+    func withPlanarUVs(axis: ProjectionAxis = .z) -> Mesh {
+        let (lo, hi) = bounds
+        let size = hi - lo
+        var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
+
+        for he in topology.halfEdges {
+            let pos = positions[he.origin.raw]
+            let u: Float
+            let v: Float
+            switch axis {
+            case .x:
+                u = size.z > 0 ? (pos.z - lo.z) / size.z : 0
+                v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
+            case .y:
+                u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
+                v = size.z > 0 ? (pos.z - lo.z) / size.z : 0
+            case .z:
+                u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
+                v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
+            }
+            uvs[he.id.raw] = SIMD2<Float>(u, v)
+        }
+
+        var result = self
+        result.textureCoordinates = uvs
+        return result
+    }
+
+    /// Returns a new mesh with cylindrical UV coordinates unwrapped around `axis`.
+    ///
+    /// U is computed from the angle around the axis, V from the position
+    /// along the axis normalized to the bounding box.
+    func withCylindricalUVs(axis: ProjectionAxis = .y) -> Mesh {
+        let (lo, hi) = bounds
+        let size = hi - lo
+        var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
+
+        for he in topology.halfEdges {
+            let pos = positions[he.origin.raw]
+            let u: Float
+            let v: Float
+            switch axis {
+            case .x:
+                let angle = atan2(Double(pos.z), Double(pos.y))
+                u = Float(angle / (2 * .pi) + 0.5)
+                v = size.x > 0 ? (pos.x - lo.x) / size.x : 0
+            case .y:
+                let angle = atan2(Double(pos.z), Double(pos.x))
+                u = Float(angle / (2 * .pi) + 0.5)
+                v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
+            case .z:
+                let angle = atan2(Double(pos.y), Double(pos.x))
+                u = Float(angle / (2 * .pi) + 0.5)
+                v = size.z > 0 ? (pos.z - lo.z) / size.z : 0
+            }
+            uvs[he.id.raw] = SIMD2<Float>(u, v)
+        }
+
+        var result = self
+        result.textureCoordinates = uvs
+        return result
+    }
+
+    /// Returns a new mesh with box-projected UV coordinates.
+    ///
+    /// Each face is projected onto the plane most aligned with its normal
+    /// (triplanar projection). UVs are normalized to the mesh's bounding box.
+    func withBoxUVs() -> Mesh {
+        let (lo, hi) = bounds
+        let size = hi - lo
+        var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
+
+        for face in topology.faces {
+            let normal = faceNormal(face.id)
+            let ax = abs(normal.x)
+            let ay = abs(normal.y)
+            let az = abs(normal.z)
+
+            // Pick dominant axis
+            let dominantAxis: ProjectionAxis
+            if ax >= ay && ax >= az {
+                dominantAxis = .x
+            } else if ay >= az {
+                dominantAxis = .y
+            } else {
+                dominantAxis = .z
+            }
+
+            let heLoop = topology.halfEdgeLoop(for: face.id)
+            for heID in heLoop {
+                let pos = positions[topology.halfEdges[heID.raw].origin.raw]
+                let u: Float
+                let v: Float
+                switch dominantAxis {
+                case .x:
+                    u = size.z > 0 ? (pos.z - lo.z) / size.z : 0
+                    v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
+                case .y:
+                    u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
+                    v = size.z > 0 ? (pos.z - lo.z) / size.z : 0
+                case .z:
+                    u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
+                    v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
+                }
+                uvs[heID.raw] = SIMD2<Float>(u, v)
+            }
+        }
+
+        var result = self
+        result.textureCoordinates = uvs
+        return result
+    }
+}
+
 // MARK: - Tangent Generation (MikkTSpace)
 
 public extension Mesh {
