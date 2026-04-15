@@ -918,7 +918,7 @@ Test impact: Existing CSGTests already test at the boundary (union/intersection/
 status: new
 priority: low
 kind: feature
-labels: topology,diagnostics
+labels: topology, diagnostics
 created: 2026-04-15T15:43:32Z
 
 Split from #67. Compute eulerCharacteristic (V - E + F) and hasConsistentGenus. Non-trivial because:
@@ -928,6 +928,21 @@ Split from #67. Compute eulerCharacteristic (V - E + F) and hasConsistentGenus. 
 - Need to decide what 'expected surface type' means for hasConsistentGenus — user-supplied, or inferred?
 
 Depends on boundaryLoopCount from #67.
+
+---
+
+## 76: Detect inconsistent face winding
+status: new
+priority: low
+kind: feature
+labels: topology,diagnostics
+created: 2026-04-15T15:43:40Z
+
+Split from #67. hasInconsistentFaceWinding — verify that for every pair of adjacent faces sharing an edge, the shared half-edges run in opposite directions. Non-trivial because:
+- Boundary edges have no twin, so they're neither consistent nor inconsistent — need clear semantics
+- Non-orientable surfaces (Möbius strip, Klein bottle) are inherently inconsistent — should this be an error or an informational property?
+- After CSG or coplanar merge, winding can be locally flipped — need to decide if this checks globally or returns per-face/per-edge results
+- For large meshes, a BFS/DFS orientation-propagation approach is needed rather than pairwise checking
 
 ---
 
