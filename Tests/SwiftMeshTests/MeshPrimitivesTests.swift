@@ -120,6 +120,46 @@ struct MeshPrimitivesTests {
         #expect(mesh.validate() == nil)
     }
 
+    @Test("tetrahedron(attributes: .textureCoordinates) has UVs")
+    func tetrahedronUVs() {
+        let mesh = Mesh.tetrahedron(attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("octahedron(attributes: .textureCoordinates) has UVs")
+    func octahedronUVs() {
+        let mesh = Mesh.octahedron(attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("icosahedron(attributes: .textureCoordinates) has UVs")
+    func icosahedronUVs() {
+        let mesh = Mesh.icosahedron(attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("dodecahedron(attributes: .textureCoordinates) has UVs")
+    func dodecahedronUVs() {
+        let mesh = Mesh.dodecahedron(attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    @Test("torus(attributes: .textureCoordinates) has UVs")
+    func torusUVs() {
+        let mesh = Mesh.torus(majorSegments: 8, minorSegments: 4, attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
     // MARK: - Parametric Surfaces
 
     @Test("sphere() default")

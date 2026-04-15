@@ -24,6 +24,10 @@ public struct MeshAttributes: OptionSet, Sendable {
     /// Invert normals (face inward). Requires `.flatNormals` or `.smoothNormals`.
     public static let invertedNormals = MeshAttributes(rawValue: 1 << 5)
 
+    public static let `default`: MeshAttributes = [.flatNormals, .textureCoordinates]
+
+    public static let `all`: MeshAttributes = [.flatNormals, .textureCoordinates, .tangents, .bitangents]
+
     /// Validate that the requested combination is legal.
     /// Calls `fatalError` for programmer errors.
     internal func validate() {

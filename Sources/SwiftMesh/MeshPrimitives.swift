@@ -4,7 +4,7 @@ import simd
 
 public extension Mesh {
     /// A regular tetrahedron centered at the origin.
-    static func tetrahedron(extents: SIMD3<Float> = [1, 1, 1]) -> Mesh {
+    static func tetrahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh {
         let positions: [SIMD3<Float>] = [
             SIMD3(1, 1, 1), SIMD3(-1, -1, 1), SIMD3(-1, 1, -1), SIMD3(1, -1, -1)
         ].map { simd_normalize($0) }
@@ -12,11 +12,27 @@ public extension Mesh {
             [0, 1, 2], [0, 3, 1], [0, 2, 3], [1, 3, 2]
         ])
         mesh.fitToExtents(extents)
+
+        if attributes.contains(.textureCoordinates) {
+            let triUVs: [SIMD2<Float>] = [
+                SIMD2(0, 0), SIMD2(1, 0), SIMD2(0.5, 1)
+            ]
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            for face in mesh.topology.faces {
+                let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
+                for (i, he) in heLoop.enumerated() {
+                    uvs[he.raw] = triUVs[i]
+                }
+            }
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
         return mesh
     }
 
     /// A regular cube centered at the origin.
-    static func cube(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = []) -> Mesh {
+    static func cube(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh {
         let positions: [SIMD3<Float>] = [
             SIMD3(-1, -1, -1), SIMD3(1, -1, -1), SIMD3(1, 1, -1), SIMD3(-1, 1, -1),
             SIMD3(-1, -1, 1), SIMD3(1, -1, 1), SIMD3(1, 1, 1), SIMD3(-1, 1, 1)
@@ -48,7 +64,7 @@ public extension Mesh {
     }
 
     /// A regular octahedron centered at the origin.
-    static func octahedron(extents: SIMD3<Float> = [1, 1, 1]) -> Mesh {
+    static func octahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh {
         let positions: [SIMD3<Float>] = [
             SIMD3(1, 0, 0), SIMD3(-1, 0, 0), SIMD3(0, 1, 0),
             SIMD3(0, -1, 0), SIMD3(0, 0, 1), SIMD3(0, 0, -1)
@@ -58,11 +74,27 @@ public extension Mesh {
             [1, 2, 5], [1, 5, 3], [1, 3, 4], [1, 4, 2]
         ])
         mesh.fitToExtents(extents)
+
+        if attributes.contains(.textureCoordinates) {
+            let triUVs: [SIMD2<Float>] = [
+                SIMD2(0, 0), SIMD2(1, 0), SIMD2(0.5, 1)
+            ]
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            for face in mesh.topology.faces {
+                let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
+                for (i, he) in heLoop.enumerated() {
+                    uvs[he.raw] = triUVs[i]
+                }
+            }
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
         return mesh
     }
 
     /// A regular icosahedron centered at the origin.
-    static func icosahedron(extents: SIMD3<Float> = [1, 1, 1]) -> Mesh {
+    static func icosahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh {
         let phi: Float = (1.0 + sqrt(5.0)) / 2.0
         let positions: [SIMD3<Float>] = [
             SIMD3(-1, phi, 0), SIMD3(1, phi, 0), SIMD3(-1, -phi, 0), SIMD3(1, -phi, 0),
@@ -76,11 +108,27 @@ public extension Mesh {
             [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]
         ])
         mesh.fitToExtents(extents)
+
+        if attributes.contains(.textureCoordinates) {
+            let triUVs: [SIMD2<Float>] = [
+                SIMD2(0, 0), SIMD2(1, 0), SIMD2(0.5, 1)
+            ]
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            for face in mesh.topology.faces {
+                let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
+                for (i, he) in heLoop.enumerated() {
+                    uvs[he.raw] = triUVs[i]
+                }
+            }
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
         return mesh
     }
 
     /// A regular dodecahedron centered at the origin.
-    static func dodecahedron(extents: SIMD3<Float> = [1, 1, 1]) -> Mesh {
+    static func dodecahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh {
         let phi: Float = (1.0 + sqrt(5.0)) / 2.0
         let invPhi: Float = 1.0 / phi
         let positions: [SIMD3<Float>] = [
@@ -100,6 +148,26 @@ public extension Mesh {
             [4, 18, 6, 10, 8], [5, 9, 11, 7, 19], [6, 18, 19, 7, 15]
         ])
         mesh.fitToExtents(extents)
+
+        if attributes.contains(.textureCoordinates) {
+            // Regular pentagon UVs: vertices equally spaced on a unit circle,
+            // centered at (0.5, 0.5) and scaled to fit.
+            var pentUVs = [SIMD2<Float>]()
+            for i in 0..<5 {
+                let angle = Float.pi / 2 + 2 * Float.pi * Float(i) / 5
+                pentUVs.append(SIMD2(0.5 + 0.5 * cos(angle), 0.5 - 0.5 * sin(angle)))
+            }
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            for face in mesh.topology.faces {
+                let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
+                for (i, he) in heLoop.enumerated() {
+                    uvs[he.raw] = pentUVs[i]
+                }
+            }
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
         return mesh
     }
 }
@@ -108,7 +176,7 @@ public extension Mesh {
 
 public extension Mesh {
     /// A single triangle in the XY plane, centered at the origin.
-    static func triangle(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = []) -> Mesh {
+    static func triangle(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = .default) -> Mesh {
         // Unit equilateral-ish triangle fitting in -0.5...0.5
         var mesh = Mesh(positions: [
             SIMD3(0, 0.5, 0), SIMD3(-0.5, -0.5, 0), SIMD3(0.5, -0.5, 0)
@@ -129,7 +197,7 @@ public extension Mesh {
     }
 
     /// A quad in the XY plane, centered at the origin.
-    static func quad(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = []) -> Mesh {
+    static func quad(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = .default) -> Mesh {
         let hw = extents.x / 2
         let hh = extents.y / 2
         var mesh = Mesh(positions: [
@@ -152,7 +220,7 @@ public extension Mesh {
     }
 
     /// A box centered at the origin with quad faces.
-    static func box(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = []) -> Mesh {
+    static func box(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh {
         let h = extents / 2
         let positions: [SIMD3<Float>] = [
             SIMD3(-h.x, -h.y, h.z), SIMD3(h.x, -h.y, h.z),
@@ -192,7 +260,7 @@ public extension Mesh {
 
 public extension Mesh {
     /// A UV sphere (or ellipsoid) with quad faces (and triangle caps at the poles).
-    static func sphere(extents: SIMD3<Float> = [1, 1, 1], latitudeSegments: Int = 16, longitudeSegments: Int = 32, attributes: MeshAttributes = []) -> Mesh {
+    static func sphere(extents: SIMD3<Float> = [1, 1, 1], latitudeSegments: Int = 16, longitudeSegments: Int = 32, attributes: MeshAttributes = .default) -> Mesh {
         let radii = extents / 2
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
@@ -334,7 +402,7 @@ public extension Mesh {
     }
 
     /// A torus with quad faces.
-    static func torus(majorSegments: Int = 32, minorSegments: Int = 16, majorRadius: Float = 0.3, minorRadius: Float = 0.15) -> Mesh {
+    static func torus(majorSegments: Int = 32, minorSegments: Int = 16, majorRadius: Float = 0.3, minorRadius: Float = 0.15, attributes: MeshAttributes = .default) -> Mesh {
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 
@@ -364,11 +432,36 @@ public extension Mesh {
             }
         }
 
-        return Mesh(positions: positions, faces: faces)
+        var mesh = Mesh(positions: positions, faces: faces)
+
+        if attributes.contains(.textureCoordinates) {
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            var faceIndex = 0
+            for major in 0..<majorSegments {
+                for minor in 0..<minorSegments {
+                    let faceID = HalfEdgeTopology.FaceID(raw: faceIndex)
+                    let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
+                    let u0 = Float(major) / Float(majorSegments)
+                    let u1 = Float(major + 1) / Float(majorSegments)
+                    let v0 = Float(minor) / Float(minorSegments)
+                    let v1 = Float(minor + 1) / Float(minorSegments)
+                    // Face vertices: [current, nextMajor, nextMajor+nextMinor, current+nextMinor]
+                    uvs[heLoop[0].raw] = SIMD2(u0, v0)
+                    uvs[heLoop[1].raw] = SIMD2(u1, v0)
+                    uvs[heLoop[2].raw] = SIMD2(u1, v1)
+                    uvs[heLoop[3].raw] = SIMD2(u0, v1)
+                    faceIndex += 1
+                }
+            }
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
     }
 
     /// A cylinder with quad sides and optional n-gon caps.
-    static func cylinder(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = []) -> Mesh {
+    static func cylinder(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 
@@ -446,7 +539,7 @@ public extension Mesh {
     }
 
     /// A cone with triangle sides and an optional n-gon base cap.
-    static func cone(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = []) -> Mesh {
+    static func cone(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 
