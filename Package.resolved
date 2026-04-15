@@ -1,15 +1,6 @@
 {
-  "originHash" : "5e95c83eb5267987446373877e14eba979dce90864c5f0905b68e7f7bfa86d05",
+  "originHash" : "59eda08f79779cdc345ce7ee323a9ce0164aef00924be3f470977983be844639",
   "pins" : [
-    {
-      "identity" : "geometrylite2d",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/schwa/GeometryLite2D",
-      "state" : {
-        "revision" : "5da6fa15d7f7ecb6865f8e21e6d246ef81b5e458",
-        "version" : "0.0.1"
-      }
-    },
     {
       "identity" : "geometrylite3d",
       "kind" : "remoteSourceControl",
