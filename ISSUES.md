@@ -1351,7 +1351,7 @@ The decimation algorithm (QEM edge collapse) tombstones faces and vertices but n
 status: new
 priority: medium
 kind: task
-labels: qa,demo
+labels: qa, demo
 created: 2026-04-15T18:06:36Z
 +++
 
@@ -1363,5 +1363,18 @@ Go through every mesh in the demo gallery and verify they render correctly in bo
 - CSG results are clean
 - Subdivision results are smooth
 - Decimated meshes degrade gracefully
+
+---
+
+## 84: border() with .textureCoordinates attribute doesn't generate UVs
+
++++
+status: new
+priority: medium
+kind: bug
+created: 2026-04-15T22:53:05Z
++++
+
+Mesh.border(attributes: .default) or .border(attributes: [.flatNormals, .textureCoordinates]) doesn't generate texture coordinates on the border geometry. The new border faces are created without UV assignment, so downstream consumers that require texcoords (e.g. FlatShader) fail with 'Vertex attribute 2 is not defined'. Workaround: call .withPlanarUVs() after .border(). Same issue exists with .wireframe().
 
 ---
