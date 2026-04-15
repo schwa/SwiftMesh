@@ -88,7 +88,9 @@ struct ParametricSurfacesGallery: View {
             ("Torus", .torus(), .pink),
             ("Cylinder", .cylinder(), .mint),
             ("Cone", .cone(), .indigo),
-            ("Box", .box(), .teal)
+            ("Box", .box(), .teal),
+            ("Hemisphere", .hemisphere(), .orange),
+            ("Capsule", .capsule(), .purple)
         ]
 
         ScrollView {
