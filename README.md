@@ -15,6 +15,14 @@ Three layers:
 **`MetalMesh`**
 : GPU-ready export from `Mesh`. Triangulates faces, splits vertices per-corner, interleaves attributes into Metal buffers. Submeshes grouped by material tag.
 
+## Consumers
+
+- **Interaction3D** — 3D mesh rendering in SwiftUI Canvas (replaces inlined PolygonMesh)
+- **MetalSprocketsAddOns** — Metal mesh pipeline (replaces old Mesh/TrivialMesh)
+- **MetalSprocketsExample** — demo app consuming MetalMesh
+- **MetalSprocketsSceneGraph** — scene graph mesh nodes
+- **GeometryLite2D** — has redundant HalfEdgeMesh/PolygonMesh copies to remove
+
 ## Dependencies
 
 - [GeometryLite3D](https://github.com/schwa/GeometryLite3D) — `Packed3` type for Metal buffer packing
