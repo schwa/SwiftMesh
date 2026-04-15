@@ -4,7 +4,11 @@ import MetalSupport
 import simd
 
 /// A GPU-ready mesh produced from a `Mesh` by triangulating faces,
-/// splitting vertices per-corner, and interleaving attributes into Metal buffers.
+/// and interleaving attributes into Metal buffers.
+///
+/// Vertices with identical positions and per-corner attributes are shared in
+/// the output buffer, so downstream consumers (e.g. wireframe edge extraction)
+/// can deduplicate edges by comparing index values.
 ///
 /// Faces are triangulated via earcut for n-gons, or passed through for triangles.
 public struct MetalMesh {
@@ -56,10 +60,13 @@ public struct MetalMesh {
 
         let stride = descriptor.layouts[0]!.stride
 
-        // Walk submeshes to build interleaved vertex data and per-submesh index arrays
+        // Walk submeshes to build interleaved vertex data and per-submesh index arrays.
+        // Vertices with identical byte content are deduplicated so that shared edges
+        // reference the same index.
         var vertexData = [UInt8]()
         var currentVertexIndex: UInt32 = 0
         var builtSubmeshes: [(label: String?, indices: [UInt32])] = []
+        var vertexDedup: [ArraySlice<UInt8>: UInt32] = [:]
 
         for submesh in mesh.submeshes {
             var indices: [UInt32] = []
@@ -146,9 +153,16 @@ public struct MetalMesh {
                             }
                         }
 
-                        vertexData.append(contentsOf: vertexBytes)
-                        indices.append(currentVertexIndex)
-                        currentVertexIndex += 1
+                        // Deduplicate: reuse existing vertex if bytes match
+                        let slice = vertexBytes[...]
+                        if let existingIndex = vertexDedup[slice] {
+                            indices.append(existingIndex)
+                        } else {
+                            vertexDedup[slice] = currentVertexIndex
+                            vertexData.append(contentsOf: vertexBytes)
+                            indices.append(currentVertexIndex)
+                            currentVertexIndex += 1
+                        }
                     }
                 }
             }

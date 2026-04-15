@@ -227,3 +227,15 @@ HalfEdgeTopology is at 82.8% coverage. Uncovered paths include deleteEdge branch
 
 ---
 
+## 22: MetalMesh unshares all vertices, making edge deduplication impossible
+status: closed
+priority: medium
+kind: bug
+created: 2026-04-15T01:37:20Z
+updated: 2026-04-15T01:41:32Z
+closed: 2026-04-15T01:41:32Z
+
+MetalMesh splits every half-edge corner into a unique vertex in the output buffer. This means two triangles sharing an edge get 6 distinct vertices instead of 4, and the index buffer never references the same vertex index for shared edges. Downstream consumers (like edge extraction for wireframe rendering) can't deduplicate edges by comparing index values. Either MetalMesh should preserve shared vertices where attributes match, or it should expose a mapping from output indices back to original VertexIDs.
+
+---
+
