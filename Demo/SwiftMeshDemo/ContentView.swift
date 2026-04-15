@@ -2,57 +2,174 @@ import SwiftMesh
 import SwiftUI
 
 struct ContentView: View {
+    @State private var selectedItem: MeshGalleryItem?
+
     var body: some View {
-        TabView {
-            Tab("Gallery", systemImage: "square.grid.2x2") {
-                GalleryView()
+        NavigationSplitView {
+            List(selection: $selectedItem) {
+                ForEach(MeshGallerySection.all) { section in
+                    Section(section.name) {
+                        ForEach(section.items) { item in
+                            NavigationLink(value: item) {
+                                HStack {
+                                    MeshPreviewView(mesh: item.mesh)
+                                        .frame(width: 48, height: 48)
+                                    VStack(alignment: .leading) {
+                                        Text(item.name)
+                                        if let subtitle = item.subtitle {
+                                            Text(subtitle)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            Tab("Inspector", systemImage: "sidebar.right") {
-                InspectorView()
+            .navigationTitle("SwiftMesh")
+            .listStyle(.sidebar)
+        } detail: {
+            if let item = selectedItem {
+                MeshDetailView(item: item)
+                    .id(item.id)
+            } else {
+                ContentUnavailableView("Select a Mesh", systemImage: "square.grid.2x2", description: Text("Choose a mesh from the sidebar"))
             }
         }
     }
 }
 
-struct GalleryView: View {
-    @State private var selectedItem: MeshGalleryItem?
+// MARK: - Detail View
+
+struct MeshDetailView: View {
+    let item: MeshGalleryItem
+
+    @State private var displayMesh: Mesh?
+    @State private var isTriangulated = false
+    @State private var showStandalone = true
+    @State private var standaloneFaceIDs: Set<HalfEdgeTopology.FaceID>?
+    @State private var decimationRatio: Float = 1.0
+    @State private var subdivisionLevel: Int = 0
+    @State private var isWelded = false
+    @State private var showInspector = true
+
+    private var mesh: Mesh { item.mesh }
+
+    private var currentMesh: Mesh {
+        displayMesh ?? mesh
+    }
 
     var body: some View {
-        ZStack {
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 250))], spacing: 20) {
-                    ForEach(MeshGallerySection.all) { section in
-                        Section {
-                            ForEach(section.items) { item in
-                                MeshGridCell(name: item.name, mesh: item.mesh, subtitle: item.subtitle) {
-                                    withAnimation { selectedItem = item }
-                                }
-                            }
-                        } header: {
-                            Text(section.name)
-                                .font(.title2.bold())
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, 10)
+        MeshInteractiveView(
+            mesh: currentMesh,
+            highlightedFaces: showStandalone ? standaloneFaceIDs : nil
+        )
+        .navigationTitle(item.name)
+        .navigationSubtitle(item.subtitle ?? "")
+        .inspector(isPresented: $showInspector) {
+            Form {
+                Section("Info") {
+                    LabeledContent("Vertices", value: "\(currentMesh.vertexCount)")
+                    LabeledContent("Faces", value: "\(currentMesh.faceCount)")
+                    LabeledContent("Edges", value: "\(currentMesh.edgeCount)")
+                    LabeledContent("Half-Edges", value: "\(currentMesh.topology.halfEdges.count)")
+                    LabeledContent("Submeshes", value: "\(currentMesh.submeshes.count)")
+                    LabeledContent("Manifold") {
+                        Text(currentMesh.isManifold ? "Yes" : "No")
+                            .foregroundStyle(currentMesh.isManifold ? .green : .red)
+                    }
+                    if showStandalone, let ids = standaloneFaceIDs {
+                        LabeledContent("Standalone Faces", value: "\(ids.count)")
+                    }
+                }
+                Section("Attributes") {
+                    LabeledContent("Normals", value: currentMesh.normals != nil ? "✓" : "—")
+                    LabeledContent("UVs", value: currentMesh.textureCoordinates != nil ? "✓" : "—")
+                    LabeledContent("Tangents", value: currentMesh.tangents != nil ? "✓" : "—")
+                    LabeledContent("Bitangents", value: currentMesh.bitangents != nil ? "✓" : "—")
+                    LabeledContent("Colors", value: currentMesh.colors != nil ? "✓" : "—")
+                }
+                Section("Operations") {
+                    Toggle("Weld", isOn: $isWelded)
+                        .onChange(of: isWelded) { rebuildDisplayMesh() }
+                    Toggle("Triangulate", isOn: $isTriangulated)
+                        .onChange(of: isTriangulated) { rebuildDisplayMesh() }
+                    Toggle("Standalone Faces", isOn: $showStandalone)
+                        .onChange(of: showStandalone) { if showStandalone { recomputeStandalone() } }
+
+                    HStack {
+                        Text("Subdivide")
+                        Spacer()
+                        Stepper("\(subdivisionLevel)×", value: $subdivisionLevel, in: 0...4)
+                            .onChange(of: subdivisionLevel) { rebuildDisplayMesh() }
+                    }
+
+                    VStack(alignment: .leading) {
+                        Text("Decimate")
+                        Slider(value: $decimationRatio, in: 0.05...1.0, step: 0.05)
+                            .onChange(of: decimationRatio) { rebuildDisplayMesh() }
+                        Text("\(Int(decimationRatio * 100))%")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if isModified {
+                        Button("Reset All") {
+                            isWelded = false
+                            isTriangulated = false
+                            subdivisionLevel = 0
+                            decimationRatio = 1.0
+                            rebuildDisplayMesh()
                         }
                     }
                 }
-                .padding()
             }
-
-            if let item = selectedItem {
-                MeshDetailView(name: item.name, mesh: item.mesh) {
-                    withAnimation { selectedItem = nil }
-                }
-                .padding(40)
-                .transition(.scale.combined(with: .opacity))
+            .inspectorColumnWidth(min: 220, ideal: 260, max: 320)
+        }
+        .toolbar {
+            Toggle(isOn: $showInspector) {
+                Label("Inspector", systemImage: "sidebar.right")
             }
         }
+        .onAppear { recomputeStandalone() }
+    }
+
+    private var isModified: Bool {
+        isWelded || isTriangulated || subdivisionLevel > 0 || decimationRatio < 1.0
+    }
+
+    private func rebuildDisplayMesh() {
+        var result = mesh
+        if isWelded {
+            result = result.welded(tolerance: 1e-4)
+        }
+        if isTriangulated {
+            result = result.triangulated()
+        }
+        if subdivisionLevel > 0 {
+            if isTriangulated {
+                result = result.loopSubdivided(iterations: subdivisionLevel)
+            } else {
+                result = result.catmullClarkSubdivided(iterations: subdivisionLevel)
+            }
+        }
+        if decimationRatio < 1.0 {
+            result = result.decimated(ratio: decimationRatio)
+        }
+        displayMesh = isModified ? result : nil
+        recomputeStandalone()
+    }
+
+    private func recomputeStandalone() {
+        standaloneFaceIDs = currentMesh.standaloneFaces()
     }
 }
 
 // MARK: - Data
 
-struct MeshGalleryItem: Identifiable {
+struct MeshGalleryItem: Identifiable, Hashable {
     let id: String
     let name: String
     let subtitle: String?
@@ -64,9 +181,12 @@ struct MeshGalleryItem: Identifiable {
         self.subtitle = subtitle
         self.mesh = mesh()
     }
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-private struct MeshGallerySection: Identifiable {
+struct MeshGallerySection: Identifiable {
     let id: String
     let name: String
     let items: [MeshGalleryItem]

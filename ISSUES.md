@@ -825,12 +825,16 @@ Currently `validate()` returns `String?` with the first error found. Change to r
 ---
 
 ## 69: Refactor demo app to NavigationSplitView
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-15T14:13:27Z
+updated: 2026-04-15T14:20:11Z
+closed: 2026-04-15T14:20:11Z
 
 Replace the current TabView with Gallery/Inspector tabs and the full-screen overlay with a single NavigationSplitView layout. Sidebar shows the mesh list, detail shows the interactive mesh view with the toolbar buttons (weld, triangulate, subdivide, decimate, standalone highlight) and the inspector info (manifold status, face count, etc.).
+
+- `2026-04-15T14:20:11Z`: Refactored to NavigationSplitView with sidebar mesh list, detail interactive view, and inspector panel with topology info and operations.
 
 ---
 
