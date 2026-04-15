@@ -22,7 +22,7 @@ struct CSGGallery: View {
                 MeshDetailView(name: example.name, mesh: example.mesh) {
                     withAnimation { selectedExample = nil }
                 }
-                .padding()
+                .padding(40)
                 .transition(.scale.combined(with: .opacity))
             }
         }

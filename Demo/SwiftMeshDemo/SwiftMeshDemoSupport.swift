@@ -162,7 +162,7 @@ struct PlatonicSolidsGallery: View {
                 MeshDetailView(name: name, mesh: mesh) {
                     withAnimation { selectedMesh = nil }
                 }
-                .padding()
+                .padding(40)
                 .transition(.scale.combined(with: .opacity))
             }
         }
@@ -206,7 +206,7 @@ struct ParametricSurfacesGallery: View {
                 MeshDetailView(name: name, mesh: mesh) {
                     withAnimation { selectedMesh = nil }
                 }
-                .padding()
+                .padding(40)
                 .transition(.scale.combined(with: .opacity))
             }
         }
