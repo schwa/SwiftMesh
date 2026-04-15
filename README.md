@@ -7,56 +7,127 @@ Mesh data structures and operations for Swift. Half-edge topology, n-gon faces, 
 ```swift
 import SwiftMesh
 
-// Build a mesh
 let mesh = Mesh.cube
-
-// Generate normals and UVs
-let prepared = mesh
     .withSmoothNormals()
     .withSphericalUVs()
 
-// Export to Metal
-let metalMesh = MetalMesh(mesh: prepared, device: device)
+let metalMesh = MetalMesh(mesh: mesh, device: device)
 encoder.draw(metalMesh)
 ```
 
-## What's in the box
+## Types
 
-**`HalfEdgeTopology`** — half-edge wiring with no geometry attached. Adjacency queries, validation, boundary detection, edge deletion.
+**`HalfEdgeTopology`** — half-edge wiring with no geometry. Adjacency queries, validation, boundary detection, edge deletion/collapse.
 
-**`Mesh`** — topology paired with vertex positions and optional per-corner attributes (normals, UVs, tangents, colors). Faces can be any size. Submeshes group faces for multi-material rendering.
+**`Mesh`** — topology + vertex positions + optional per-corner attributes (normals, UVs, tangents, colors). N-gon faces. Multi-material submeshes.
 
-**`MetalMesh`** — GPU-ready export. Triangulates n-gon faces, splits vertices per-corner, packs attributes into Metal buffers.
+**`TriangleSoup`** — flat indexed triangles. Intermediate format for CSG and whole-mesh operations.
+
+**`MetalMesh`** — GPU-ready triangulated buffers. Interleaved or separate buffer layouts.
 
 **`SwiftMeshIO`** — PLY file import/export (ASCII).
+
+## Loading & conversion
+
+```swift
+// From ModelIO
+let mesh = MetalMesh(mdlMesh: mdlMesh, device: device)
+let mesh = MetalMesh(mtkMesh: mtkMesh)
+let mdlMesh = metalMesh.toMDLMesh(device: device)
+
+// From PLY
+let mesh = try PLY.read(from: data)
+let data = PLY.write(mesh)
+
+// Between types
+let soup = TriangleSoup(mesh: mesh)        // Mesh → TriangleSoup
+let mesh = soup.toMesh(weldTolerance: 1e-5) // TriangleSoup → Mesh
+let metalMesh = MetalMesh(mesh: mesh, device: device) // Mesh → MetalMesh
+let mesh = metalMesh.toMesh()              // MetalMesh → Mesh
+```
 
 ## Shape primitives
 
 ```swift
-Mesh.tetrahedron    // 4 faces
-Mesh.cube           // 6 quad faces
-Mesh.octahedron     // 8 faces
-Mesh.icosahedron    // 20 faces
-Mesh.dodecahedron   // 12 pentagon faces
+// Platonic solids
+Mesh.tetrahedron()     // 4 triangle faces
+Mesh.cube()            // 6 quad faces
+Mesh.octahedron()      // 8 triangle faces
+Mesh.icosahedron()     // 20 triangle faces
+Mesh.dodecahedron()    // 12 pentagon faces
 
-Mesh.sphere()       // UV sphere with configurable segments
-Mesh.torus()        // configurable major/minor segments and radii
-Mesh.cylinder()     // optional caps
-Mesh.cone()         // optional base cap
-Mesh.box()          // unit box with quad faces
-Mesh.quad()         // single quad
-Mesh.triangle()     // single triangle
+// Surfaces
+Mesh.sphere()          // UV sphere
+Mesh.icoSphere()       // subdivided icosahedron
+Mesh.cubeSphere()      // cube projected onto sphere
+Mesh.torus()           // configurable major/minor radii
+Mesh.cylinder()        // optional caps
+Mesh.cone()            // optional base cap
+Mesh.hemisphere()      // optional cap
+Mesh.capsule()         // sphere-capped cylinder
+Mesh.conicalFrustum()  // truncated cone, optional caps
+Mesh.rectangularFrustum() // truncated box, optional caps
+Mesh.box()             // unit box with quad faces
+Mesh.quad()            // single quad
+Mesh.triangle()        // single triangle
+Mesh.circle()          // flat disc
+Mesh.teapot()          // Utah teapot
 ```
 
-## Attribute pipeline
+## Operations
 
-All methods return a new Mesh:
+### Attributes
 
 ```swift
-mesh.withFlatNormals()      // per-face normals
-mesh.withSmoothNormals()    // averaged vertex normals
-mesh.withSphericalUVs()     // spherical projection
-mesh.withTangents()         // MikkTSpace (needs normals + UVs)
+mesh.withFlatNormals()       // per-face normals
+mesh.withSmoothNormals()     // averaged vertex normals
+mesh.withSphericalUVs()      // spherical projection
+mesh.withCylindricalUVs()    // cylindrical projection
+mesh.withPlanarUVs()         // planar projection
+mesh.withBoxUVs()            // box-mapped UVs
+mesh.withTangents()          // MikkTSpace tangents (needs normals + UVs)
+```
+
+### Transforms
+
+```swift
+mesh.translated(by: [1, 0, 0])
+mesh.scaled(by: 2.0)
+mesh.scaled(by: [1, 2, 1])
+mesh.rotated(by: quaternion)
+mesh.transformed(by: matrix)
+```
+
+### Topology
+
+```swift
+mesh.triangulated()                    // n-gons → triangles
+mesh.welded(tolerance: 1e-5)           // merge near-duplicate vertices, rebuild topology
+mesh.mergingCoplanarFaces()            // merge adjacent coplanar faces back to n-gons
+mesh.isManifold                        // true if closed 2-manifold (no boundary edges)
+mesh.topology.validate()               // nil if valid, or error description
+```
+
+### Subdivision
+
+```swift
+mesh.loopSubdivided(iterations: 2)          // Loop (triangle meshes)
+mesh.catmullClarkSubdivided(iterations: 2)  // Catmull-Clark (any polygon mesh)
+```
+
+### Decimation
+
+```swift
+mesh.decimated(ratio: 0.5)              // reduce to 50% of faces
+mesh.decimated(targetFaceCount: 100)     // reduce to exact count
+```
+
+### CSG (Constructive Solid Geometry)
+
+```swift
+meshA.union(meshB)          // A ∪ B
+meshA.intersection(meshB)   // A ∩ B
+meshA.difference(meshB)     // A − B
 ```
 
 ## Requirements
