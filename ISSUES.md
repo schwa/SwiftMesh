@@ -814,6 +814,8 @@ Add a comprehensive set of diagnostic properties and methods for detecting mesh 
 - `hasDuplicateFaces` — two faces sharing all the same vertices
 - `hasDuplicateEdges` — more than one edge connecting the same two vertices
 
+- `2026-04-15T15:43:45Z`: Split out the harder items: #75 (Euler characteristic / genus) and #76 (inconsistent face winding). The remaining items in this issue are straightforward computed properties.
+
 ---
 
 ## 68: Change validate() to return [ValidationIssue] instead of String?
@@ -935,7 +937,7 @@ Depends on boundaryLoopCount from #67.
 status: new
 priority: low
 kind: feature
-labels: topology,diagnostics
+labels: topology, diagnostics
 created: 2026-04-15T15:43:40Z
 
 Split from #67. hasInconsistentFaceWinding — verify that for every pair of adjacent faces sharing an edge, the shared half-edges run in opposite directions. Non-trivial because:
