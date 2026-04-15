@@ -63,15 +63,44 @@ public extension Mesh {
             topo.deleteEdge(heID)
         }
 
-        // Rebuild mesh from modified topology, keeping only faces that still have edges
+        // Rebuild mesh from modified topology, keeping only faces that still have edges.
+        // Remove collinear vertices from face boundaries — these are leftover from
+        // deleted interior edges and produce degenerate/crossed edges.
         let liveFaces = topo.faces.filter { $0.edge != nil }
         var newFaces: [[Int]] = []
         for face in liveFaces {
             let verts = topo.vertexLoop(for: face.id)
             guard verts.count >= 3 else { continue }
-            newFaces.append(verts.map(\.raw))
+            let cleaned = removeCollinearVertices(verts.map(\.raw), positions: positions)
+            guard cleaned.count >= 3 else { continue }
+            newFaces.append(cleaned)
         }
 
         return Mesh(positions: positions, faces: newFaces)
     }
+}
+
+/// Remove vertices that lie on the straight line between their neighbors.
+private func removeCollinearVertices(_ indices: [Int], positions: [SIMD3<Float>], tolerance: Float = 1e-4) -> [Int] {
+    guard indices.count >= 3 else { return indices }
+    var result: [Int] = []
+    let n = indices.count
+    for i in 0..<n {
+        let prev = positions[indices[(i + n - 1) % n]]
+        let curr = positions[indices[i]]
+        let next = positions[indices[(i + 1) % n]]
+
+        let edge1 = curr - prev
+        let edge2 = next - curr
+        let cross = simd_cross(edge1, edge2)
+        // If cross product magnitude is near zero relative to edge lengths,
+        // the vertex is collinear and can be removed.
+        let crossLen = simd_length(cross)
+        let edgeLen = simd_length(edge1) * simd_length(edge2)
+        if edgeLen > 0 && crossLen / edgeLen < tolerance {
+            continue // skip collinear vertex
+        }
+        result.append(indices[i])
+    }
+    return result
 }

@@ -633,12 +633,16 @@ created: 2026-04-15T06:39:36Z
 ---
 
 ## 55: Stray edges after coplanar face merging
-status: new
+status: closed
 priority: high
 kind: bug
 created: 2026-04-15T06:45:39Z
+updated: 2026-04-15T06:47:02Z
+closed: 2026-04-15T06:47:02Z
 
 mergingCoplanarFaces() produces degenerate polygons with self-intersecting boundaries. After deleteEdge merges two faces, collinear vertices from the former shared edge remain in the boundary loop, creating crossed/stray edges visible in wireframe. Need to remove collinear vertices from merged face boundaries.
+
+- `2026-04-15T06:47:02Z`: Fixed — remove collinear vertices from merged face boundaries
 
 ---
 
