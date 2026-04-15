@@ -1113,4 +1113,134 @@ public extension Mesh {
         mesh.applyAttributes(attributes)
         return mesh
     }
+
+    /// A conical frustum (truncated cone) with quad sides and optional n-gon caps.
+    ///
+    /// When `topRadius` is 0 this degenerates to a regular cone.
+    static func conicalFrustum(segments: Int = 32, height: Float = 1.0, topRadius: Float = 0.25, bottomRadius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
+        var positions: [SIMD3<Float>] = []
+        var faces: [[Int]] = []
+
+        let halfHeight = height / 2
+
+        // Bottom ring
+        for seg in 0..<segments {
+            let angle = 2 * Float.pi * Float(seg) / Float(segments)
+            positions.append(SIMD3(bottomRadius * cos(angle), -halfHeight, bottomRadius * sin(angle)))
+        }
+
+        // Top ring
+        let topRingStart = positions.count
+        for seg in 0..<segments {
+            let angle = 2 * Float.pi * Float(seg) / Float(segments)
+            positions.append(SIMD3(topRadius * cos(angle), halfHeight, topRadius * sin(angle)))
+        }
+
+        // Side quads
+        for seg in 0..<segments {
+            let nextSeg = (seg + 1) % segments
+            faces.append([seg, nextSeg, topRingStart + nextSeg, topRingStart + seg])
+        }
+
+        // Caps
+        if capped {
+            // Bottom cap (winding inward)
+            let bottomCap = (0..<segments).reversed().map { $0 }
+            faces.append(bottomCap)
+            // Top cap
+            let topCap = (0..<segments).map { topRingStart + $0 }
+            faces.append(topCap)
+        }
+
+        var mesh = Mesh(positions: positions, faces: faces)
+
+        if attributes.contains(.textureCoordinates) {
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+
+            // Side quads: unwrap around circumference
+            for seg in 0..<segments {
+                let faceID = HalfEdgeTopology.FaceID(raw: seg)
+                let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
+                let u0 = Float(seg) / Float(segments)
+                let u1 = Float(seg + 1) / Float(segments)
+                uvs[heLoop[0].raw] = SIMD2(u0, 1)
+                uvs[heLoop[1].raw] = SIMD2(u1, 1)
+                uvs[heLoop[2].raw] = SIMD2(u1, 0)
+                uvs[heLoop[3].raw] = SIMD2(u0, 0)
+            }
+
+            // Cap UVs
+            if capped {
+                let bottomFaceID = HalfEdgeTopology.FaceID(raw: segments)
+                let bottomLoop = mesh.topology.halfEdgeLoop(for: bottomFaceID)
+                for (i, he) in bottomLoop.enumerated() {
+                    let seg = segments - 1 - i
+                    let angle = 2 * Float.pi * Float(seg) / Float(segments)
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                }
+
+                let topFaceID = HalfEdgeTopology.FaceID(raw: segments + 1)
+                let topLoop = mesh.topology.halfEdgeLoop(for: topFaceID)
+                for (i, he) in topLoop.enumerated() {
+                    let angle = 2 * Float.pi * Float(i) / Float(segments)
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                }
+            }
+
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
+    }
+
+    /// A rectangular frustum (truncated rectangular pyramid) with quad sides and optional caps.
+    ///
+    /// The bottom face is centered at `y = -height/2` with size `bottomExtents`,
+    /// and the top face is centered at `y = +height/2` with size `topExtents`.
+    /// When `topExtents` is zero this degenerates to a pyramid.
+    static func rectangularFrustum(height: Float = 1.0, topExtents: SIMD2<Float> = [0.5, 0.5], bottomExtents: SIMD2<Float> = [1, 1], capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
+        let halfHeight = height / 2
+        let bt = bottomExtents / 2
+        let tt = topExtents / 2
+
+        // Bottom: 0-3, Top: 4-7
+        let positions: [SIMD3<Float>] = [
+            SIMD3(-bt.x, -halfHeight, -bt.y), SIMD3(bt.x, -halfHeight, -bt.y),
+            SIMD3(bt.x, -halfHeight, bt.y),   SIMD3(-bt.x, -halfHeight, bt.y),
+            SIMD3(-tt.x, halfHeight, -tt.y),   SIMD3(tt.x, halfHeight, -tt.y),
+            SIMD3(tt.x, halfHeight, tt.y),     SIMD3(-tt.x, halfHeight, tt.y)
+        ]
+
+        var faces: [[Int]] = [
+            [0, 1, 5, 4], // front  (-Z)
+            [2, 3, 7, 6], // back   (+Z)
+            [3, 0, 4, 7], // left   (-X)
+            [1, 2, 6, 5], // right  (+X)
+        ]
+
+        if capped {
+            faces.append([3, 2, 1, 0]) // bottom
+            faces.append([4, 5, 6, 7]) // top
+        }
+
+        var mesh = Mesh(positions: positions, faces: faces)
+
+        if attributes.contains(.textureCoordinates) {
+            let quadUVs: [SIMD2<Float>] = [
+                SIMD2(0, 0), SIMD2(1, 0), SIMD2(1, 1), SIMD2(0, 1)
+            ]
+            var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
+            for face in mesh.topology.faces {
+                let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
+                for (i, he) in heLoop.enumerated() {
+                    uvs[he.raw] = quadUVs[i]
+                }
+            }
+            mesh.textureCoordinates = uvs
+        }
+
+        mesh.applyAttributes(attributes)
+        return mesh
+    }
 }

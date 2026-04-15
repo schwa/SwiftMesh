@@ -223,6 +223,59 @@ struct MeshPrimitivesTests {
         #expect(mesh.faceCount == 8)
     }
 
+    // MARK: - Rectangular Frustum
+
+    @Test("rectangularFrustum() capped")
+    func rectangularFrustumCapped() {
+        let mesh = Mesh.rectangularFrustum(capped: true, attributes: [])
+        #expect(mesh.validate() == nil)
+        // 4 side quads + 2 caps
+        #expect(mesh.faceCount == 6)
+        #expect(mesh.vertexCount == 8)
+        #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
+    }
+
+    @Test("rectangularFrustum() uncapped")
+    func rectangularFrustumUncapped() {
+        let mesh = Mesh.rectangularFrustum(capped: false, attributes: [])
+        #expect(mesh.validate() == nil)
+        #expect(mesh.faceCount == 4)
+    }
+
+    @Test("rectangularFrustum(attributes: .textureCoordinates) has UVs")
+    func rectangularFrustumUVs() {
+        let mesh = Mesh.rectangularFrustum(attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
+    // MARK: - Conical Frustum
+
+    @Test("conicalFrustum() capped")
+    func conicalFrustumCapped() {
+        let mesh = Mesh.conicalFrustum(segments: 8, capped: true, attributes: [])
+        #expect(mesh.validate() == nil)
+        // 8 side quads + 2 caps
+        #expect(mesh.faceCount == 10)
+        #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
+    }
+
+    @Test("conicalFrustum() uncapped")
+    func conicalFrustumUncapped() {
+        let mesh = Mesh.conicalFrustum(segments: 8, capped: false, attributes: [])
+        #expect(mesh.validate() == nil)
+        #expect(mesh.faceCount == 8)
+    }
+
+    @Test("conicalFrustum(attributes: .textureCoordinates) has UVs")
+    func conicalFrustumUVs() {
+        let mesh = Mesh.conicalFrustum(segments: 8, attributes: .textureCoordinates)
+        #expect(mesh.textureCoordinates != nil)
+        #expect(mesh.textureCoordinates?.count == mesh.topology.halfEdges.count)
+        #expect(mesh.validate() == nil)
+    }
+
     // MARK: - Circle
 
     @Test("circle()")

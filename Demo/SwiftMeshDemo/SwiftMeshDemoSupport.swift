@@ -91,6 +91,8 @@ struct ParametricSurfacesGallery: View {
             ("Box", .box(), .teal),
             ("Hemisphere", .hemisphere(), .orange),
             ("Capsule", .capsule(), .purple),
+            ("Conical Frustum", .conicalFrustum(), .brown),
+            ("Rect Frustum", .rectangularFrustum(), .gray),
             ("Circle", .circle(), .yellow),
             ("IcoSphere", .icoSphere(), .red),
             ("CubeSphere", .cubeSphere(), .green)
