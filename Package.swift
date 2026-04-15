@@ -10,6 +10,7 @@ let package = Package(
     ],
     products: [
         .library(name: "SwiftMesh", targets: ["SwiftMesh"]),
+        .library(name: "SwiftMeshIO", targets: ["SwiftMeshIO"]),
     ],
     dependencies: [
         .package(url: "https://github.com/schwa/GeometryLite2D", from: "0.0.1"),
@@ -31,6 +32,11 @@ let package = Package(
             name: "MikkTSpace",
             publicHeadersPath: "."
         ),
+        .target(
+            name: "SwiftMeshIO",
+            dependencies: ["SwiftMesh"]
+        ),
         .testTarget(name: "SwiftMeshTests", dependencies: ["SwiftMesh"]),
+        .testTarget(name: "SwiftMeshIOTests", dependencies: ["SwiftMeshIO"]),
     ]
 )
