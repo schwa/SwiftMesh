@@ -62,3 +62,167 @@ Once MetalMesh is working, remove the legacy types and their associated files. U
 
 ---
 
+## 6: Separate MetalMesh into its own target
+status: closed
+priority: high
+kind: task
+created: 2026-04-15T00:51:12Z
+updated: 2026-04-15T01:08:11Z
+closed: 2026-04-15T01:08:11Z
+
+MetalMesh should be in a separate target (e.g. SwiftMeshMetal) so the core SwiftMesh target has no Metal dependency.
+
+- `2026-04-15T01:08:11Z`: Premature — no consumer needs Metal-free SwiftMesh yet. Split when needed.
+
+---
+
+## 7: ModelIO import (OBJ, PLY, USD)
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T00:51:16Z
+
+Import meshes via ModelIO. Convert MDLMesh to Mesh with positions, normals, UVs, and submeshes. Should live in SwiftMeshIO.
+
+---
+
+## 8: MetalMesh → Mesh conversion
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T00:51:21Z
+
+Convert MetalMesh back to Mesh. Will produce a triangle-only mesh with duplicated vertices (no topology recovery). Useful for importing GPU meshes back into the editing pipeline.
+
+---
+
+## 9: Binary PLY support
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T00:51:26Z
+
+Add binary PLY read/write to SwiftMeshIO. Needed for large meshes — ASCII PLY is too slow/large.
+
+---
+
+## 10: Subdivision surfaces (Catmull-Clark, Loop)
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T00:51:30Z
+
+Subdivision surface algorithms. Catmull-Clark for quad meshes, Loop for triangle meshes. Operate on Mesh, return a new refined Mesh.
+
+---
+
+## 11: Boolean / CSG operations
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T00:51:34Z
+
+Union, intersection, difference on Mesh. Requires robust intersection detection and mesh splitting.
+
+---
+
+## 12: Mesh editing operations (split, collapse, extrude)
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T00:51:42Z
+
+Edge split, edge collapse, face extrude, vertex welding/deduplication. Core editing primitives for a mesh editor.
+
+---
+
+## 13: Additional UV projection methods
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T00:51:47Z
+
+Planar, cylindrical, and box UV projection. Currently only spherical projection is supported.
+
+---
+
+## 14: Mesh transform methods (scale, translate, rotate)
+status: new
+priority: high
+kind: feature
+created: 2026-04-15T00:51:52Z
+
+Add scaled(), translated(), rotated(), transformed() methods on Mesh. Return new Mesh with transformed positions (and normals/tangents adjusted).
+
+---
+
+## 15: Mesh merge / combine
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T00:52:03Z
+
+Combine multiple Meshes into one, merging topologies and attribute arrays. Each source mesh becomes a submesh.
+
+---
+
+## 16: Port remaining shape primitives
+status: new
+priority: low
+kind: task
+created: 2026-04-15T00:52:07Z
+
+Port capsule, hemisphere, icoSphere, cubeSphere, circle from old TrivialMesh+Shapes to Mesh primitives.
+
+---
+
+## 17: Mesh simplification / decimation
+status: new
+priority: low
+kind: feature
+created: 2026-04-15T00:52:14Z
+
+Reduce mesh polygon count while preserving shape. Quadric error metrics or similar.
+
+---
+
+## 18: Support separate-buffer (SoA) vertex layout in MetalMesh
+status: new
+priority: medium
+kind: feature
+created: 2026-04-15T01:09:58Z
+
+Currently MetalMesh always interleaves attributes into one buffer. Add option for separate MTLBuffers per attribute (positions, normals, UVs, etc.) — avoids per-vertex byte packing and enables near-zero-cost conversion from Mesh's SoA arrays.
+
+---
+
+## 19: 2D support — extensions or separate module?
+status: new
+priority: low
+kind: task
+created: 2026-04-15T01:11:40Z
+
+Decide how to handle 2D mesh operations (signed area, convexity, segment-based construction from CGPoint). Options: conditional extensions on Mesh, or a separate module depending on GeometryLite2D.
+
+---
+
+## 20: Improve test coverage for MetalMesh attribute interleaving
+status: new
+priority: medium
+kind: task
+created: 2026-04-15T01:19:52Z
+
+MetalMesh is at 73.4% coverage. The per-corner attribute paths (normals, UVs, tangents, colors) aren't exercised — tests only export position-only meshes. Add tests that export meshes with withFlatNormals/withSphericalUVs/withTangents and verify vertex buffer contents.
+
+---
+
+## 21: Improve test coverage for HalfEdgeTopology edge cases
+status: new
+priority: medium
+kind: task
+created: 2026-04-15T01:19:58Z
+
+HalfEdgeTopology is at 82.8% coverage. Uncovered paths include deleteEdge branches (boundary edges, single-face deletion) and boundaryLoops. Add targeted tests for these.
+
+---
+
