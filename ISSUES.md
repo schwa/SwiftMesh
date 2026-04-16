@@ -1382,3 +1382,326 @@ Mesh.border(attributes: .default) or .border(attributes: [.flatNormals, .texture
 - `2026-04-15T23:01:06Z`: Fixed: both border() and wireframe() now generate box-projected UVs (withBoxUVs()) when attributes contain .textureCoordinates, before calling applyAttributes().
 
 ---
+
+## 85: Performance umbrella
+
++++
+status: new
+priority: medium
+kind: task
+labels: performance, umbrella
+created: 2026-04-16T03:22:42Z
++++
+
+Umbrella issue tracking performance work across SwiftMesh.
+
+Child issues will be filed for specific hotspots and investigations (CSG, decimation, topology build, I/O, Metal upload, allocations, benchmarking harness, etc.).
+
+Use this issue to coordinate priorities and link related sub-issues.
+
+---
+
+## 86: Swift Array is slow in hot paths — explore Spans and swift-collections
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: performance
+depends: SwiftMesh#85
+created: 2026-04-16T03:22:53Z
++++
+
+Swift's `Array` shows up as a bottleneck in mesh hot paths (CSG, decimation, topology build, attribute interleaving). Bounds checks, COW traffic, and lack of contiguous typed access hurt throughput.
+
+Investigate replacing `Array` in hot paths with:
+
+- `Span` / `RawSpan` / `MutableSpan` (Swift 6.x) for borrowed, bounds-check-elidable contiguous access
+- `swift-collections` types where appropriate:
+  - `Deque` for BFS/DFS work queues (CSG BSP traversal, topology walks)
+  - `OrderedSet` / `OrderedDictionary` for stable-ordered vertex/edge dedup
+  - `HashTreeCollections` (`TreeDictionary`, `TreeSet`) where structural sharing helps
+- `ContiguousArray` as a low-effort first step where we don't need bridging
+
+Tasks:
+- [ ] Identify the top Array-heavy hot paths via profiling (Instruments: Time Profiler + Allocations)
+- [ ] Prototype Span-based APIs for the worst offenders
+- [ ] Add swift-collections as a dependency if not already present
+- [ ] Benchmark before/after on representative meshes
+- [ ] Document guidelines for when to use Array vs Span vs ContiguousArray vs swift-collections
+
+Depends on a benchmarking harness (to be filed separately under the performance umbrella).
+
+---
+
+## 87: Decimation: O(V·E) full half-edge scans per collapse
+
++++
+status: new
+priority: high
+kind: enhancement
+labels: performance, decimation
+depends: SwiftMesh#85
+created: 2026-04-16T03:24:19Z
++++
+
+`Mesh.decimate` repeatedly does full sweeps over `topology.halfEdges` and `topology.vertices` for every edge collapse:
+
+In `Decimation.swift`:
+- Heap re-insertion after each collapse:
+  ```swift
+  for neighborHE in topology.halfEdges where neighborHE.next != nil && neighborHE.origin == survivor { ... }
+  ```
+  This is O(E) per collapse → O(V·E) total just for heap maintenance.
+
+In `HalfEdgeTopology.collapseEdge`:
+- `for i in halfEdges.indices where halfEdges[i].origin == vertexB` — O(E)
+- `vertices[vertexA.raw].edge = halfEdges.first { $0.origin == vertexA && $0.next != nil }?.id` — O(E)
+- Final loop: `for i in vertices.indices where vertices[i].edge != nil { ... halfEdges.first { ... } }` — O(V·E) **per collapse**
+
+Together this dominates decimation runtime on any non-trivial mesh.
+
+Fix:
+- Maintain a vertex → outgoing half-edges adjacency list (or just walk the existing twin/next ring)
+- Use `vertexRing(of:)` style traversal to enumerate edges around the survivor instead of scanning all half-edges
+- The `vertices[i].edge` repair pass is only needed for vertices that lost their referenced edge — track those explicitly during the collapse rather than scanning all vertices
+
+Expected impact: orders of magnitude on meshes >10k faces.
+
+---
+
+## 88: MetalMesh: variable-length [UInt8] dedup key is slow per-vertex
+
++++
+status: new
+priority: high
+kind: enhancement
+labels: performance, metal
+depends: SwiftMesh#85
+created: 2026-04-16T03:24:31Z
++++
+
+In `MetalMesh.init`, vertex deduplication uses a `[[UInt8]: UInt32]` dictionary keyed by the concatenated bytes of every attribute:
+
+```swift
+var vertexDedup: [[UInt8]: UInt32] = [:]
+...
+var compositeKey: [UInt8] = []
+for bi in bufferIndices {
+    var bytes = [UInt8](repeating: 0, count: biStride)
+    bytes.withUnsafeMutableBytes { ... }
+    perBuffer[bi] = bytes
+    compositeKey.append(contentsOf: bytes)
+}
+if let existingIndex = vertexDedup[compositeKey] { ... }
+```
+
+Per triangle corner this allocates:
+- One `[UInt8]` per buffer (`bytes`)
+- One `[UInt8]` composite key
+- Hashes a variable-length byte array on every lookup
+
+Also `bufferData[bi]!.append(contentsOf: perBuffer[bi]!)` repeatedly grows per-buffer storage.
+
+Fix options:
+- Dedup by `(vertexID, halfEdgeID)` pair instead of bytes — same vertex+corner always produces the same attributes
+- Pre-size all `bufferData` arrays based on max possible vertex count (sum of corners across submeshes)
+- Use `UnsafeMutableRawBufferPointer` writes directly into pre-sized buffers, no intermediate `[UInt8]`
+- If byte-level dedup is still required, use a `UInt64` hash (SipHash / xxHash) of the bytes as the dictionary key, with a fallback equality check
+
+Expected impact: large — this runs once per Metal upload but dominates conversion time for meshes with many corners.
+
+---
+
+## 89: CSG: allPolygons and clipPolygons allocate excessively
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: performance, csg
+depends: SwiftMesh#85
+created: 2026-04-16T03:24:43Z
++++
+
+Several CSG hot paths allocate intermediate arrays unnecessarily:
+
+**`CSGNode.allPolygons()`** recurses with `result.append(contentsOf: front.allPolygons())`, allocating a new array at every node. Replace with an `inout` accumulator:
+```swift
+func collectPolygons(into result: inout [CSGPolygon]) {
+    result.append(contentsOf: polygons)
+    front?.collectPolygons(into: &result)
+    back?.collectPolygons(into: &result)
+}
+```
+
+**`CSGNode.clipPolygons`** ends with `return frontList + backList` — allocates a fresh array and copies both. Use `frontList.append(contentsOf: backList); return frontList`.
+
+**`splitPolygon`** allocates `var types: [PointClassification] = []` per call. CSG polygons are almost always triangles or quads — use a small fixed-capacity buffer (e.g. `ContiguousArray` reserved up front, or stack-style with tuple of 3-4 entries).
+
+**`CSGPolygon` plane** is recomputed via `CSGPlane(a, b, c)` for every triangle in `toPolygons`, including a `simd_length` + division. For triangle inputs we can compute plane with a single cross product without normalizing if we store both `normal` and `w` raw, then normalize lazily — or just inline the plane construction.
+
+Expected impact: significant on CSG of meshes with thousands of polygons.
+
+---
+
+## 90: CSG: cache AABB on CSGPolygon instead of recomputing per clip
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: performance, csg
+depends: SwiftMesh#85
+created: 2026-04-16T03:24:49Z
++++
+
+In `CSGNode.clipPolygons`, every polygon's AABB is rebuilt on every recursion level:
+
+```swift
+for polygon in list {
+    let polyBounds = AABB(polygon: polygon)  // O(verts) per recursion
+    if !bounds.isEmpty, !polyBounds.overlaps(bounds) { ... }
+    ...
+}
+```
+
+A polygon's AABB never changes once built. Cache it on `CSGPolygon`:
+
+```swift
+struct CSGPolygon {
+    var vertices: [SIMD3<Float>]
+    var plane: CSGPlane
+    var bounds: AABB  // computed once at init
+}
+```
+
+Update polygon-producing paths (`splitPolygon`, `toPolygons`, `flipped`) to set bounds at construction. Adds 24 bytes per polygon for substantial recompute savings during deep BSP traversals.
+
+---
+
+## 91: ConvexHull.addPoint rebuilds edgeToFace dictionary every insertion
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: performance, convex-hull
+depends: SwiftMesh#85
+created: 2026-04-16T03:24:57Z
++++
+
+`ConvexHull.addPoint` rebuilds the entire `edgeToFace` dictionary on every point insertion:
+
+```swift
+var edgeToFace: [Int64: Int] = [:]
+for (fIdx, face) in faces.enumerated() {
+    let (a, b, c) = face
+    edgeToFace[edgeKey(a, b)] = fIdx
+    edgeToFace[edgeKey(b, c)] = fIdx
+    edgeToFace[edgeKey(c, a)] = fIdx
+}
+```
+
+For N points this is O(N·F) ≈ O(N²) — the classic gift-wrap-style trap. Standard QuickHull maintains face adjacency incrementally:
+- Each face stores its 3 neighbor face indices
+- When a face is removed, update neighbor pointers on adjacent faces
+- Horizon detection becomes a simple BFS from any visible face
+
+Also `var newFaces: [(Int, Int, Int)] = []` rebuilds the face list each insertion — could mark removed faces and compact periodically, or use indices/free-list.
+
+Expected impact: turns O(N²) hull build into closer to O(N log N) for well-distributed inputs.
+
+---
+
+## 92: HalfEdgeTopology: replace ad-hoc full-array scans with incremental adjacency
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: performance, topology
+depends: SwiftMesh#85
+created: 2026-04-16T03:25:08Z
++++
+
+`HalfEdgeTopology` has 10+ instances of `for he in halfEdges where ...` scanning the full half-edge array:
+
+- `collapseEdge`: 3 separate full scans (origin repointing, vertex edge repair, neighbor cleanup)
+- Boundary detection: `for he in halfEdges where he.twin == nil`
+- Validation routines (acceptable — only run during `validate()`)
+
+These scans turn what should be O(degree) local operations into O(E). For mutating operations (collapse, split, flip) they cause overall complexity to balloon.
+
+Approach:
+- Use existing `outgoingHalfEdges(from:)` / vertex ring traversal where possible — these walk `twin.next` and are O(degree)
+- For boundary queries, maintain a small set of boundary half-edges (or compute lazily and cache)
+- Add a `halfEdges(originatingFrom: VertexID)` helper that uses the ring walk
+
+This issue is a prerequisite for proper performance of #87 (decimation) and any future remesh/edit-mode operations.
+
+---
+
+## 93: Add benchmarking harness for SwiftMesh hot paths
+
++++
+status: new
+priority: high
+kind: task
+labels: performance, infrastructure
+depends: SwiftMesh#85
+created: 2026-04-16T03:25:18Z
++++
+
+We need a baseline benchmark harness so performance work has measurable targets. Most other performance issues are blocked on this.
+
+Coverage targets:
+- CSG operations (union/intersection/difference) on a small, medium, large mesh
+- Decimation at several target ratios
+- HalfEdgeTopology build from large face soup
+- MetalMesh build (interleaved + separate buffers)
+- Subdivision (one and two iterations)
+- ConvexHull on 100 / 10k / 100k random points
+- PLY/OBJ load + save round-trip
+
+Options:
+- Apple's `swift-collections-benchmark` package (good for scaling curves)
+- `package-benchmark` (Ordo-One) — supports CI gating, allocation counts, instruction counts via jemalloc/perf
+- A simple in-repo `Sources/Benchmarks` executable target using `ContinuousClock` for quick iteration
+
+Recommend `package-benchmark` for CI integration but a lightweight custom target may be enough to start.
+
+Once landed: capture baseline numbers, then attach before/after to each performance PR.
+
+---
+
+## 94: Add benchmarks for SwiftMesh hot paths
+
++++
+status: new
+priority: medium
+kind: task
+labels: performance,benchmarks
+depends: SwiftMesh#93
+created: 2026-04-16T03:27:43Z
++++
+
+Once the benchmarking harness (#93) is in place, add benchmarks covering the major hot paths so performance work has measurable before/after numbers.
+
+Suggested coverage:
+- CSG (union, intersection, difference) at small/medium/large mesh sizes
+- Decimation at several target ratios
+- HalfEdgeTopology build from large face soup
+- MetalMesh build (interleaved + separate buffers)
+- Subdivision (1, 2, 3 iterations)
+- ConvexHull on 100 / 10k / 100k random points
+- PLY/OBJ load + save round-trip
+- Marching Cubes
+- Mesh primitives generation
+
+Also consider:
+- A standard fixture corpus (small/medium/large meshes) used across benchmarks
+- Allocation count + peak memory tracking
+- CI regression gating
+
+---
