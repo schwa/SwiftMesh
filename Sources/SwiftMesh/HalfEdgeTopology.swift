@@ -34,8 +34,8 @@ public struct HalfEdgeTopology: Sendable, Equatable {
     }
 
     public var vertices: [Vertex] = []
-    public private(set) var halfEdges: [HalfEdge] = []
-    public private(set) var faces: [Face] = []
+    public internal(set) var halfEdges: [HalfEdge] = []
+    public internal(set) var faces: [Face] = []
 
     public init() {}
 
