@@ -13,7 +13,7 @@ let package = Package(
         .library(name: "SwiftMeshIO", targets: ["SwiftMeshIO"])
     ],
     dependencies: [
-        .package(path: "../GeometryLite2D"),
+        .package(url: "https://github.com/schwa/GeometryLite2D", from: "0.0.2"),
         .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.1.0"),
         .package(url: "https://github.com/schwa/MetalSupport", from: "1.0.1"),
         .package(url: "https://github.com/schwa/SwiftEarcut", from: "0.0.1")

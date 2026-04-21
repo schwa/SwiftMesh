@@ -34,6 +34,10 @@ public struct HalfEdgeTopology: Sendable, Equatable {
     }
 
     public var vertices: [Vertex] = []
+    // `halfEdges` and `faces` are `internal(set)` so construction code in sibling
+    // files (currently `Mesh2D.swift`) can build topology in-place. External
+    // callers see them as read-only; internal callers must preserve invariants
+    // (twin/next/prev wiring, face-on-left).
     public internal(set) var halfEdges: [HalfEdge] = []
     public internal(set) var faces: [Face] = []
 

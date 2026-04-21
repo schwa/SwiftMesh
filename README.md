@@ -23,6 +23,8 @@ encoder.draw(metalMesh)
 
 **`Mesh`** — topology + vertex positions + optional per-corner attributes (normals, UVs, tangents, colors). N-gon faces. Multi-material submeshes.
 
+**`Mesh2D<ID>`** — 2D analogue: topology + `CGPoint` positions + per-half-edge labels. Planar subdivision construction from line segments, signed-area face classification, hole detection, boundary loop extraction, edge deletion with face merging.
+
 **`TriangleSoup`** — flat indexed triangles. Intermediate format for CSG and whole-mesh operations.
 
 **`MetalMesh`** — GPU-ready triangulated buffers. Interleaved or separate buffer layouts.
@@ -139,6 +141,7 @@ meshA.difference(meshB)     // A − B
 
 ## Dependencies
 
+- [GeometryLite2D](https://github.com/schwa/GeometryLite2D) — `LineSegment`, `Polygon`, `Identified` (used by `Mesh2D`)
 - [GeometryLite3D](https://github.com/schwa/GeometryLite3D)
 - [MetalSupport](https://github.com/schwa/MetalSupport)
 - [SwiftEarcut](https://github.com/schwa/SwiftEarcut)
