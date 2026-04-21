@@ -507,7 +507,7 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("Wall + Window", subtitle: "Window cut from wall", mesh: wallWithWindow),
                 MeshGalleryItem("Wall + Door + Windows", subtitle: "Multiple cutouts", mesh: wallFull),
                 MeshGalleryItem("Arch Window", subtitle: "Cylinder + rect cutout", mesh: archWindow),
-                MeshGalleryItem("Floor Plan", subtitle: "Room with doorway", mesh: room),
+                MeshGalleryItem("Floor Plan", subtitle: "Room with doorway", mesh: room)
             ]
         }()),
         Self("Subdivision", items: [

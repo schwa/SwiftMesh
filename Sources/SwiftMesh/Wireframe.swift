@@ -279,6 +279,7 @@ public extension Mesh {
                 switch direction {
                 case .inside:
                     offsetPositions.append(pos - dir * thickness)
+
                 case .outside:
                     offsetPositions.append(pos + dir * thickness)
                 }
@@ -306,6 +307,7 @@ public extension Mesh {
                     outerNext = baseIndex + next
                     innerI = baseIndex + count + i
                     innerNext = baseIndex + count + next
+
                 case .outside:
                     // Offset = outer, original = inner
                     outerI = baseIndex + count + i
