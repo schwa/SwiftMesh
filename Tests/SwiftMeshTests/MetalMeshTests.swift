@@ -1,5 +1,8 @@
+import Foundation
+import GeometryLite3D
 import Metal
 import MetalKit
+import MetalSupport
 import ModelIO
 import simd
 @testable import SwiftMesh
@@ -287,6 +290,121 @@ struct MetalMeshTests {
         #expect(mesh.validate().isEmpty)
         #expect(mesh.normals != nil)
         #expect(mesh.textureCoordinates != nil)
+    }
+
+    // MARK: - Direct initializers (bypass Mesh / topology)
+
+    @Test("Direct init from positions/indices")
+    func directInitPositionsOnly() throws {
+        let device = try requireDevice()
+        let positions: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0), SIMD3(1, 1, 0)
+        ]
+        let indices: [UInt32] = [0, 1, 2, 1, 3, 2]
+        let metalMesh = MetalMesh(device: device, positions: positions, indices: indices, label: "Quad")
+
+        #expect(metalMesh.vertexCount == 4)
+        #expect(metalMesh.submeshes.count == 1)
+        #expect(metalMesh.submeshes[0].indexCount == 6)
+        #expect(metalMesh.label == "Quad")
+        #expect(metalMesh.vertexBuffers.count == 1)
+        // Position-only descriptor
+        #expect(metalMesh.vertexDescriptor.attributes.count == 1)
+        #expect(metalMesh.vertexDescriptor.attributes[0].semantic == .position)
+    }
+
+    @Test("Direct init with normals and UVs (interleaved)")
+    func directInitInterleavedAttributes() throws {
+        let device = try requireDevice()
+        let positions: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)
+        ]
+        let normals: [SIMD3<Float>] = [
+            SIMD3(0, 0, 1), SIMD3(0, 0, 1), SIMD3(0, 0, 1)
+        ]
+        let uvs: [SIMD2<Float>] = [
+            SIMD2(0, 0), SIMD2(1, 0), SIMD2(0, 1)
+        ]
+        let indices: [UInt32] = [0, 1, 2]
+        let metalMesh = MetalMesh(
+            device: device,
+            positions: positions,
+            normals: normals,
+            textureCoordinates: uvs,
+            indices: indices
+        )
+
+        #expect(metalMesh.vertexCount == 3)
+        #expect(metalMesh.vertexBuffers.count == 1) // interleaved
+        #expect(metalMesh.vertexDescriptor.attributes.count == 3)
+
+        // Round-trip back to a Mesh — should produce a single triangle.
+        let restored = metalMesh.toMesh()
+        #expect(restored.vertexCount == 3)
+        #expect(restored.faceCount == 1)
+        #expect(restored.normals != nil)
+        #expect(restored.textureCoordinates != nil)
+    }
+
+    @Test("Direct init with separate buffers")
+    func directInitSeparateBuffers() throws {
+        let device = try requireDevice()
+        let positions: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)
+        ]
+        let normals: [SIMD3<Float>] = [
+            SIMD3(0, 0, 1), SIMD3(0, 0, 1), SIMD3(0, 0, 1)
+        ]
+        let indices: [UInt32] = [0, 1, 2]
+        let metalMesh = MetalMesh(
+            device: device,
+            positions: positions,
+            normals: normals,
+            indices: indices,
+            bufferLayout: .separateBuffers
+        )
+        #expect(metalMesh.vertexBuffers.count == 2)
+        #expect(metalMesh.vertexBuffers[0] != nil)
+        #expect(metalMesh.vertexBuffers[1] != nil)
+    }
+
+    @Test("Direct init from preexisting MTLBuffers")
+    func directInitFromBuffers() throws {
+        let device = try requireDevice()
+
+        // Build raw vertex data: 3 positions, packed float3.
+        var positions: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)
+        ]
+        let packed = positions.map { Packed3<Float>($0) }
+        let vertexBytes = packed.withUnsafeBufferPointer { Data(buffer: $0) }
+        _ = positions // silence
+
+        let stride = MemoryLayout<Packed3<Float>>.stride
+        let vBuf = vertexBytes.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count, options: []) }!
+        let indices: [UInt32] = [0, 1, 2]
+        let iBuf = device.makeBuffer(bytes: indices, length: MemoryLayout<UInt32>.stride * indices.count, options: [])!
+
+        let descriptor = VertexDescriptor(
+            attributes: [.init(semantic: .position, format: .float3, offset: 0, bufferIndex: 0)],
+            layouts: [.init(bufferIndex: 0, stride: stride, stepFunction: .perVertex, stepRate: 1)]
+        )
+
+        let metalMesh = MetalMesh(
+            vertexBuffers: [0: vBuf],
+            vertexCount: 3,
+            vertexDescriptor: descriptor,
+            indexBuffer: iBuf,
+            indexCount: 3,
+            label: "FromBuffers"
+        )
+        #expect(metalMesh.vertexCount == 3)
+        #expect(metalMesh.submeshes.count == 1)
+        #expect(metalMesh.submeshes[0].indexCount == 3)
+        // Zero-copy: buffer identity is preserved.
+        #expect(metalMesh.vertexBuffers[0] === vBuf)
+        #expect(metalMesh.submeshes[0].indexBuffer === iBuf)
+        #expect(metalMesh.label == "FromBuffers")
     }
 
     @Test("Mesh → MDLMesh → Mesh round-trip")

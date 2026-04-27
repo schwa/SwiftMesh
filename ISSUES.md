@@ -1709,10 +1709,12 @@ Also consider:
 ## 95: MetalMesh: initializers that bypass Mesh / topology
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-04-27T20:01:05Z
+updated: 2026-04-27T20:08:48Z
+closed: 2026-04-27T20:08:48Z
 +++
 
 Today the only way to build a `MetalMesh` is by constructing a full `Mesh` first
@@ -1792,5 +1794,7 @@ Real example: a snapshot loader for ARKit mesh anchors reads
 Currently it can't produce a `MetalMesh` without first decoding into
 `[SIMD3<Float>]` arrays and constructing a `Mesh` — both of which throw
 away the GPU-ready data we already have.
+
+- `2026-04-27T20:08:48Z`: Implemented in this commit.
 
 ---
