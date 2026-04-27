@@ -1059,10 +1059,10 @@ Add a comprehensive set of diagnostic properties and methods for detecting mesh 
 - `valenceHistogram()` — frequency map of valences
 
 ## Edge & Face Counting Consistency
-- `hasNonMatchingFaceEdgeCounts` — halfedge loop count vs stored face degree
-- `hasDuplicateFaces` — two faces sharing all the same vertices
-- `hasDuplicateEdges` — more than one edge connecting the same two vertices
 
+- `2026-04-15T14:12:08Z`: `hasNonMatchingFaceEdgeCounts` — halfedge loop count vs stored face degree
+- `2026-04-15T14:12:08Z`: `hasDuplicateFaces` — two faces sharing all the same vertices
+- `2026-04-15T14:12:08Z`: `hasDuplicateEdges` — more than one edge connecting the same two vertices
 - `2026-04-15T15:43:45Z`: Split out the harder items: #75 (Euler characteristic / genus) and #76 (inconsistent face winding). The remaining items in this issue are straightforward computed properties.
 
 ---
@@ -1681,7 +1681,7 @@ Once landed: capture baseline numbers, then attach before/after to each performa
 status: new
 priority: medium
 kind: task
-labels: performance,benchmarks
+labels: performance, benchmarks
 depends: SwiftMesh#93
 created: 2026-04-16T03:27:43Z
 +++
@@ -1703,5 +1703,94 @@ Also consider:
 - A standard fixture corpus (small/medium/large meshes) used across benchmarks
 - Allocation count + peak memory tracking
 - CI regression gating
+
+---
+
+## 95: MetalMesh: initializers that bypass Mesh / topology
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-04-27T20:01:05Z
++++
+
+Today the only way to build a `MetalMesh` is by constructing a full `Mesh` first
+and going through `MetalMesh(mesh:device:)`. That path builds a half-edge
+topology, dedupes vertices, triangulates faces, etc.
+
+For consumers that already have GPU-ready vertex+index data — e.g. ARKit
+mesh anchors loaded from disk, procedural geometry, third-party loaders — the
+topology pipeline is wasted work and forces an awkward round-trip through
+`Mesh`. It also doesn't fit zero-copy paths where you already have an
+`MTLBuffer` produced by `device.makeBuffer(bytes:length:)`.
+
+## Proposed API
+
+Two new `MetalMesh` initializers, both `O(1)` w.r.t. mesh complexity (no
+topology, no dedup, no triangulation).
+
+### 1. From attribute arrays
+
+Convenience for the "I have a few `[SIMD3<Float>]` arrays and an index list"
+case. Still allocates buffers via `device.makeBuffer`, but skips topology.
+
+```swift
+extension MetalMesh {
+    public init(
+        device: MTLDevice,
+        positions: [SIMD3<Float>],
+        normals: [SIMD3<Float>]? = nil,
+        textureCoordinates: [SIMD2<Float>]? = nil,
+        indices: [UInt32],
+        label: String? = nil,
+        bufferLayout: BufferLayout = .interleaved
+    )
+}
+```
+
+Behavior:
+- Builds the same `VertexDescriptor` shape `MetalMesh(mesh:device:)` would
+  for the same set of attributes (so downstream code that already keys off
+  the descriptor keeps working).
+- One submesh covering all indices.
+
+### 2. From preexisting buffers (zero-copy)
+
+For loaders that have already produced `MTLBuffer`s and a matching
+descriptor (e.g. memory-mapped raw blobs):
+
+```swift
+extension MetalMesh {
+    public init(
+        vertexBuffers: [Int: MTLBuffer],
+        vertexCount: Int,
+        vertexDescriptor: VertexDescriptor,
+        indexBuffer: MTLBuffer,
+        indexCount: Int,
+        label: String? = nil
+    )
+}
+```
+
+Behavior:
+- Stores the buffers and descriptor as-is; no copies, no validation beyond
+  cheap shape checks.
+- One submesh.
+
+## Non-goals
+
+- No file I/O. Both initializers take in-memory data only. Loading from disk
+  / decoding formats stays in the caller.
+- No topology recovery. Callers that want a `Mesh` (for editing, dedup,
+  wireframe edge extraction) keep going through the existing `Mesh` path.
+
+## Motivation
+
+Real example: a snapshot loader for ARKit mesh anchors reads
+`vertices.raw` / `normals.raw` / `faces.raw` from disk into `MTLBuffer`s.
+Currently it can't produce a `MetalMesh` without first decoding into
+`[SIMD3<Float>]` arrays and constructing a `Mesh` — both of which throw
+away the GPU-ready data we already have.
 
 ---
