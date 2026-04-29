@@ -134,6 +134,29 @@ meshA.intersection(meshB)   // A ∩ B
 meshA.difference(meshB)     // A − B
 ```
 
+## Design
+
+- Faces are n-gon. Triangulation only happens at `MetalMesh` export.
+- `HalfEdgeTopology` stores no geometry — pure wiring.
+- `Mesh` is a thin wrapper: topology + SoA attribute arrays.
+- Per-corner attributes use `HalfEdgeID` as key (each half-edge = one vertex in one face).
+- `MetalMesh` layout is write-once export; interleave however the vertex descriptor dictates.
+- Submeshes on `Mesh` are face groups (list of `FaceID`s). `MetalMesh` maps 1:1.
+
+## Performance notes
+
+**Mesh → MetalMesh** is O(total triangles) with constant work per corner (attribute lookup, byte interleaving, buffer copy). Negligible for small meshes. For large meshes (100K+ triangles), per-corner dictionary lookups and byte-level interleaving will be the bottleneck — not yet optimized.
+
+**Triangulation** adds overhead for n-gon faces: each non-triangle face requires a 3D→2D projection and earcut pass. Triangle faces pass through with no extra work.
+
+## Consumers
+
+- [x] **Interaction3D** — 3D mesh rendering in SwiftUI Canvas
+- [x] **MetalSprocketsAddOns** — Metal mesh pipeline
+- [x] **MetalSprocketsExample** — demo app consuming MetalMesh
+- [ ] **MetalSprocketsSceneGraph** — scene graph mesh nodes
+- [ ] **GeometryLite2D** — has redundant HalfEdgeMesh/PolygonMesh copies to remove
+
 ## Requirements
 
 - macOS 26+ / iOS 26+
