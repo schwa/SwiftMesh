@@ -41,6 +41,23 @@ public struct MetalMesh {
     /// The triangle groups that make up the mesh.
     public var submeshes: [Submesh]
 
+    /// Corner-table opposites buffer (`UInt32`, length = total index count across all submeshes).
+    ///
+    /// `opposites[h]` is the twin half-edge of half-edge `h`, or `UInt32.max` for boundary edges.
+    /// Half-edge `h` belongs to face `h/3`, points at vertex `indices[h]`, and its next is
+    /// `(h/3)*3 + (h+1)%3`.
+    ///
+    /// Present only when the mesh was created with `preserveTopology: true`.
+    public var opposites: MTLBuffer?
+
+    /// Per-vertex representative half-edge buffer (`UInt32`, length = `vertexCount`).
+    ///
+    /// `vertToHalfedge[v]` is any outgoing half-edge from vertex `v`. Walk the one-ring
+    /// via twin/next from there.
+    ///
+    /// Present only when the mesh was created with `preserveTopology: true`.
+    public var vertToHalfedge: MTLBuffer?
+
     /// The primary vertex buffer (buffer index 0).
     ///
     /// Convenience accessor for interleaved layouts. Equivalent to `vertexBuffers[0]!`.
@@ -55,7 +72,7 @@ public struct MetalMesh {
     ///
     /// Each half-edge corner becomes a unique vertex in the output buffer(s).
     /// Each `Mesh.Submesh` becomes a `MetalMesh.Submesh` with its own index buffer.
-    public init(mesh: Mesh, device: MTLDevice, label: String? = nil, bufferLayout: BufferLayout = .interleaved) {
+    public init(mesh: Mesh, device: MTLDevice, label: String? = nil, bufferLayout: BufferLayout = .interleaved, preserveTopology: Bool = false) {
         self.label = label
 
         // Build attribute list based on available mesh data
@@ -106,6 +123,9 @@ public struct MetalMesh {
         // For dedup, we build a composite key from all attribute bytes
         var vertexDedup: [[UInt8]: UInt32] = [:]
 
+        // Map Metal vertex index → position vertex index (for topology building)
+        var metalVertexToPosition: [UInt32] = []
+
         for submesh in mesh.submeshes {
             var indices: [UInt32] = []
 
@@ -153,6 +173,7 @@ public struct MetalMesh {
                             for bi in bufferIndices {
                                 bufferData[bi]!.append(contentsOf: perBuffer[bi]!)
                             }
+                            metalVertexToPosition.append(UInt32(vertexID.raw))
                             indices.append(currentVertexIndex)
                             currentVertexIndex += 1
                         }
@@ -193,6 +214,57 @@ public struct MetalMesh {
                 indexBuffer: idxBuffer,
                 indexCount: sub.indices.count
             )
+        }
+
+        // Build corner-table topology buffers when requested.
+        if preserveTopology {
+            // Flatten all submesh indices into a single halfedge array.
+            let allIndices: [UInt32] = builtSubmeshes.flatMap(\.indices)
+            let halfEdgeCount = allIndices.count
+            let positionCount = Int(metalVertexToPosition.max().map { $0 + 1 } ?? 0)
+
+            // Build opposites: hash directed edges by (min(posA, posB), max(posA, posB))
+            // to pair up twin half-edges.
+            var oppositesArray = [UInt32](repeating: UInt32.max, count: halfEdgeCount)
+            // Key: (min, max) position pair → list of half-edge indices with that edge
+            var edgeMap: [UInt64: [Int]] = [:]
+
+            for h in 0..<halfEdgeCount {
+                let triBase = (h / 3) * 3
+                let nextH = triBase + (h + 1) % 3
+                let posA = metalVertexToPosition[Int(allIndices[h])]
+                let posB = metalVertexToPosition[Int(allIndices[nextH])]
+                let lo = min(posA, posB)
+                let hi = max(posA, posB)
+                let key = UInt64(lo) << 32 | UInt64(hi)
+                edgeMap[key, default: []].append(h)
+            }
+
+            for (_, halfEdges) in edgeMap {
+                if halfEdges.count == 2 {
+                    oppositesArray[halfEdges[0]] = UInt32(halfEdges[1])
+                    oppositesArray[halfEdges[1]] = UInt32(halfEdges[0])
+                }
+                // count == 1 → boundary, already UInt32.max
+                // count > 2 → non-manifold, leave as UInt32.max
+            }
+
+            let oppBuf = device.makeBuffer(bytes: oppositesArray, length: MemoryLayout<UInt32>.stride * halfEdgeCount, options: [])!
+            oppBuf.label = label.map { "\($0) Opposites" }
+            self.opposites = oppBuf
+
+            // Build vertToHalfedge: one representative outgoing half-edge per position vertex.
+            var v2he = [UInt32](repeating: UInt32.max, count: positionCount)
+            for h in 0..<halfEdgeCount {
+                let posIdx = Int(metalVertexToPosition[Int(allIndices[h])])
+                if v2he[posIdx] == UInt32.max {
+                    v2he[posIdx] = UInt32(h)
+                }
+            }
+
+            let v2heBuf = device.makeBuffer(bytes: v2he, length: MemoryLayout<UInt32>.stride * positionCount, options: [])!
+            v2heBuf.label = label.map { "\($0) VertToHalfedge" }
+            self.vertToHalfedge = v2heBuf
         }
     }
 
@@ -262,9 +334,13 @@ public struct MetalMesh {
 public extension MetalMesh {
     /// Convert a MetalMesh back to a Mesh.
     ///
-    /// Produces a triangle-only mesh. Vertices are deduplicated by position,
-    /// with per-corner attributes (normals, UVs, etc.) preserved on the
-    /// half-edge topology.
+    /// When ``opposites`` and ``vertToHalfedge`` are present (i.e. the mesh was
+    /// created with `preserveTopology: true`), the half-edge topology is rebuilt
+    /// with exact twin wiring from the corner table — no information is lost.
+    ///
+    /// Otherwise, produces a triangle-only mesh with topology rebuilt via
+    /// position deduplication (lossy: original twin wiring at seams with
+    /// different per-corner attributes may not round-trip exactly).
     func toMesh() -> Mesh {
         // Find attribute info
         struct AttrInfo {
@@ -318,7 +394,7 @@ public extension MetalMesh {
             }
         }
 
-        // Deduplicate vertices by position
+        // Deduplicate Metal vertices by position to get unique position list.
         var uniquePositions: [SIMD3<Float>] = []
         var positionMap: [Int: Int] = [:]
         var positionDedup: [SIMD3<Float>: Int] = [:]
@@ -335,28 +411,92 @@ public extension MetalMesh {
             }
         }
 
-        // Collect triangle faces
-        var allFaces: [[Int]] = []
-        var allCornerMetalVertices: [[Int]] = []
+        // Flatten all submesh indices and track submesh face ranges.
+        var allIndices: [UInt32] = []
         var submeshFaceRanges: [(label: String?, start: Int, count: Int)] = []
 
         for submesh in submeshes {
-            let start = allFaces.count
-            let indexPtr = submesh.indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
             let triCount = submesh.indexCount / 3
-            for tri in 0..<triCount {
-                let i0 = Int(indexPtr[tri * 3])
-                let i1 = Int(indexPtr[tri * 3 + 1])
-                let i2 = Int(indexPtr[tri * 3 + 2])
-                allFaces.append([positionMap[i0]!, positionMap[i1]!, positionMap[i2]!])
-                allCornerMetalVertices.append([i0, i1, i2])
+            let start = allIndices.count / 3
+            let indexPtr = submesh.indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
+            for i in 0..<submesh.indexCount {
+                allIndices.append(indexPtr[i])
             }
-            submeshFaceRanges.append((label: submesh.label, start: start, count: allFaces.count - start))
+            submeshFaceRanges.append((label: submesh.label, start: start, count: triCount))
         }
 
-        // Build topology
-        let faceDefs = allFaces.map { HalfEdgeTopology.FaceDefinition(outer: $0) }
-        let topology = HalfEdgeTopology(vertexCount: uniquePositions.count, faces: faceDefs)
+        let triCount = allIndices.count / 3
+        let halfEdgeCount = allIndices.count
+
+        // Build topology — exact path when corner-table buffers are present,
+        // fallback to position-dedup reconstruction otherwise.
+        let topology: HalfEdgeTopology
+        if let oppBuf = opposites {
+            let oppPtr = oppBuf.contents().assumingMemoryBound(to: UInt32.self)
+            let sentinel = UInt32.max
+
+            typealias VID = HalfEdgeTopology.VertexID
+            typealias HEID = HalfEdgeTopology.HalfEdgeID
+            typealias FID = HalfEdgeTopology.FaceID
+
+            // Vertices
+            var vertices = (0..<uniquePositions.count).map {
+                HalfEdgeTopology.Vertex(id: VID(raw: $0), edge: nil)
+            }
+
+            // Half-edges: one per index entry. h belongs to face h/3.
+            var halfEdges = [HalfEdgeTopology.HalfEdge]()
+            halfEdges.reserveCapacity(halfEdgeCount)
+
+            for h in 0..<halfEdgeCount {
+                let faceIdx = h / 3
+                let posIdx = positionMap[Int(allIndices[h])]!
+                let triBase = (h / 3) * 3
+                let nextH = triBase + (h + 1) % 3
+                let prevH = triBase + (h + 2) % 3
+                let opp = oppPtr[h]
+                let twin: HEID? = opp != sentinel ? HEID(raw: Int(opp)) : nil
+
+                halfEdges.append(HalfEdgeTopology.HalfEdge(
+                    id: HEID(raw: h),
+                    origin: VID(raw: posIdx),
+                    twin: twin,
+                    next: HEID(raw: nextH),
+                    prev: HEID(raw: prevH),
+                    face: FID(raw: faceIdx)
+                ))
+
+                if vertices[posIdx].edge == nil {
+                    vertices[posIdx].edge = HEID(raw: h)
+                }
+            }
+
+            // Faces
+            var faces = [HalfEdgeTopology.Face]()
+            faces.reserveCapacity(triCount)
+            for f in 0..<triCount {
+                faces.append(HalfEdgeTopology.Face(
+                    id: FID(raw: f),
+                    edge: HEID(raw: f * 3),
+                    holeEdges: []
+                ))
+            }
+
+            var topo = HalfEdgeTopology()
+            topo.vertices = vertices
+            topo.halfEdges = halfEdges
+            topo.faces = faces
+            topology = topo
+        } else {
+            // Fallback: rebuild topology from position-deduped face definitions.
+            let faceDefs = (0..<triCount).map { tri -> HalfEdgeTopology.FaceDefinition in
+                let i0 = positionMap[Int(allIndices[tri * 3])]!
+                let i1 = positionMap[Int(allIndices[tri * 3 + 1])]!
+                let i2 = positionMap[Int(allIndices[tri * 3 + 2])]!
+                return .init(outer: [i0, i1, i2])
+            }
+            topology = HalfEdgeTopology(vertexCount: uniquePositions.count, faces: faceDefs)
+        }
 
         // Build per-corner attributes
         let heCount = topology.halfEdges.count
@@ -366,12 +506,12 @@ public extension MetalMesh {
         var bitangents: [SIMD3<Float>]? = bitangentAttr != nil ? .init(repeating: .zero, count: heCount) : nil
         var colors: [SIMD4<Float>]? = colorAttr != nil ? .init(repeating: .zero, count: heCount) : nil
 
-        for (faceIdx, cornerVerts) in allCornerMetalVertices.enumerated() {
-            let faceID = HalfEdgeTopology.FaceID(raw: faceIdx)
+        for tri in 0..<triCount {
+            let faceID = HalfEdgeTopology.FaceID(raw: tri)
             let heLoop = topology.halfEdgeLoop(for: faceID)
 
             for (cornerIdx, heID) in heLoop.enumerated() {
-                let metalVertex = cornerVerts[cornerIdx]
+                let metalVertex = Int(allIndices[tri * 3 + cornerIdx])
 
                 if let attr = normalAttr {
                     normals![heID.raw] = readFloat3(vertex: metalVertex, attr: attr)

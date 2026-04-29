@@ -46,7 +46,8 @@ let data = PLY.write(mesh)
 // Between types
 let soup = TriangleSoup(mesh: mesh)        // Mesh → TriangleSoup
 let mesh = soup.toMesh(weldTolerance: 1e-5) // TriangleSoup → Mesh
-let metalMesh = MetalMesh(mesh: mesh, device: device) // Mesh → MetalMesh
+let metalMesh = MetalMesh(mesh: mesh, device: device) // Mesh → MetalMesh (lossy)
+let metalMesh = MetalMesh(mesh: mesh, device: device, preserveTopology: true) // lossless
 let mesh = metalMesh.toMesh()              // MetalMesh → Mesh
 ```
 
@@ -142,6 +143,13 @@ meshA.difference(meshB)     // A − B
 - Per-corner attributes use `HalfEdgeID` as key (each half-edge = one vertex in one face).
 - `MetalMesh` layout is write-once export; interleave however the vertex descriptor dictates.
 - Submeshes on `Mesh` are face groups (list of `FaceID`s). `MetalMesh` maps 1:1.
+- `MetalMesh` optionally stores corner-table topology buffers (`opposites` + `vertToHalfedge`)
+  when created with `preserveTopology: true`. The existing index buffer doubles as the
+  half-edge→vertex map (V table). `opposites[h]` gives the twin half-edge (O table),
+  `vertToHalfedge[v]` gives a representative outgoing half-edge per vertex. Boundary
+  edges use `UInt32.max` as a sentinel. This makes `Mesh → MetalMesh → Mesh` lossless
+  for triangle topology — without it, `toMesh()` rebuilds topology via position
+  deduplication, which can lose twin wiring at attribute seams.
 
 ## Performance notes
 

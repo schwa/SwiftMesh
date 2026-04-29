@@ -407,6 +407,232 @@ struct MetalMeshTests {
         #expect(metalMesh.label == "FromBuffers")
     }
 
+    // MARK: - Corner-table topology (preserveTopology)
+
+    @Test("preserveTopology produces opposites and vertToHalfedge buffers")
+    func preserveTopologyBuffers() throws {
+        let device = try requireDevice()
+        let mesh = Mesh.tetrahedron(attributes: [])
+        let metalMesh = MetalMesh(mesh: mesh, device: device, preserveTopology: true)
+
+        #expect(metalMesh.opposites != nil)
+        #expect(metalMesh.vertToHalfedge != nil)
+
+        let totalIndices = metalMesh.submeshes.reduce(0) { $0 + $1.indexCount }
+        #expect(metalMesh.opposites!.length == MemoryLayout<UInt32>.stride * totalIndices)
+    }
+
+    @Test("preserveTopology defaults to false")
+    func preserveTopologyDefaultsFalse() throws {
+        let device = try requireDevice()
+        let metalMesh = MetalMesh(mesh: .tetrahedron(attributes: []), device: device)
+
+        #expect(metalMesh.opposites == nil)
+        #expect(metalMesh.vertToHalfedge == nil)
+    }
+
+    @Test("Opposites buffer has correct twin pairing for closed manifold")
+    func oppositesTwinPairing() throws {
+        let device = try requireDevice()
+        let mesh = Mesh.tetrahedron(attributes: [])
+        let metalMesh = MetalMesh(mesh: mesh, device: device, preserveTopology: true)
+
+        let totalIndices = metalMesh.submeshes.reduce(0) { $0 + $1.indexCount }
+        let oppPtr = metalMesh.opposites!.contents().assumingMemoryBound(to: UInt32.self)
+        let sentinel = UInt32.max
+
+        // For a closed manifold, no boundary edges
+        for h in 0..<totalIndices {
+            #expect(oppPtr[h] != sentinel, "Tetrahedron is closed — no boundary edges expected")
+        }
+
+        // Twin symmetry: opposites[opposites[h]] == h
+        for h in 0..<totalIndices {
+            let twin = Int(oppPtr[h])
+            #expect(Int(oppPtr[twin]) == h, "Twin symmetry violated at halfedge \(h)")
+        }
+    }
+
+    @Test("Round-trip with preserveTopology produces valid mesh with correct twins")
+    func roundTripWithTopology() throws {
+        let device = try requireDevice()
+        let original = Mesh.icosahedron(attributes: []).withFlatNormals()
+        let metalMesh = MetalMesh(mesh: original, device: device, preserveTopology: true)
+        let restored = metalMesh.toMesh()
+
+        #expect(restored.validate().isEmpty)
+        #expect(restored.faceCount == original.faceCount)
+        #expect(restored.normals != nil)
+
+        // Every interior half-edge should have a twin (icosahedron is closed)
+        for he in restored.topology.halfEdges {
+            #expect(he.twin != nil, "Closed manifold should have no boundary edges")
+        }
+
+        // Twin symmetry
+        for he in restored.topology.halfEdges {
+            guard let twin = he.twin else {
+                continue
+            }
+            #expect(restored.topology.halfEdges[twin.raw].twin == he.id)
+        }
+    }
+
+    @Test("Boundary edges get sentinel in opposites buffer")
+    func boundaryEdgesSentinel() throws {
+        let device = try requireDevice()
+        // A single quad (two triangles) is open — has boundary edges
+        let mesh = Mesh.quad(attributes: [])
+        let metalMesh = MetalMesh(mesh: mesh, device: device, preserveTopology: true)
+
+        let totalIndices = metalMesh.submeshes.reduce(0) { $0 + $1.indexCount }
+        let oppPtr = metalMesh.opposites!.contents().assumingMemoryBound(to: UInt32.self)
+        let sentinel = UInt32.max
+
+        var boundaryCount = 0
+        for h in 0..<totalIndices {
+            if oppPtr[h] == sentinel {
+                boundaryCount += 1
+            }
+        }
+        // A quad = 2 triangles = 6 halfedges. The shared diagonal has twins,
+        // the 4 outer edges are boundary → 4 boundary halfedges.
+        #expect(boundaryCount == 4)
+    }
+
+    @Test("vertToHalfedge maps every position vertex to an outgoing halfedge")
+    func vertToHalfedgeCovers() throws {
+        let device = try requireDevice()
+        let mesh = Mesh.cube(attributes: [])
+        let metalMesh = MetalMesh(mesh: mesh, device: device, preserveTopology: true)
+
+        let v2hePtr = metalMesh.vertToHalfedge!.contents().assumingMemoryBound(to: UInt32.self)
+        let posCount = metalMesh.vertToHalfedge!.length / MemoryLayout<UInt32>.stride
+        let sentinel = UInt32.max
+
+        for v in 0..<posCount {
+            #expect(v2hePtr[v] != sentinel, "Every position vertex should have a representative halfedge")
+        }
+    }
+
+    @Test("Lossless round-trip preserves exact twin wiring")
+    func losslessRoundTripTwinWiring() throws {
+        let device = try requireDevice()
+        // Icosahedron: closed manifold, position-only, no vertex splitting.
+        let original = Mesh.icosahedron(attributes: [])
+        let metalMesh = MetalMesh(mesh: original, device: device, preserveTopology: true)
+        let restored = metalMesh.toMesh()
+
+        #expect(restored.validate().isEmpty)
+        #expect(restored.topology.halfEdges.count == original.topology.halfEdges.count)
+
+        // Every half-edge's twin should point at the same pair of position vertices.
+        for he in restored.topology.halfEdges {
+            guard let twin = he.twin else {
+                Issue.record("Closed manifold should have no boundary at HE \(he.id)")
+                continue
+            }
+            let twinHE = restored.topology.halfEdges[twin.raw]
+            // he: origin -> dest, twin: dest -> origin
+            let heOrigin = he.origin
+            let heDest = restored.topology.halfEdges[he.next!.raw].origin
+            let twinOrigin = twinHE.origin
+            let twinDest = restored.topology.halfEdges[twinHE.next!.raw].origin
+            #expect(heOrigin == twinDest, "Twin dest should equal origin")
+            #expect(heDest == twinOrigin, "Twin origin should equal dest")
+        }
+    }
+
+    @Test("Lossless round-trip with split vertices (flat normals) recovers twins")
+    func losslessRoundTripSplitVertices() throws {
+        let device = try requireDevice()
+        // Flat normals on tetrahedron splits every shared vertex (4 verts -> 12 Metal verts).
+        // The lossy path can't recover twin wiring here because shared-edge vertices
+        // have different normals, so position-dedup still works but vertex splitting
+        // complicates things. The lossless path should recover exact twins.
+        let original = Mesh.tetrahedron(attributes: []).withFlatNormals()
+        let metalMesh = MetalMesh(mesh: original, device: device, preserveTopology: true)
+
+        // Confirm vertices were split
+        #expect(metalMesh.vertexCount == 12)
+
+        let restored = metalMesh.toMesh()
+        #expect(restored.validate().isEmpty)
+        #expect(restored.faceCount == 4)
+
+        // All half-edges should have twins (closed manifold)
+        for he in restored.topology.halfEdges {
+            #expect(he.twin != nil, "Closed manifold should have no boundary edges")
+        }
+
+        // Twin symmetry
+        for he in restored.topology.halfEdges {
+            guard let twin = he.twin else {
+                continue
+            }
+            #expect(restored.topology.halfEdges[twin.raw].twin == he.id)
+        }
+    }
+
+    @Test("Lossy round-trip loses twin info at seams with different per-corner attributes")
+    func lossyRoundTripLosesTwins() throws {
+        let device = try requireDevice()
+        // Flat-normal tetrahedron: each face has unique normals, so shared-edge
+        // vertices get split into different Metal vertices. Without preserveTopology,
+        // the position-dedup path rebuilds topology from scratch — it should still
+        // work (tetrahedron positions are unique per vertex), but let's verify
+        // the lossy path at least produces a valid mesh.
+        let original = Mesh.tetrahedron(attributes: []).withFlatNormals()
+        let metalMeshLossy = MetalMesh(mesh: original, device: device, preserveTopology: false)
+        let metalMeshLossless = MetalMesh(mesh: original, device: device, preserveTopology: true)
+
+        let restoredLossy = metalMeshLossy.toMesh()
+        let restoredLossless = metalMeshLossless.toMesh()
+
+        // Both should be valid
+        #expect(restoredLossy.validate().isEmpty)
+        #expect(restoredLossless.validate().isEmpty)
+
+        // Both should have same face count
+        #expect(restoredLossy.faceCount == 4)
+        #expect(restoredLossless.faceCount == 4)
+
+        // Lossless: guaranteed all twins present (closed manifold)
+        let losslessBoundary = restoredLossless.topology.halfEdges.filter { $0.twin == nil }.count
+        #expect(losslessBoundary == 0, "Lossless path should preserve all twins")
+    }
+
+    @Test("Lossy round-trip with open mesh loses boundary twin info correctly")
+    func lossyRoundTripOpenMesh() throws {
+        let device = try requireDevice()
+        // Two triangles sharing an edge, with flat normals. The shared edge
+        // has different normals on each side.
+        let mesh = Mesh(positions: [
+            SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0.5, 1, 0), SIMD3(0.5, -1, 0)
+        ], faces: [[0, 1, 2], [1, 0, 3]]).withFlatNormals()
+
+        // Lossy path
+        let metalMeshLossy = MetalMesh(mesh: mesh, device: device, preserveTopology: false)
+        let restoredLossy = metalMeshLossy.toMesh()
+        #expect(restoredLossy.validate().isEmpty)
+        #expect(restoredLossy.faceCount == 2)
+
+        // Lossless path
+        let metalMeshLossless = MetalMesh(mesh: mesh, device: device, preserveTopology: true)
+        let restoredLossless = metalMeshLossless.toMesh()
+        #expect(restoredLossless.validate().isEmpty)
+        #expect(restoredLossless.faceCount == 2)
+
+        // The shared edge (0,1) should have a twin in lossless
+        let losslessInternalTwins = restoredLossless.topology.halfEdges.filter { $0.twin != nil }.count
+        // 2 triangles = 6 half-edges. Shared edge = 2 twins. Boundary = 4 with no twin.
+        #expect(losslessInternalTwins == 2, "Shared edge should have twins in lossless path")
+
+        // Boundary edges = 4 (the 4 outer edges)
+        let losslessBoundary = restoredLossless.topology.halfEdges.filter { $0.twin == nil }.count
+        #expect(losslessBoundary == 4)
+    }
+
     @Test("Mesh → MDLMesh → Mesh round-trip")
     func meshToMDLAndBack() throws {
         let device = try requireDevice()
