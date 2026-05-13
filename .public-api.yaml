@@ -1,0 +1,375 @@
+package: SwiftMesh
+access_level: public
+modules:
+- name: BinPacking
+  symbols:
+  - decl: 'public protocol RectScalar : Comparable, Decodable, Encodable, Hashable, Numeric, SIMDScalar, Sendable where Self.SIMD16Storage : Sendable, Self.SIMD2Storage : Sendable, Self.SIMD32Storage : Sendable, Self.SIMD4Storage : Sendable, Self.SIMD64Storage : Sendable, Self.SIMD8Storage : Sendable'
+  - decl: 'public struct MaxRectsPacker<Scalar> where Scalar : RectScalar'
+    members:
+    - decl: public enum Heuristic
+      members:
+      - decl: public case bestAreaFit
+      - decl: public case bestLongSideFit
+      - decl: public case bestShortSideFit
+      - decl: public case bottomLeft
+    - decl: 'public init(binSize: SIMD2<Scalar>, allowRotation: Bool = true, padding: Scalar = .zero, heuristic: MaxRectsPacker<Scalar>.Heuristic = .bestShortSideFit)'
+    - decl: 'public let allowRotation: Bool'
+    - decl: 'public let binSize: SIMD2<Scalar>'
+    - decl: 'public var heuristic: MaxRectsPacker<Scalar>.Heuristic'
+    - decl: 'public let padding: Scalar'
+    - decl: 'public mutating func pack(_ sizes: [SIMD2<Scalar>]) -> PackingResult<Int, Scalar>'
+    - decl: 'public mutating func pack<ID>(_ items: [PackingItem<ID, Scalar>]) -> PackingResult<ID, Scalar> where ID : Hashable, ID : Sendable'
+    - decl: public mutating func reset()
+  - decl: 'public struct PackedRect<ID, Scalar> where ID : Hashable, ID : Sendable, Scalar : RectScalar'
+    members:
+    - decl: 'public init(id: ID, rect: Rect<Scalar>, rotated: Bool)'
+    - decl: 'public var id: ID'
+    - decl: 'public var rect: Rect<Scalar>'
+    - decl: 'public var rotated: Bool'
+  - decl: 'public struct PackingItem<ID, Scalar> where ID : Hashable, ID : Sendable, Scalar : RectScalar'
+    members:
+    - decl: 'public init(id: ID, size: SIMD2<Scalar>)'
+    - decl: 'public var id: ID'
+    - decl: 'public var size: SIMD2<Scalar>'
+  - decl: 'public struct PackingResult<ID, Scalar> where ID : Hashable, ID : Sendable, Scalar : RectScalar'
+    members:
+    - decl: 'public init(placements: [PackedRect<ID, Scalar>], unplaced: [ID], binSize: SIMD2<Scalar>)'
+    - decl: 'public var allPlaced: Bool { get }'
+    - decl: 'public var binSize: SIMD2<Scalar>'
+    - decl: 'public var placements: [PackedRect<ID, Scalar>]'
+    - decl: 'public var unplaced: [ID]'
+    - decl: 'public subscript(id: ID) -> PackedRect<ID, Scalar>? { get }'
+  - decl: 'public struct Rect<Scalar> where Scalar : RectScalar'
+    members:
+    - decl: 'public init(origin: SIMD2<Scalar>, size: SIMD2<Scalar>)'
+    - decl: 'public init(size: SIMD2<Scalar>)'
+    - decl: 'public init(x: Scalar, y: Scalar, width: Scalar, height: Scalar)'
+    - decl: 'public var area: Scalar { get }'
+    - decl: 'public var height: Scalar { get }'
+    - decl: 'public var max: SIMD2<Scalar> { get }'
+    - decl: 'public var maxX: Scalar { get }'
+    - decl: 'public var maxY: Scalar { get }'
+    - decl: 'public var minX: Scalar { get }'
+    - decl: 'public var minY: Scalar { get }'
+    - decl: 'public var origin: SIMD2<Scalar>'
+    - decl: 'public var size: SIMD2<Scalar>'
+    - decl: 'public var width: Scalar { get }'
+    - decl: 'public func contains(_ other: Rect<Scalar>) -> Bool'
+    - decl: 'public func intersects(_ other: Rect<Scalar>) -> Bool'
+  - decl: public enum BinPackingError
+    members:
+    - decl: public case outOfSpace
+  extensions:
+  - extended_module: Swift
+- name: SwiftMesh
+  symbols:
+  - decl: public struct AtlasLayout
+    members:
+    - decl: public struct ChartPlacement
+      members:
+      - decl: 'public init(faces: [HalfEdgeTopology.FaceID], atlasRect: Rect<Int>, planeOrigin: SIMD3<Float>, planeU: SIMD3<Float>, planeV: SIMD3<Float>, worldExtent: SIMD2<Float>, planeMin: SIMD2<Float>, rotated: Bool)'
+      - decl: 'public var atlasRect: Rect<Int>'
+      - decl: 'public var faces: [HalfEdgeTopology.FaceID]'
+      - decl: 'public var planeMin: SIMD2<Float>'
+      - decl: 'public var planeOrigin: SIMD3<Float>'
+      - decl: 'public var planeU: SIMD3<Float>'
+      - decl: 'public var planeV: SIMD3<Float>'
+      - decl: 'public var rotated: Bool'
+      - decl: 'public var worldExtent: SIMD2<Float>'
+    - decl: 'public init(atlasSize: SIMD2<Int>, charts: [AtlasLayout.ChartPlacement])'
+    - decl: 'public var atlasSize: SIMD2<Int>'
+    - decl: 'public var charts: [AtlasLayout.ChartPlacement]'
+  - decl: public struct HalfEdgeTopology
+    members:
+    - decl: public struct Face
+      members:
+      - decl: 'public var edge: HalfEdgeTopology.HalfEdgeID?'
+      - decl: 'public var holeEdges: [HalfEdgeTopology.HalfEdgeID]'
+      - decl: 'public let id: HalfEdgeTopology.FaceID'
+    - decl: public struct FaceDefinition
+      members:
+      - decl: 'public init(outer: [Int], holes: [[Int]] = [])'
+      - decl: 'public var holes: [[Int]]'
+      - decl: 'public var outer: [Int]'
+    - decl: public struct FaceID
+      members:
+      - decl: 'public init(raw: Int)'
+      - decl: 'public var description: String { get }'
+      - decl: 'public let raw: Int'
+    - decl: public struct HalfEdge
+      members:
+      - decl: 'public var face: HalfEdgeTopology.FaceID?'
+      - decl: 'public let id: HalfEdgeTopology.HalfEdgeID'
+      - decl: 'public var next: HalfEdgeTopology.HalfEdgeID?'
+      - decl: 'public var origin: HalfEdgeTopology.VertexID'
+      - decl: 'public var prev: HalfEdgeTopology.HalfEdgeID?'
+      - decl: 'public var twin: HalfEdgeTopology.HalfEdgeID?'
+    - decl: public struct HalfEdgeID
+      members:
+      - decl: 'public init(raw: Int)'
+      - decl: 'public var description: String { get }'
+      - decl: 'public let raw: Int'
+    - decl: public struct Vertex
+      members:
+      - decl: 'public var edge: HalfEdgeTopology.HalfEdgeID?'
+      - decl: 'public let id: HalfEdgeTopology.VertexID'
+    - decl: public struct VertexID
+      members:
+      - decl: 'public init(raw: Int)'
+      - decl: 'public var description: String { get }'
+      - decl: 'public let raw: Int'
+    - decl: public init()
+    - decl: 'public init(vertexCount: Int, faces faceDefinitions: [HalfEdgeTopology.FaceDefinition])'
+    - decl: 'public var faces: [HalfEdgeTopology.Face] { get }'
+    - decl: 'public var halfEdges: [HalfEdgeTopology.HalfEdge] { get }'
+    - decl: 'public var isManifold: Bool { get }'
+    - decl: 'public var vertices: [HalfEdgeTopology.Vertex]'
+    - decl: public func boundaryLoops() -> [[HalfEdgeTopology.VertexID]]
+    - decl: '@discardableResult public mutating func collapseEdge(_ heID: HalfEdgeTopology.HalfEdgeID) -> HalfEdgeTopology.VertexID?'
+    - decl: 'public mutating func deleteEdge(_ heID: HalfEdgeTopology.HalfEdgeID)'
+    - decl: 'public func dest(of e: HalfEdgeTopology.HalfEdgeID) -> HalfEdgeTopology.VertexID?'
+    - decl: 'public func destViaNext(of e: HalfEdgeTopology.HalfEdgeID) -> HalfEdgeTopology.VertexID?'
+    - decl: 'public func halfEdgeLoop(for face: HalfEdgeTopology.FaceID) -> [HalfEdgeTopology.HalfEdgeID]'
+    - decl: 'public func holeVertexLoops(for face: HalfEdgeTopology.FaceID) -> [[HalfEdgeTopology.VertexID]]'
+    - decl: 'public func neighborFaces(of face: HalfEdgeTopology.FaceID) -> [HalfEdgeTopology.FaceID]'
+    - decl: public func undirectedEdges() -> [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
+    - decl: public func validate() -> [ValidationIssue]
+    - decl: 'public func vertexLoop(for face: HalfEdgeTopology.FaceID) -> [HalfEdgeTopology.VertexID]'
+  - decl: public struct Mesh
+    members:
+    - decl: public struct PlanarChart
+      members:
+      - decl: 'public init(faces: [HalfEdgeTopology.FaceID], normal: SIMD3<Float>, tangent: SIMD3<Float>, bitangent: SIMD3<Float>, planeOrigin: SIMD3<Float>, worldExtent: SIMD2<Float>, planeMin: SIMD2<Float>)'
+      - decl: 'public var bitangent: SIMD3<Float>'
+      - decl: 'public var faces: [HalfEdgeTopology.FaceID]'
+      - decl: 'public var normal: SIMD3<Float>'
+      - decl: 'public var planeMin: SIMD2<Float>'
+      - decl: 'public var planeOrigin: SIMD3<Float>'
+      - decl: 'public var tangent: SIMD3<Float>'
+      - decl: 'public var worldExtent: SIMD2<Float>'
+    - decl: public struct Submesh
+      members:
+      - decl: 'public init(label: String? = nil, faces: [HalfEdgeTopology.FaceID])'
+      - decl: 'public var faces: [HalfEdgeTopology.FaceID]'
+      - decl: 'public var label: String?'
+    - decl: public enum BorderDirection
+      members:
+      - decl: public case inside
+      - decl: public case outside
+    - decl: 'public init(mdlMesh: MDLMesh, device: any MTLDevice) throws'
+    - decl: 'public init(positions: [SIMD3<Float>], faces: [HalfEdgeTopology.FaceDefinition])'
+    - decl: 'public init(positions: [SIMD3<Float>], faces: [[Int]])'
+    - decl: 'public init(topology: HalfEdgeTopology, positions: [SIMD3<Float>], normals: [SIMD3<Float>]? = nil, textureCoordinates: [SIMD2<Float>]? = nil, tangents: [SIMD3<Float>]? = nil, bitangents: [SIMD3<Float>]? = nil, colors: [SIMD4<Float>]? = nil, submeshes: [Mesh.Submesh]? = nil)'
+    - decl: 'public var bitangents: [SIMD3<Float>]?'
+    - decl: 'public var bounds: (min: SIMD3<Float>, max: SIMD3<Float>) { get }'
+    - decl: 'public var center: SIMD3<Float> { get }'
+    - decl: 'public var colors: [SIMD4<Float>]?'
+    - decl: 'public var edgeCount: Int { get }'
+    - decl: 'public var faceCount: Int { get }'
+    - decl: 'public var isManifold: Bool { get }'
+    - decl: 'public var normals: [SIMD3<Float>]?'
+    - decl: 'public var positions: [SIMD3<Float>]'
+    - decl: 'public var submeshes: [Mesh.Submesh]'
+    - decl: 'public var tangents: [SIMD3<Float>]?'
+    - decl: 'public var textureCoordinates: [SIMD2<Float>]?'
+    - decl: 'public var topology: HalfEdgeTopology'
+    - decl: 'public var vertexCount: Int { get }'
+    - decl: 'public func bakingPlanarAtlas(texelsPerMeter: Float = 256, atlasSize: SIMD2<Int> = [2_048, 2_048], padding: Int = 2, normalAngleTolerance: Float = 5 * .pi / 180, planeOffsetTolerance: Float = 0.01) throws -> (mesh: Mesh, atlas: AtlasLayout)'
+    - decl: 'public func border(thickness: Float = 0.02, direction: Mesh.BorderDirection = .inside, triangulate: Bool = false, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public func catmullClarkSubdivided(iterations: Int = 1) -> Mesh'
+    - decl: 'public mutating func decimate(targetFaceCount: Int)'
+    - decl: 'public func decimated(ratio: Float) -> Mesh'
+    - decl: 'public func decimated(targetFaceCount: Int) -> Mesh'
+    - decl: 'public func difference(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh'
+    - decl: 'public func faceCentroid(_ face: HalfEdgeTopology.FaceID) -> SIMD3<Float>'
+    - decl: 'public func faceNormal(_ face: HalfEdgeTopology.FaceID) -> SIMD3<Float>'
+    - decl: 'public func facePositions(_ face: HalfEdgeTopology.FaceID) -> [SIMD3<Float>]'
+    - decl: 'public mutating func fitToDiameter(_ diameter: Float)'
+    - decl: 'public mutating func fitToExtents(_ extents: SIMD3<Float>)'
+    - decl: 'public func intersection(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh'
+    - decl: 'public func loopSubdivided(iterations: Int = 1) -> Mesh'
+    - decl: 'public func merging(_ other: Mesh) -> Mesh'
+    - decl: 'public func mergingCoplanarFaces(angleTolerance: Float = 1e-4, distanceTolerance: Float = 1e-4) -> Mesh'
+    - decl: 'public func planarCharts(normalAngleTolerance: Float = 5 * .pi / 180, planeOffsetTolerance: Float = 0.01, faces: [HalfEdgeTopology.FaceID]? = nil) -> [Mesh.PlanarChart]'
+    - decl: 'public func position(of vertex: HalfEdgeTopology.VertexID) -> SIMD3<Float>'
+    - decl: 'public mutating func rotate(by quaternion: simd_quatf)'
+    - decl: 'public func rotated(by quaternion: simd_quatf) -> Mesh'
+    - decl: 'public mutating func scale(by factor: Float)'
+    - decl: 'public mutating func scale(by factor: SIMD3<Float>)'
+    - decl: 'public func scaled(by factor: Float) -> Mesh'
+    - decl: 'public func scaled(by factor: SIMD3<Float>) -> Mesh'
+    - decl: 'public func toMDLMesh(device: any MTLDevice) -> MDLMesh'
+    - decl: 'public mutating func transform(by matrix: simd_float4x4)'
+    - decl: 'public func transformed(by matrix: simd_float4x4) -> Mesh'
+    - decl: 'public mutating func translate(by offset: SIMD3<Float>)'
+    - decl: 'public func translated(by offset: SIMD3<Float>) -> Mesh'
+    - decl: public func triangulate() -> [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
+    - decl: public func triangulated() -> Mesh
+    - decl: 'public func union(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh'
+    - decl: public func validate() -> [ValidationIssue]
+    - decl: 'public func welded(tolerance: Float = 1e-5) -> Mesh'
+    - decl: 'public func wireframe(radius: Float = 0.01, sides: Int = 4, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: public func withBoxUVs() -> Mesh
+    - decl: 'public func withCylindricalUVs(axis: ProjectionAxis = .y) -> Mesh'
+    - decl: public func withFlatNormals() -> Mesh
+    - decl: 'public func withPlanarUVs(axis: ProjectionAxis = .z) -> Mesh'
+    - decl: public func withSmoothNormals() -> Mesh
+    - decl: public func withSphericalUVs() -> Mesh
+    - decl: public func withTangents() -> Mesh
+    - decl: 'public static func box(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func capsule(segments: Int = 32, height: Float = 1.0, radius: Float = 0.25, latitudeSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func circle(extents: SIMD2<Float> = [1, 1], segments: Int = 32, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func cone(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func conicalFrustum(segments: Int = 32, height: Float = 1.0, topRadius: Float = 0.25, bottomRadius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func convexHull(of points: [SIMD3<Float>], attributes: MeshAttributes = .default) -> Mesh?'
+    - decl: 'public static func cube(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func cubeSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 8, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func cylinder(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func dodecahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func edgePrism(from start: SIMD3<Float>, to end: SIMD3<Float>, radius: Float, sides: Int, capped: Bool = true) -> Mesh'
+    - decl: 'public static func hemisphere(extents: SIMD3<Float> = [1, 1, 1], segments: Int = 32, latitudeSegments: Int = 8, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func icoSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 3, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func icosahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func marchingCubes(resolution: Int, bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5)), isoValue: Float = 0, attributes: MeshAttributes = .default, field: (SIMD3<Float>) -> Float) -> Mesh'
+    - decl: 'public static func marchingCubes(resolution: SIMD3<Int>, bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5)), isoValue: Float = 0, attributes: MeshAttributes = .default, field: (SIMD3<Float>) -> Float) -> Mesh'
+    - decl: 'public static func merged(_ meshes: [Mesh]) -> Mesh'
+    - decl: 'public static func octahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func quad(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func rectangularFrustum(height: Float = 1.0, topExtents: SIMD2<Float> = [0.5, 0.5], bottomExtents: SIMD2<Float> = [1, 1], capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func sphere(extents: SIMD3<Float> = [1, 1, 1], latitudeSegments: Int = 16, longitudeSegments: Int = 32, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func teapot(diameter: Float = 1, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func tetrahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func torus(majorSegments: Int = 32, minorSegments: Int = 16, majorRadius: Float = 0.3, minorRadius: Float = 0.15, attributes: MeshAttributes = .default) -> Mesh'
+    - decl: 'public static func triangle(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = .default) -> Mesh'
+  - decl: 'public struct Mesh2D<ID> where ID : Hashable, ID : Sendable'
+    members:
+    - decl: public typealias FaceID = HalfEdgeTopology.FaceID
+    - decl: public typealias HalfEdgeID = HalfEdgeTopology.HalfEdgeID
+    - decl: public typealias VertexID = HalfEdgeTopology.VertexID
+    - decl: 'public init(points: [CGPoint], faces faceDefinitions: [HalfEdgeTopology.FaceDefinition]) where ID == Int'
+    - decl: 'public init(segments: [Identified<ID, LineSegment>]) where ID: Hashable, ID: Sendable'
+    - decl: 'public init(topology: HalfEdgeTopology, positions: [CGPoint], edgeLabels: [ID], faceSignedAreas: [CGFloat?])'
+    - decl: 'public var edgeLabels: [ID]'
+    - decl: 'public var faceSignedAreas: [CGFloat?]'
+    - decl: 'public var positions: [CGPoint]'
+    - decl: 'public var topology: HalfEdgeTopology'
+    - decl: 'public func boundaryLoops() -> [[CGPoint]] where ID: Hashable, ID: Sendable'
+    - decl: 'public mutating func deleteEdge(label: ID) where ID: Hashable, ID: Sendable'
+    - decl: 'public func dest(of e: Mesh2D<ID>.HalfEdgeID) -> Mesh2D<ID>.VertexID?'
+    - decl: 'public func holePolygons(for face: Mesh2D<ID>.FaceID) -> [[CGPoint]] where ID: Hashable, ID: Sendable'
+    - decl: 'public func isConvex(_ face: Mesh2D<ID>.FaceID) -> Bool where ID: Hashable, ID: Sendable'
+    - decl: 'public func isHole(_ face: Mesh2D<ID>.FaceID) -> Bool where ID: Hashable, ID: Sendable'
+    - decl: 'public func label(_ e: Mesh2D<ID>.HalfEdgeID) -> ID'
+    - decl: 'public func point(_ v: Mesh2D<ID>.VertexID) -> CGPoint'
+    - decl: 'public func polygon(for face: Mesh2D<ID>.FaceID) -> [CGPoint] where ID: Hashable, ID: Sendable'
+    - decl: 'public func signedArea(_ face: Mesh2D<ID>.FaceID) -> CGFloat? where ID: Hashable, ID: Sendable'
+    - decl: 'public func undirectedEdges() -> [(Mesh2D<ID>.VertexID, Mesh2D<ID>.VertexID, ID)] where ID: Hashable, ID: Sendable'
+  - decl: public struct MeshAttributes
+    members:
+    - decl: 'public init(rawValue: UInt)'
+    - decl: 'public let rawValue: UInt'
+    - decl: 'public static let all: MeshAttributes'
+    - decl: 'public static let bitangents: MeshAttributes'
+    - decl: 'public static let `default`: MeshAttributes'
+    - decl: 'public static let flatNormals: MeshAttributes'
+    - decl: 'public static let invertedNormals: MeshAttributes'
+    - decl: 'public static let smoothNormals: MeshAttributes'
+    - decl: 'public static let tangents: MeshAttributes'
+    - decl: 'public static let textureCoordinates: MeshAttributes'
+  - decl: public struct MetalMesh
+    members:
+    - decl: public struct Submesh
+      members:
+      - decl: 'public var indexBuffer: any MTLBuffer'
+      - decl: 'public var indexCount: Int'
+      - decl: 'public var label: String?'
+    - decl: public enum BufferLayout
+      members:
+      - decl: public case interleaved
+      - decl: public case separateBuffers
+    - decl: 'public init(device: any MTLDevice, positions: [SIMD3<Float>], normals: [SIMD3<Float>]? = nil, textureCoordinates: [SIMD2<Float>]? = nil, indices: [UInt32], label: String? = nil, bufferLayout: MetalMesh.BufferLayout = .interleaved)'
+    - decl: 'public init(mesh: Mesh, device: any MTLDevice, label: String? = nil, bufferLayout: MetalMesh.BufferLayout = .interleaved, preserveTopology: Bool = false)'
+    - decl: 'public init(mtkMesh: MTKMesh) throws'
+    - decl: 'public init(vertexBuffers: [Int : any MTLBuffer], vertexCount: Int, vertexDescriptor: VertexDescriptor, indexBuffer: any MTLBuffer, indexCount: Int, label: String? = nil)'
+    - decl: 'public var label: String?'
+    - decl: 'public var opposites: (any MTLBuffer)?'
+    - decl: 'public var submeshes: [MetalMesh.Submesh]'
+    - decl: 'public var vertToHalfedge: (any MTLBuffer)?'
+    - decl: 'public var vertexBuffer: any MTLBuffer { get }'
+    - decl: 'public var vertexBuffers: [Int : any MTLBuffer]'
+    - decl: 'public var vertexCount: Int'
+    - decl: 'public var vertexDescriptor: VertexDescriptor'
+    - decl: public func toMesh() -> Mesh
+  - decl: public struct TriangleSoup
+    members:
+    - decl: 'public init(mesh: Mesh)'
+    - decl: 'public init(positions: [SIMD3<Float>] = [], triangles: [(Int, Int, Int)] = [])'
+    - decl: 'public var positionCount: Int { get }'
+    - decl: 'public var positions: [SIMD3<Float>]'
+    - decl: 'public var triangleCount: Int { get }'
+    - decl: 'public var triangles: [(Int, Int, Int)]'
+    - decl: '@discardableResult public mutating func addTriangle(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>) -> Int'
+    - decl: 'public mutating func append(_ other: TriangleSoup)'
+    - decl: 'public func csg(_ operation: CSGOperation, _ other: TriangleSoup) -> TriangleSoup'
+    - decl: 'public func difference(_ other: TriangleSoup) -> TriangleSoup'
+    - decl: public mutating func flipAll()
+    - decl: public func flipped() -> TriangleSoup
+    - decl: 'public func intersection(_ other: TriangleSoup) -> TriangleSoup'
+    - decl: 'public func toMesh(weldTolerance: Float = 1e-5) -> Mesh'
+    - decl: 'public func union(_ other: TriangleSoup) -> TriangleSoup'
+    - decl: 'public func welded(tolerance: Float = 1e-5) -> TriangleSoup'
+    - decl: 'public static func marchingCubes(resolution: Int, bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5)), isoValue: Float = 0, field: (SIMD3<Float>) -> Float) -> TriangleSoup'
+    - decl: 'public static func marchingCubes(resolution: SIMD3<Int>, bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5)), isoValue: Float = 0, field: (SIMD3<Float>) -> Float) -> TriangleSoup'
+    - decl: 'public static func == (lhs: TriangleSoup, rhs: TriangleSoup) -> Bool'
+  - decl: public struct ValidationIssue
+    members:
+    - decl: public enum Location
+      members:
+      - decl: public case edge(HalfEdgeTopology.HalfEdgeID)
+      - decl: public case face(HalfEdgeTopology.FaceID)
+      - decl: public case mesh
+      - decl: public case vertex(HalfEdgeTopology.VertexID)
+    - decl: public enum Severity
+      members:
+      - decl: public case error
+      - decl: public case warning
+    - decl: 'public init(severity: ValidationIssue.Severity, location: ValidationIssue.Location, message: String)'
+    - decl: 'public var description: String { get }'
+    - decl: 'public var location: ValidationIssue.Location'
+    - decl: 'public var message: String'
+    - decl: 'public var severity: ValidationIssue.Severity'
+  - decl: public enum AtlasBakingError
+    members:
+    - decl: 'public case insufficientAtlasSpace(placed: Int, total: Int)'
+  - decl: public enum CSGOperation
+    members:
+    - decl: public case difference
+    - decl: public case intersection
+    - decl: public case union
+  - decl: public enum ModelIOConversionError
+    members:
+    - decl: public case bufferCreationFailed
+  - decl: public enum ProjectionAxis
+    members:
+    - decl: public case x
+    - decl: public case y
+    - decl: public case z
+  extensions:
+  - extended_module: Metal
+    symbols:
+    - decl: extension MTLRenderCommandEncoder
+      members:
+      - decl: 'public func draw(_ metalMesh: MetalMesh)'
+- name: SwiftMeshIO
+  symbols:
+  - decl: public enum PLY
+    members:
+    - decl: 'public static func read(from data: Data) throws -> Mesh'
+    - decl: 'public static func read(from string: String) throws -> Mesh'
+    - decl: 'public static func write(_ mesh: Mesh) -> Data'
+  - decl: public enum PLYError
+    members:
+    - decl: public case invalidHeader(String)
+    - decl: public case parseError(String)
+    - decl: public case unsupportedFormat(String)
+    - decl: 'public var description: String { get }'
