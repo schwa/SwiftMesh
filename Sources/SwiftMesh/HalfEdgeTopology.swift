@@ -80,8 +80,12 @@ public struct HalfEdgeTopology: Sendable, Equatable {
                 let forwardKey = originIdx * vertexCount + destIdx
                 let reverseKey = destIdx * vertexCount + originIdx
 
+                // Pair as twins only if the candidate hasn't already been paired.
+                // For non-manifold edges (≥3 half-edges sharing an undirected edge),
+                // the first two are paired and any extras are left as boundary edges.
+                // This preserves twin symmetry instead of silently corrupting it.
                 var twin: HalfEdgeID?
-                if let twinID = edgeMap[reverseKey] {
+                if let twinID = edgeMap[reverseKey], halfEdges[twinID.raw].twin == nil {
                     twin = twinID
                     halfEdges[twinID.raw].twin = heID
                 }

@@ -784,3 +784,43 @@ struct HalfEdgeTopologyManifoldTests {
         #expect(!Mesh.teapot(attributes: []).isManifold)
     }
 }
+
+// MARK: - Non-manifold edge twin handling (issue #105)
+
+@Suite("NonManifoldEdgeTwins")
+struct NonManifoldEdgeTwinsTests {
+    @Test("Three faces sharing an undirected edge do not corrupt twin symmetry")
+    func threeFacesShareEdge() {
+        // 3 triangles along undirected edge V0-V1.
+        // Directions chosen so the third one collides with an already-twinned pair:
+        //   F_A: V0 → V1   (no reverse yet, no twin)
+        //   F_B: V1 → V0   (pairs with F_A's edge)
+        //   F_C: V1 → V0   (would re-pair against F_A, breaking F_B's link)
+        let topo = HalfEdgeTopology(vertexCount: 5, faces: [
+            .init(outer: [0, 1, 2]),
+            .init(outer: [1, 0, 3]),
+            .init(outer: [1, 0, 4])
+        ])
+
+        let issues = topo.validate().filter { $0.severity == .error }
+        // After fix: twin relationships must be symmetric. Either F_A is twinned
+        // with exactly one of {F_B, F_C} (and the other is left unpaired), or
+        // none of the three are paired — but no edge may have an asymmetric twin.
+        let twinIssues = issues.filter { $0.message.contains("Twin") }
+        #expect(twinIssues.isEmpty, "Asymmetric twins: \(twinIssues)")
+    }
+
+    @Test("All twin pairings are symmetric on a 3-face fan")
+    func threeFanTwinSymmetry() {
+        let topo = HalfEdgeTopology(vertexCount: 5, faces: [
+            .init(outer: [0, 1, 2]),
+            .init(outer: [1, 0, 3]),
+            .init(outer: [1, 0, 4])
+        ])
+        for he in topo.halfEdges {
+            if let twinID = he.twin {
+                #expect(topo.halfEdges[twinID.raw].twin == he.id)
+            }
+        }
+    }
+}

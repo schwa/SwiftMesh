@@ -2194,10 +2194,12 @@ Use case (RoomCaptureTestbed): interactive Mac viewer that bakes an atlas on bun
 ## 105: Mesh.merged produces invalid half-edge twin pointers, breaking validation
 
 +++
-status: new
+status: closed
 priority: high
 kind: bug
 created: 2026-05-13T20:50:52Z
+updated: 2026-05-13T20:56:43Z
+closed: 2026-05-13T20:56:43Z
 +++
 
 When merging N SwiftMesh meshes into one via Mesh.merged(_:), the resulting mesh's HalfEdgeTopology has invalid twin links at submesh boundaries. validate() reports many 'Twin H168 points back to H197 instead of H67' errors.
