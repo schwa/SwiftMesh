@@ -2018,10 +2018,11 @@ Merge in `~/Projects/Current/SwiftBinPacking` into this repo.
 ## 100: Improve documentation across the repo
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
 created: 2026-05-13T18:40:28Z
+updated: 2026-05-13T19:01:19Z
 +++
 
 Improve documentation across the whole repo:
@@ -2031,5 +2032,23 @@ Improve documentation across the whole repo:
 - Add usage examples for common workflows (mesh construction, CSG, decimation, planar charts + atlas baking, IO).
 - Consider a DocC catalog with articles and tutorials.
 - Update README to reflect current feature set.
+
+---
+
+## 101: Consider dropping SwiftMeshIO / PLY support
+
++++
+status: new
+priority: low
+kind: task
+created: 2026-05-13T19:05:18Z
++++
+
+`SwiftMeshIO` is currently just ASCII PLY read/write (`Sources/SwiftMeshIO/PLY.swift`, ~230 lines).
+
+- **Read:** ModelIO can already load PLY (and supports binary PLY, which our reader doesn't).
+- **Write:** ModelIO can't export PLY, so our writer is the only way out \u2014 but only if anyone is actually writing PLY.
+
+Action: check if anything in our projects writes PLY via SwiftMeshIO. If not, drop the target and the dependency; if yes, consider keeping just the writer (or switching reads to ModelIO and slimming the module).
 
 ---

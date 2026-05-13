@@ -9,7 +9,7 @@ Mesh data structures and operations for Swift. Half-edge topology, n-gon faces, 
 ```swift
 import SwiftMesh
 
-let mesh = Mesh.cube
+let mesh = Mesh.cube()
     .withSmoothNormals()
     .withSphericalUVs()
 
@@ -30,6 +30,8 @@ encoder.draw(metalMesh)
 **`MetalMesh`** — GPU-ready triangulated buffers. Interleaved or separate buffer layouts.
 
 **`SwiftMeshIO`** — PLY file import/export (ASCII).
+
+**`BinPacking`** — standalone MaxRects 2D bin packer. Used internally for atlas baking; also exposed as its own library product.
 
 ## Loading & conversion
 
@@ -77,6 +79,11 @@ Mesh.quad()            // single quad
 Mesh.triangle()        // single triangle
 Mesh.circle()          // flat disc
 Mesh.teapot()          // Utah teapot
+
+// Procedural
+Mesh.convexHull(of: points)            // 3D convex hull (incremental)
+Mesh.marchingCubes(from: sdf, ...)     // isosurface from SDF
+Mesh.wireframe(of: mesh, radius: r)    // "phat" wireframe — prisms along edges
 ```
 
 ## Operations
@@ -135,6 +142,26 @@ meshA.intersection(meshB)   // A ∩ B
 meshA.difference(meshB)     // A − B
 ```
 
+### Merging
+
+```swift
+Mesh.merged([meshA, meshB, meshC])  // concatenate; each source becomes a submesh
+```
+
+### Planar atlas baking
+
+```swift
+// Partition into connected coplanar charts, then bin-pack into a UV atlas.
+let charts = mesh.planarCharts()
+let (uvMesh, layout) = try mesh.bakingPlanarAtlas(
+    texelsPerMeter: 256,
+    atlasSize: [2048, 2048],
+    padding: 2
+)
+// `uvMesh.textureCoordinates` is now filled; `layout.charts` describes each
+// chart's atlas rect and plane basis (for splatting 3D data back into pixels).
+```
+
 ## Design
 
 - Faces are n-gon. Triangulation only happens at `MetalMesh` export.
@@ -156,19 +183,6 @@ meshA.difference(meshB)     // A − B
 **Mesh → MetalMesh** is O(total triangles) with constant work per corner (attribute lookup, byte interleaving, buffer copy). Negligible for small meshes. For large meshes (100K+ triangles), per-corner dictionary lookups and byte-level interleaving will be the bottleneck — not yet optimized.
 
 **Triangulation** adds overhead for n-gon faces: each non-triangle face requires a 3D→2D projection and earcut pass. Triangle faces pass through with no extra work.
-
-## Consumers
-
-- [x] **Interaction3D** — 3D mesh rendering in SwiftUI Canvas
-- [x] **MetalSprocketsAddOns** — Metal mesh pipeline
-- [x] **MetalSprocketsExample** — demo app consuming MetalMesh
-- [ ] **MetalSprocketsSceneGraph** — scene graph mesh nodes
-- [ ] **GeometryLite2D** — has redundant HalfEdgeMesh/PolygonMesh copies to remove
-
-## Requirements
-
-- macOS 26+ / iOS 26+
-- Swift 6.2+
 
 ## Dependencies
 
