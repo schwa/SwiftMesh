@@ -229,12 +229,13 @@ Add scaled(), translated(), rotated(), transformed() methods on Mesh. Return new
 ## 15: Mesh merge / combine
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:m
 created: 2026-04-15T00:52:03Z
-updated: 2026-04-15T17:02:58Z
+updated: 2026-05-13T18:41:30Z
+closed: 2026-05-13T18:41:30Z
 +++
 
 Combine multiple Meshes into one, merging topologies and attribute arrays. Each source mesh becomes a submesh.
@@ -293,27 +294,31 @@ Currently MetalMesh always interleaves attributes into one buffer. Add option fo
 ## 19: 2D support — extensions or separate module?
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:s
 created: 2026-04-15T01:11:40Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-05-13T18:44:30Z
+closed: 2026-05-13T18:44:30Z
 +++
 
 Decide how to handle 2D mesh operations (signed area, convexity, segment-based construction from CGPoint). Options: conditional extensions on Mesh, or a separate module depending on GeometryLite2D.
+
+- `2026-05-13T18:44:30Z`: Resolved: standalone `Mesh2D<ID>` type in the `SwiftMesh` module (depends on GeometryLite2D's `Geometry` product). See `Sources/SwiftMesh/Mesh2D.swift`.
 
 ---
 
 ## 20: Improve test coverage for MetalMesh attribute interleaving
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: effort:s
 created: 2026-04-15T01:19:52Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-05-13T18:46:22Z
+closed: 2026-05-13T18:46:22Z
 +++
 
 MetalMesh is at 73.4% coverage. The per-corner attribute paths (normals, UVs, tangents, colors) aren't exercised — tests only export position-only meshes. Add tests that export meshes with withFlatNormals/withSphericalUVs/withTangents and verify vertex buffer contents.
@@ -323,12 +328,13 @@ MetalMesh is at 73.4% coverage. The per-corner attribute paths (normals, UVs, ta
 ## 21: Improve test coverage for HalfEdgeTopology edge cases
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: effort:s
 created: 2026-04-15T01:19:58Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-05-13T18:46:22Z
+closed: 2026-05-13T18:46:22Z
 +++
 
 HalfEdgeTopology is at 82.8% coverage. Uncovered paths include deleteEdge branches (boundary edges, single-face deletion) and boundaryLoops. Add targeted tests for these.
@@ -847,11 +853,11 @@ mergingCoplanarFaces() produces degenerate polygons with self-intersecting bound
 
 +++
 status: open
-priority: medium
+priority: high
 kind: bug
 labels: effort:l
 created: 2026-04-15T06:58:03Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-05-13T18:52:09Z
 +++
 
 BSP-based CSG splits cube faces even when the sphere is entirely interior and doesn't intersect those faces. This creates unnecessary triangulation on flat surfaces that coplanar merging can only partially clean up, since the BSP split introduces true boundary edges where none should exist.
@@ -996,11 +1002,11 @@ TriangleSoup.welded(tolerance:) merges positions but doesn't rebuild half-edge t
 
 +++
 status: open
-priority: medium
+priority: high
 kind: bug
 labels: effort:xl
 created: 2026-04-15T07:54:19Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-05-13T18:52:09Z
 +++
 
 CSG union/intersection/difference of two manifold closed meshes should produce a manifold result. Currently the BSP-based algorithm produces meshes with boundary edges and standalone faces due to the TriangleSoup round-trip losing topology. Affected: all CSG operations between closed solids (e.g. cube∪cube, sphere∩cube, sphere−cube).
@@ -1857,9 +1863,10 @@ Both preserve source submeshes with offset face IDs.
 
 +++
 status: new
-priority: medium
+priority: low
 kind: feature
 created: 2026-05-13T01:51:18Z
+updated: 2026-05-13T18:51:23Z
 +++
 
 Mesh.init(mdlMesh:device:) handles a single MDLMesh, but assets in the wild (USDZ exported from RoomPlan, glTF, etc.) typically contain multiple top-level MDLMeshes — one per object. Today every caller has to walk MDLAsset themselves: iterate asset.object(at:), recurse into children, accumulate MDLMeshes, then loop and call Mesh.init(mdlMesh:device:).
@@ -1884,5 +1891,142 @@ Or as a static on Mesh:
 Either way the caller can then choose what to do — render separately, run Mesh.merged(_:) with per-source labels, or anything else.
 
 Use case: RoomCaptureTestbed loads a RoomPlan-exported USDZ that contains 79 MDLMesh top-level objects. Today the Mac viewer manually walks asset.object(at:)/.children to gather them; with this API the loader becomes a one-liner and Mesh.merged(...) handles the rest.
+
+---
+
+## 98: Add planar chart partitioning + UV atlas baking via bin packing
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-05-13T18:24:06Z
+updated: 2026-05-13T18:39:10Z
++++
+
+Use case: generate a non-overlapping UV atlas for a `Mesh` so a downstream
+renderer can splat per-fragment data (camera/coverage visibility, AO, lightmap,
+etc.) into a single 2D texture.
+
+Two layered features (implemented):
+
+## 1. Planar chart partitioning
+
+Region-grow over half-edge twins, merging adjacent faces whose normals (and
+plane offsets) are similar. Disconnected coplanar pieces stay in separate
+charts.
+
+```swift
+public extension Mesh {
+    /// A connected, coplanar group of faces.
+    struct PlanarChart: Sendable, Equatable {
+        public var faces: [HalfEdgeTopology.FaceID]
+        /// Average plane normal (area-weighted, unit length).
+        public var normal: SIMD3<Float>
+        /// In-plane unit vectors forming the chart's local basis.
+        public var tangent: SIMD3<Float>
+        public var bitangent: SIMD3<Float>
+        /// World-space origin used when projecting positions into chart-local UV.
+        public var planeOrigin: SIMD3<Float>
+        /// Width/height (in world units) of the chart's 2D bounding rect.
+        public var worldExtent: SIMD2<Float>
+        /// Minimum corner (in plane-local UV) — subtract when projecting.
+        public var planeMin: SIMD2<Float>
+    }
+
+    func planarCharts(
+        normalAngleTolerance: Float = 5 * .pi / 180,
+        planeOffsetTolerance: Float = 0.01,
+        faces: [HalfEdgeTopology.FaceID]? = nil
+    ) -> [PlanarChart]
+}
+```
+
+## 2. UV atlas baking
+
+Project each chart into its plane basis, bin-pack the 2D bboxes (MaxRects via
+`BinPacking`), and write per-corner UVs in [0, 1]² to a new mesh.
+
+```swift
+public extension Mesh {
+    /// Generate a planar UV atlas. Returns a new mesh with `textureCoordinates`
+    /// populated plus the chart layout (so callers can render into the atlas).
+    func bakingPlanarAtlas(
+        texelsPerMeter: Float = 256,
+        atlasSize: SIMD2<Int> = [2048, 2048],
+        padding: Int = 2,
+        normalAngleTolerance: Float = 5 * .pi / 180,
+        planeOffsetTolerance: Float = 0.01
+    ) throws -> (mesh: Mesh, atlas: AtlasLayout)
+}
+
+public struct AtlasLayout: Sendable {
+    public struct ChartPlacement: Sendable {
+        public var faces: [HalfEdgeTopology.FaceID]
+        /// Chart rectangle in atlas pixels.
+        public var atlasRect: BinPacking.Rect<Int>
+        public var planeOrigin: SIMD3<Float>
+        public var planeU: SIMD3<Float>
+        public var planeV: SIMD3<Float>
+        public var worldExtent: SIMD2<Float>
+        public var planeMin: SIMD2<Float>
+        /// True if the chart was rotated 90° during packing.
+        public var rotated: Bool
+    }
+    public var atlasSize: SIMD2<Int>
+    public var charts: [ChartPlacement]
+}
+
+public enum AtlasBakingError: Error, Sendable {
+    case insufficientAtlasSpace(placed: Int, total: Int)
+}
+```
+
+## Deviations from the original sketch
+
+- `atlasRect` uses `BinPacking.Rect<Int>` (SIMD-native) instead of `CGRect` to
+  avoid a Foundation dependency.
+- `ChartPlacement` adds `worldExtent`, `planeMin`, and `rotated` so callers can
+  map a 3D position back into atlas pixels (needed for the visibility-pass use
+  case).
+- `bakingPlanarAtlas` throws `AtlasBakingError.insufficientAtlasSpace` instead
+  of an unspecified error.
+
+## Bin-packing dependency
+
+Resolved via #99: `SwiftBinPacking` was absorbed into this repo as the
+`BinPacking` target.
+
+---
+
+## 99: Merge SwiftBinPacking repo into SwiftMesh
+
++++
+status: new
+priority: medium
+kind: task
+created: 2026-05-13T18:27:10Z
++++
+
+Merge in `~/Projects/Current/SwiftBinPacking` into this repo.
+
+---
+
+## 100: Improve documentation across the repo
+
++++
+status: new
+priority: medium
+kind: enhancement
+created: 2026-05-13T18:40:28Z
++++
+
+Improve documentation across the whole repo:
+
+- Audit public API for missing or thin doc comments.
+- Ensure each target (`SwiftMesh`, `SwiftMeshIO`, `BinPacking`) has a clear top-level overview.
+- Add usage examples for common workflows (mesh construction, CSG, decimation, planar charts + atlas baking, IO).
+- Consider a DocC catalog with articles and tutorials.
+- Update README to reflect current feature set.
 
 ---
