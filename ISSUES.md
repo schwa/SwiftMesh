@@ -1798,3 +1798,46 @@ away the GPU-ready data we already have.
 - `2026-04-27T20:08:48Z`: Implemented in this commit.
 
 ---
+
+## 96: Add Mesh.merging(_:) / Mesh.merged(meshes:) for combining meshes into one with N submeshes
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-05-13T00:58:35Z
++++
+
+It's common to load several MDLMeshes from a single asset (e.g. a USDZ exported from RoomPlan), all sharing the same vertex layout and each having one submesh, and want to merge them into a single Mesh whose submeshes correspond to the source meshes.
+
+There's currently no built-in way to do this — callers have to:
+
+1. Concatenate positions arrays with offsets.
+2. Build new HalfEdgeTopology.FaceDefinitions with vertex indices offset to match.
+3. Reconstruct corner attributes (normals/UVs/tangents/etc) in the new half-edge order produced by HalfEdgeTopology.init(vertexCount:faces:) — half-edges get re-numbered, so this isn't a simple concatenation.
+4. Build the new submeshes referencing the appropriate FaceID ranges.
+
+Step 3 is the part that benefits most from being inside the library — the new init's edge ordering is an internal detail.
+
+Proposed API (one or both):
+
+    public extension Mesh {
+        /// Merge another mesh into this one. The other mesh's positions are
+        /// appended; its faces become a single new submesh on the result.
+        /// Corner attributes are preserved when present in both meshes;
+        /// missing attributes on either side are dropped.
+        func merging(_ other: Mesh, submeshLabel: String? = nil) -> Mesh
+
+        /// Merge multiple meshes into one with one submesh per source mesh.
+        static func merged(_ meshes: [Mesh], submeshLabels: [String?]? = nil) -> Mesh
+    }
+
+Constraints / open questions:
+
+- Attribute reconciliation: if mesh A has normals and mesh B doesn't, the merged mesh should probably either drop normals or fill missing ones with a default. Document the chosen behavior; my preference is to drop attributes not present in *all* inputs.
+- Per-vertex vs per-corner attributes: today everything except positions is per-corner; that simplifies merging — just emit corner attributes in the new half-edge order.
+- Submesh label preservation: if input meshes already have multiple submeshes, the merger should preserve them (offset-shifting their FaceID ranges) rather than collapsing each into one.
+
+Use case: Mac-side viewer in RoomCaptureTestbed loads room.usdz with several MDLMeshes (walls/floor/objects), all single-submesh, identical vertex descriptors. Wants to render them as a single Mesh with one submesh per source for material/styling purposes.
+
+---
