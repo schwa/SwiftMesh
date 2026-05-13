@@ -1897,11 +1897,12 @@ Use case: RoomCaptureTestbed loads a RoomPlan-exported USDZ that contains 79 MDL
 ## 98: Add planar chart partitioning + UV atlas baking via bin packing
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-05-13T18:24:06Z
-updated: 2026-05-13T18:39:10Z
+updated: 2026-05-13T18:40:49Z
+closed: 2026-05-13T18:40:49Z
 +++
 
 Use case: generate a non-overlapping UV atlas for a `Mesh` so a downstream

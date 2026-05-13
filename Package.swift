@@ -27,7 +27,8 @@ let package = Package(
                 .product(name: "GeometryLite3D", package: "GeometryLite3D"),
                 .product(name: "MetalSupport", package: "MetalSupport"),
                 .product(name: "SwiftEarcut", package: "SwiftEarcut"),
-                "MikkTSpace"
+                "MikkTSpace",
+                "BinPacking"
             ],
             resources: [
                 .copy("Resources/teapot.obj")
