@@ -1852,3 +1852,37 @@ func merging(_ other: Mesh) -> Mesh
 Both preserve source submeshes with offset face IDs.
 
 ---
+
+## 97: Add a way to extract all MDLMeshes from an MDLAsset as [Mesh]
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-05-13T01:51:18Z
++++
+
+Mesh.init(mdlMesh:device:) handles a single MDLMesh, but assets in the wild (USDZ exported from RoomPlan, glTF, etc.) typically contain multiple top-level MDLMeshes — one per object. Today every caller has to walk MDLAsset themselves: iterate asset.object(at:), recurse into children, accumulate MDLMeshes, then loop and call Mesh.init(mdlMesh:device:).
+
+We deliberately don't want a Mesh.init(mdlAsset:) because it would have to make an opinionated choice (merge? pick first? error on multi-mesh assets?). Better: hand back one Mesh per source MDLMesh and let the caller decide.
+
+Proposed API (free function or static on a sequence-shaped container):
+
+    public extension Array where Element == Mesh {
+        /// Convert every MDLMesh in an MDLAsset (recursively) into a Mesh.
+        /// One Mesh per source MDLMesh. Order matches a depth-first walk of
+        /// the asset's object graph.
+        init(mdlAsset: MDLAsset, device: MTLDevice) throws
+    }
+
+Or as a static on Mesh:
+
+    public extension Mesh {
+        static func extractAll(from mdlAsset: MDLAsset, device: MTLDevice) throws -> [Mesh]
+    }
+
+Either way the caller can then choose what to do — render separately, run Mesh.merged(_:) with per-source labels, or anything else.
+
+Use case: RoomCaptureTestbed loads a RoomPlan-exported USDZ that contains 79 MDLMesh top-level objects. Today the Mac viewer manually walks asset.object(at:)/.children to gather them; with this API the loader becomes a one-liner and Mesh.merged(...) handles the rest.
+
+---
