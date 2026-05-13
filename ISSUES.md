@@ -2095,10 +2095,12 @@ Also worth: snapshot/golden-image tests for the atlas layout on a few canonical 
 ## 103: Add Mesh → RealityKit MeshResource conversion helper
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-05-13T20:31:03Z
+updated: 2026-05-13T20:41:42Z
+closed: 2026-05-13T20:41:42Z
 +++
 
 Need a way to turn a SwiftMesh Mesh into a RealityKit MeshResource so callers can drop our procedurally-built or imported meshes into a RealityView.

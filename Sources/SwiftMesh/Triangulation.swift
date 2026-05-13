@@ -31,7 +31,10 @@ extension Mesh {
     }
 
     /// Triangulate a single face given its vertex IDs.
-    func triangulateFace(vertexIDs: [HalfEdgeTopology.VertexID]) -> [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)] {
+    ///
+    /// Triangles are passed through unchanged. Larger faces are projected onto
+    /// a 2D plane derived from the face normal and triangulated via earcut.
+    public func triangulateFace(vertexIDs: [HalfEdgeTopology.VertexID]) -> [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)] {
         let pts3D = vertexIDs.map { positions[$0.raw] }
 
         // Build local 2D frame from face normal
