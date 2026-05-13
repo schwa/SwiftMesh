@@ -2190,3 +2190,45 @@ Approach:
 Use case (RoomCaptureTestbed): interactive Mac viewer that bakes an atlas on bundle open. 1.2 s is OK with caching, but a 0.2-0.3 s alternative would let us skip the cache entirely. Currently see 745 charts on a 4096x4096 atlas getting 78% coverage with MaxRects + bestShortSideFit.
 
 ---
+
+## 105: Mesh.merged produces invalid half-edge twin pointers, breaking validation
+
++++
+status: new
+priority: high
+kind: bug
+created: 2026-05-13T20:50:52Z
++++
+
+When merging N SwiftMesh meshes into one via Mesh.merged(_:), the resulting mesh's HalfEdgeTopology has invalid twin links at submesh boundaries. validate() reports many 'Twin H168 points back to H197 instead of H67' errors.
+
+In a correct half-edge mesh: if A.twin == B then B.twin == A. After merging, that bidirectional consistency is broken — likely because two faces from different source meshes that share a vertex are now seen as adjacent across an edge they never shared in their source meshes, getting incorrectly twinned together.
+
+Repro: merge 79 small meshes (RoomPlan USDZ export — walls, doors, windows, objects). Mesh.merged returns a Mesh that draws fine, packs fine into a UV atlas, etc. but fails mesh.validate() with many twin-mismatch errors.
+
+This blocks MeshResource.generate(from:) in SwiftMeshIO because it (correctly) validates before doing per-vertex deduplication and triangulation.
+
+Fix idea: HalfEdgeTopology.init(vertexCount:faces:) uses an edge map keyed on (origin, dest) vertex pairs to find twins. When merging, two unrelated source meshes might have faces that share two vertex indices in the merged result (because the merge appends positions and offsets indices, but if two source meshes happen to place vertices at the same (offset+localIndex) coordinate the edge map collides). The fix is likely in the merge step to ensure source meshes that aren't topologically connected don't accidentally get edges twinned across the merge boundary.
+
+Workaround for callers: call .triangulate() or .makingValid() (if such a thing exists) after merging, or re-run init(vertexCount:faces:) from face definitions to rebuild topology from scratch.
+
+---
+
+## 106: Detect and warn on non-manifold edges in HalfEdgeTopology
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-05-13T20:56:07Z
++++
+
+After the fix for #SwiftMesh#105, HalfEdgeTopology.init(vertexCount:faces:) silently accepts non-manifold edges (\u22653 half-edges sharing an undirected edge). The first two half-edges along such an edge are paired as twins; any extras are left as boundary (twin = nil).
+
+This is structurally consistent but hides genuinely broken input geometry. Callers that walk boundaries (e.g. boundaryLoops()) will see internal non-manifold edges as boundaries, which may be surprising.
+
+Suggested: add a HalfEdgeTopology.validate() warning (severity .warning, not .error) of the form 'edge V_a-V_b has N>2 incident half-edges'. This lets callers detect non-manifold input without breaking validation for downstream consumers (e.g. MeshResource export in SwiftMeshIO) that just need consistent twin pointers.
+
+Out of scope: actually supporting non-manifold edges as first-class topology (multi-twin lists, edge splitting). File a separate issue if that's needed.
+
+---
