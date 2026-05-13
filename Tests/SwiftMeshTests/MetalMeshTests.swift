@@ -373,12 +373,11 @@ struct MetalMeshTests {
         let device = try requireDevice()
 
         // Build raw vertex data: 3 positions, packed float3.
-        var positions: [SIMD3<Float>] = [
+        let positions: [SIMD3<Float>] = [
             SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)
         ]
         let packed = positions.map { Packed3<Float>($0) }
         let vertexBytes = packed.withUnsafeBufferPointer { Data(buffer: $0) }
-        _ = positions // silence
 
         let stride = MemoryLayout<Packed3<Float>>.stride
         let vBuf = vertexBytes.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count, options: []) }!
