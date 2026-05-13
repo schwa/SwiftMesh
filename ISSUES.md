@@ -2056,10 +2056,12 @@ Action: check if anything in our projects writes PLY via SwiftMeshIO. If not, dr
 ## 102: Beef up tests for planarCharts + bakingPlanarAtlas
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 created: 2026-05-13T20:28:30Z
+updated: 2026-05-13T20:36:35Z
+closed: 2026-05-13T20:36:35Z
 +++
 
 Current coverage in PlanarChartsTests.swift is light (8 @Test cases). The partitioner + atlas baker handle a lot of edge cases that aren't directly exercised. Adding more would help catch regressions and would have helped validate behavior on real RoomPlan-exported USDZ assets where 99% of charts are 2-triangle quads.
