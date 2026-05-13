@@ -2002,10 +2002,12 @@ Resolved via #99: `SwiftBinPacking` was absorbed into this repo as the
 ## 99: Merge SwiftBinPacking repo into SwiftMesh
 
 +++
-status: new
+status: closed
 priority: medium
 kind: task
 created: 2026-05-13T18:27:10Z
+updated: 2026-05-13T18:28:41Z
+closed: 2026-05-13T18:28:41Z
 +++
 
 Merge in `~/Projects/Current/SwiftBinPacking` into this repo.

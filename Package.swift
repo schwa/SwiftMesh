@@ -10,7 +10,8 @@ let package = Package(
     ],
     products: [
         .library(name: "SwiftMesh", targets: ["SwiftMesh"]),
-        .library(name: "SwiftMeshIO", targets: ["SwiftMeshIO"])
+        .library(name: "SwiftMeshIO", targets: ["SwiftMeshIO"]),
+        .library(name: "BinPacking", targets: ["BinPacking"])
     ],
     dependencies: [
         .package(url: "https://github.com/schwa/GeometryLite2D", from: "0.0.2"),
@@ -40,7 +41,9 @@ let package = Package(
             name: "SwiftMeshIO",
             dependencies: ["SwiftMesh"]
         ),
+        .target(name: "BinPacking"),
         .testTarget(name: "SwiftMeshTests", dependencies: ["SwiftMesh"]),
-        .testTarget(name: "SwiftMeshIOTests", dependencies: ["SwiftMeshIO"])
+        .testTarget(name: "SwiftMeshIOTests", dependencies: ["SwiftMeshIO"]),
+        .testTarget(name: "BinPackingTests", dependencies: ["BinPacking"])
     ]
 )
