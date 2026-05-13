@@ -1802,10 +1802,12 @@ away the GPU-ready data we already have.
 ## 96: Add Mesh.merging(_:) / Mesh.merged(meshes:) for combining meshes into one with N submeshes
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-05-13T00:58:35Z
+updated: 2026-05-13T01:07:03Z
+closed: 2026-05-13T01:07:03Z
 +++
 
 It's common to load several MDLMeshes from a single asset (e.g. a USDZ exported from RoomPlan), all sharing the same vertex layout and each having one submesh, and want to merge them into a single Mesh whose submeshes correspond to the source meshes.
@@ -1839,5 +1841,14 @@ Constraints / open questions:
 - Submesh label preservation: if input meshes already have multiple submeshes, the merger should preserve them (offset-shifting their FaceID ranges) rather than collapsing each into one.
 
 Use case: Mac-side viewer in RoomCaptureTestbed loads room.usdz with several MDLMeshes (walls/floor/objects), all single-submesh, identical vertex descriptors. Wants to render them as a single Mesh with one submesh per source for material/styling purposes.
+
+- `2026-05-13T01:06:01Z`: Implemented without label parameters — callers can pre-set `mesh.submeshes` before merging to get labeled submeshes. Final signatures:
+
+```swift
+static func merged(_ meshes: [Mesh]) -> Mesh
+func merging(_ other: Mesh) -> Mesh
+```
+
+Both preserve source submeshes with offset face IDs.
 
 ---

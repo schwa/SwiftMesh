@@ -54,6 +54,80 @@ struct MeshMergedTests {
         let issues = result.validate().filter { $0.severity == .error }
         #expect(issues.isEmpty)
     }
+
+    // MARK: - Submesh handling
+
+    @Test("Merged mesh preserves source submeshes with offset face IDs")
+    func mergePreservesSubmeshes() {
+        let a = Mesh.cube(attributes: [])
+        let b = Mesh.tetrahedron(attributes: [])
+        let result = Mesh.merged([a, b])
+        // Each input has one default submesh covering all its faces.
+        #expect(result.submeshes.count == 2)
+        #expect(result.submeshes[0].faces.count == a.faceCount)
+        #expect(result.submeshes[1].faces.count == b.faceCount)
+        // B's submesh face IDs should be offset by a.faceCount
+        #expect(result.submeshes[1].faces.first?.raw == a.faceCount)
+        #expect(result.submeshes[1].faces.last?.raw == a.faceCount + b.faceCount - 1)
+    }
+
+    @Test("Merged mesh preserves multiple source submeshes")
+    func mergePreservesMultipleSubmeshes() {
+        var a = Mesh.cube(attributes: [])
+        a.submeshes = [
+            .init(label: "top", faces: [.init(raw: 0), .init(raw: 1)]),
+            .init(label: "bot", faces: (2..<a.faceCount).map { .init(raw: $0) })
+        ]
+        let b = Mesh.tetrahedron(attributes: [])
+        let result = Mesh.merged([a, b])
+        #expect(result.submeshes.count == 3)
+        #expect(result.submeshes[0].label == "top")
+        #expect(result.submeshes[1].label == "bot")
+        #expect(result.submeshes[0].faces.map(\.raw) == [0, 1])
+        #expect(result.submeshes[2].faces.first?.raw == a.faceCount)
+    }
+
+    @Test("Caller can label submeshes by pre-setting mesh.submeshes")
+    func mergeWithCallerProvidedSubmeshes() {
+        var a = Mesh.cube(attributes: [])
+        a.submeshes = [.init(label: "walls", faces: a.topology.faces.map(\.id))]
+        var b = Mesh.tetrahedron(attributes: [])
+        b.submeshes = [.init(label: "floor", faces: b.topology.faces.map(\.id))]
+        let result = Mesh.merged([a, b])
+        #expect(result.submeshes.count == 2)
+        #expect(result.submeshes[0].label == "walls")
+        #expect(result.submeshes[1].label == "floor")
+        #expect(result.submeshes[0].faces.count == a.faceCount)
+        #expect(result.submeshes[1].faces.count == b.faceCount)
+    }
+
+    @Test("Merging instance method preserves both inputs' submeshes")
+    func mergingPreservesBothSubmeshes() {
+        let a = Mesh.cube(attributes: [])
+        let b = Mesh.tetrahedron(attributes: [])
+        let result = a.merging(b)
+        // Each input has one default submesh; result should have 2.
+        #expect(result.submeshes.count == 2)
+        #expect(result.submeshes[0].faces.count == a.faceCount)
+        #expect(result.submeshes[1].faces.count == b.faceCount)
+        #expect(result.faceCount == a.faceCount + b.faceCount)
+        #expect(result.vertexCount == a.vertexCount + b.vertexCount)
+    }
+
+    @Test("Merging preserves self's existing submeshes")
+    func mergingPreservesSelfSubmeshes() {
+        var a = Mesh.cube(attributes: [])
+        a.submeshes = [
+            .init(label: "front", faces: [.init(raw: 0)]),
+            .init(label: "rest", faces: (1..<a.faceCount).map { .init(raw: $0) })
+        ]
+        let b = Mesh.tetrahedron(attributes: [])
+        let result = a.merging(b)
+        #expect(result.submeshes.count == 3)
+        #expect(result.submeshes[0].label == "front")
+        #expect(result.submeshes[1].label == "rest")
+        #expect(result.submeshes[2].label == nil)
+    }
 }
 
 // MARK: - edgePrism tests
