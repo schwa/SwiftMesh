@@ -2052,3 +2052,137 @@ created: 2026-05-13T19:05:18Z
 Action: check if anything in our projects writes PLY via SwiftMeshIO. If not, drop the target and the dependency; if yes, consider keeping just the writer (or switching reads to ModelIO and slimming the module).
 
 ---
+
+## 102: Beef up tests for planarCharts + bakingPlanarAtlas
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-05-13T20:28:30Z
++++
+
+Current coverage in PlanarChartsTests.swift is light (8 @Test cases). The partitioner + atlas baker handle a lot of edge cases that aren't directly exercised. Adding more would help catch regressions and would have helped validate behavior on real RoomPlan-exported USDZ assets where 99% of charts are 2-triangle quads.
+
+Suggested additions:
+
+Partitioning (planarCharts):
+- N coplanar connected quads merge into one chart (parameterized N = 2, 4, 10, 100)
+- Triangulated polygon fan stays as one chart
+- Strip of quads with small accumulating tilt (each pair within tolerance) eventually splits when total tilt exceeds tolerance — verify the split point is correct
+- planeOffsetTolerance: two parallel coplanar quads with z offset slightly > tolerance stay separate
+- Disconnected coplanar triangle pairs (no shared edges) stay separate even with same normal
+- Faces filter: passing an explicit faces: [FaceID] restricts the partitioner to just that subset
+
+Atlas baking:
+- Rotated chart packing: a tall narrow chart rotates 90° and its UVs map correctly (sample mid-chart, verify it lands in the right pixel)
+- Padding > 0 doesn't bleed: adjacent charts in atlas have at least N pixels between their rects
+- Atlas size exactly fits: edge case where total chart area == atlasSize area
+- Atlas size 1 px smaller than fits: insufficientAtlasSpace thrown with correct placed/total
+- Per-corner UV roundtrip: for every halfedge, the chart-local (u, v) inverse-mapping returns the original world position (within float epsilon)
+- UV continuity: shared edges in a chart have matching UVs at both endpoints
+- texelsPerMeter scaling: doubling texelsPerMeter scales all chart pixel sizes by 2
+
+Integration:
+- Real RoomPlan USDZ smoke test (committed fixture, e.g. a tiny 2-wall scene): assert chart count, total face count, and a few invariants like 'every face appears in exactly one chart'
+
+Also worth: snapshot/golden-image tests for the atlas layout on a few canonical scenes (cube, two-wall L-shape, simple room) to catch unexpected packing regressions.
+
+---
+
+## 103: Add Mesh → RealityKit MeshResource conversion helper
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-05-13T20:31:03Z
++++
+
+Need a way to turn a SwiftMesh Mesh into a RealityKit MeshResource so callers can drop our procedurally-built or imported meshes into a RealityView.
+
+Recommendation: put this in **SwiftMeshIO**, not the core SwiftMesh target. RealityKit / RealityFoundation is a platform-only framework and pulls in a lot of weight; keeping core SwiftMesh free of it preserves it as a pure-data library.
+
+Proposed API:
+
+    import RealityKit
+
+    public extension MeshResource {
+        /// Convert a SwiftMesh  into a .
+        ///
+        /// Each  becomes a , preserving its
+        /// label as the Part's id/name. The per-corner attributes
+        /// (normals, textureCoordinates, tangents) are duplicated to per-vertex,
+        /// splitting vertices on attribute discontinuities.
+        ///
+        /// - Parameters:
+        ///   - mesh: The SwiftMesh mesh to convert.
+        ///   - generateTangentsIfMissing: When true, derive tangents via MikkTSpace
+        ///     if the source mesh has UVs but no tangents.
+        /// - Returns: A new MeshResource ready to use with ModelEntity.
+        static func generate(from mesh: Mesh,
+                             generateTangentsIfMissing: Bool = true) throws -> MeshResource
+    }
+
+Implementation notes:
+
+1. SwiftMesh stores normals/UVs/tangents/bitangents/colors *per half-edge corner*.
+   MeshResource.Contents wants *per-vertex* arrays. Where two corners on the
+   same vertex have differing attributes (sharp edges, UV seams), the corner
+   vertex must be duplicated so each corner gets its own per-vertex slot.
+
+2. SwiftMesh's HalfEdgeTopology stores arbitrary polygons; triangulate to
+   triangles for MeshResource (which expects triangles in the triangleIndices).
+   Triangulation should fan-triangulate convex faces; if the mesh has concave
+   faces we already have SwiftEarcut available.
+
+3. Submeshes → Parts. Each Mesh.Submesh becomes one MeshResource.Part with
+   triangleIndices restricted to that submesh's faces. Use the submesh label
+   as the part id (fallback to a UUID or face-index range if nil).
+
+4. Validate: a Mesh containing only positions should still convert (Parts will
+   have no normals; RealityKit can compute or default-shade them).
+
+Use case (RoomCaptureTestbed): we merge a 79-mesh RoomPlan USDZ into one
+SwiftMesh.Mesh with 79 labeled submeshes (per SwiftMesh #96). We bake a planar
+UV atlas (#98). Now we want to drop the textured mesh into a RealityView,
+overlay a baked visibility texture, and inspect it interactively on macOS.
+Today that requires going through ModelIO/MTKMesh or hand-rolling MeshResource
+construction — having this helper in SwiftMeshIO would short-circuit all that.
+
+---
+
+## 104: Investigate faster bin-packing alternatives to MaxRects for large chart counts
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-05-13T20:45:31Z
+updated: 2026-05-13T20:45:57Z
++++
+
+Real-world RoomPlan exports produce 700+ charts (1 chart per RoomPlan surface quad + 6 charts per box object). MaxRects packing takes ~1.2 s for 745 charts on a 4096x4096 atlas in release mode — most of the total bake time.
+
+MaxRects is roughly O(N x M) where M is the free-rect list (grows toward hundreds for large N). For interactive viewers this is borderline; for batch tooling it is fine.
+
+Worth investigating as additions to the BinPacking target:
+
+1. **Skyline / bottom-left packer.** Smaller constant than MaxRects on large N. Density typically comparable.
+
+2. **Guillotine packer.** O(N log N) with good pruning. Density similar to MaxRects, materially faster.
+
+3. **Shelf packer.** O(N log N), much faster, but density usually 50-60% vs 75-85% for MaxRects. Useful when packing density is less important than throughput.
+
+4. **FFD-based strip packer.** Extremely fast O(N log N), 70-80% density.
+
+Approach:
+
+- Add Guillotine and/or Skyline as additional concrete packers alongside MaxRects.
+- Each can be its own struct; no need for a packer protocol — callers choose by type.
+- bakingPlanarAtlas could grow an overload (or per-packer variant) so atlas baking can opt into a faster algorithm when density is less critical.
+- Lean on issue #93 (benchmarks) to compare time and density on representative inputs (uniform-size, mixed-size, very-many-small-rects, a-few-huge-plus-many-tiny).
+
+Use case (RoomCaptureTestbed): interactive Mac viewer that bakes an atlas on bundle open. 1.2 s is OK with caching, but a 0.2-0.3 s alternative would let us skip the cache entirely. Currently see 745 charts on a 4096x4096 atlas getting 78% coverage with MaxRects + bestShortSideFit.
+
+---
