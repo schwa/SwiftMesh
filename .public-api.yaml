@@ -204,6 +204,7 @@ modules:
     - decl: 'public mutating func translate(by offset: SIMD3<Float>)'
     - decl: 'public func translated(by offset: SIMD3<Float>) -> Mesh'
     - decl: public func triangulate() -> [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
+    - decl: 'public func triangulateFace(vertexIDs: [HalfEdgeTopology.VertexID]) -> [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]'
     - decl: public func triangulated() -> Mesh
     - decl: 'public func union(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh'
     - decl: public func validate() -> [ValidationIssue]
@@ -362,6 +363,12 @@ modules:
       - decl: 'public func draw(_ metalMesh: MetalMesh)'
 - name: SwiftMeshIO
   symbols:
+  - decl: public enum MeshResourceConversionError
+    members:
+    - decl: public case emptyMesh
+    - decl: public case generationFailed(any Error)
+    - decl: public case invalidMesh([ValidationIssue])
+    - decl: 'public var description: String { get }'
   - decl: public enum PLY
     members:
     - decl: 'public static func read(from data: Data) throws -> Mesh'
@@ -373,3 +380,9 @@ modules:
     - decl: public case parseError(String)
     - decl: public case unsupportedFormat(String)
     - decl: 'public var description: String { get }'
+  extensions:
+  - extended_module: RealityFoundation
+    symbols:
+    - decl: extension MeshResource
+      members:
+      - decl: '@MainActor public static func generate(from mesh: Mesh, generateTangentsIfMissing: Bool = true) throws -> MeshResource'
