@@ -133,6 +133,6 @@ public extension Mesh {
     /// - Parameter other: Mesh to merge into this one.
     /// - Returns: A new merged mesh.
     func merging(_ other: Mesh) -> Mesh {
-        Mesh.merged([self, other])
+        Self.merged([self, other])
     }
 }

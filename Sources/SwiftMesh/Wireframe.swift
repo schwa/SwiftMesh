@@ -26,11 +26,11 @@ public extension Mesh {
         for (vertA, vertB) in edges {
             let posA = positions[vertA.raw]
             let posB = positions[vertB.raw]
-            let prism = Mesh.edgePrism(from: posA, to: posB, radius: radius, sides: clampedSides, capped: capped)
+            let prism = Self.edgePrism(from: posA, to: posB, radius: radius, sides: clampedSides, capped: capped)
             prisms.append(prism)
         }
 
-        var result = Mesh.merged(prisms)
+        var result = Self.merged(prisms)
         if attributes.contains(.textureCoordinates) {
             result = result.withBoxUVs()
         }

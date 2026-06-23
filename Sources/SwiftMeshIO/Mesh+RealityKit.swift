@@ -74,11 +74,11 @@ public extension MeshResource {
         do {
             // Build a single Model containing one Part per submesh so the
             // submesh structure is preserved end-to-end.
-            var contents = MeshResource.Contents()
+            var contents = Self.Contents()
             contents.models = .init([
-                MeshResource.Model(id: "main", parts: parts)
+                Self.Model(id: "main", parts: parts)
             ])
-            return try MeshResource.generate(from: contents)
+            return try Self.generate(from: contents)
         } catch {
             throw MeshResourceConversionError.generationFailed(error)
         }
@@ -89,7 +89,7 @@ public extension MeshResource {
     @MainActor
     private static func buildPart(for submesh: Mesh.Submesh, index: Int, in mesh: Mesh) -> MeshResource.Part {
         let name = submesh.label ?? "submesh_\(index)"
-        var part = MeshResource.Part(id: name, materialIndex: 0)
+        var part = Self.Part(id: name, materialIndex: 0)
 
         let hasNormals = mesh.normals != nil
         let hasUVs = mesh.textureCoordinates != nil

@@ -1,3 +1,4 @@
+import Foundation
 import simd
 
 // MARK: - AABB
@@ -374,6 +375,24 @@ public extension TriangleSoup {
     ///   - other: The second operand.
     /// - Returns: A new triangle soup representing the result.
     func csg(_ operation: CSGOperation, _ other: TriangleSoup) -> TriangleSoup {
+        // The BSP tree algorithm (build/clipTo/invert/allPolygons) is deeply
+        // recursive; tree depth scales with mesh complexity and can exceed the
+        // default thread stack (notably the small stacks used by swift-testing
+        // and Swift concurrency tasks). Run on a dedicated thread with a large
+        // stack to avoid stack-overflow crashes.
+        var result: TriangleSoup?
+        let done = DispatchSemaphore(value: 0)
+        let thread = Thread { [self] in
+            result = csgImpl(operation, other)
+            done.signal()
+        }
+        thread.stackSize = 64 * 1_024 * 1_024 // 64 MB
+        thread.start()
+        done.wait()
+        return result ?? Self()
+    }
+
+    private func csgImpl(_ operation: CSGOperation, _ other: TriangleSoup) -> TriangleSoup {
         let polygonsA = self.toPolygons()
         let polygonsB = other.toPolygons()
 
@@ -432,7 +451,7 @@ public extension TriangleSoup {
             resultPolygons = a.allPolygons()
         }
 
-        return TriangleSoup.fromPolygons(resultPolygons)
+        return Self.fromPolygons(resultPolygons)
     }
 
     /// Returns the union of this soup with another (A ∪ B).

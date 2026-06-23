@@ -4,9 +4,11 @@ scheme = "SwiftMeshDemo"
 extra_args = []
 
 [defaults.build]
+skip_plugin_validation = true
 
 [defaults.test]
 scheme = "SwiftMesh"
+skip_plugin_validation = true
 
 [defaults.run]
 
