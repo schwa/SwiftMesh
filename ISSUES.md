@@ -825,9 +825,9 @@ New tab with a single mesh (cylinder) and a .inspector() sidebar showing vertex 
 status: new
 priority: low
 kind: feature
-labels: needs-info
+labels: needs-info, area:demo
 created: 2026-04-15T06:39:36Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 ---
@@ -1128,9 +1128,9 @@ Integrate debug shaders from MetalSprocketsAddons to visualize mesh topology in 
 status: new
 priority: medium
 kind: feature
-labels: needs-info
+labels: needs-info, area:extrude
 created: 2026-04-15T14:20:40Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 ---
@@ -1141,9 +1141,9 @@ updated: 2026-04-15T17:02:59Z
 status: new
 priority: medium
 kind: feature
-labels: needs-info
+labels: needs-info, area:topology
 created: 2026-04-15T14:20:52Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 ---
@@ -1204,9 +1204,9 @@ Test impact: Existing CSGTests already test at the boundary (union/intersection/
 status: open
 priority: low
 kind: feature
-labels: topology, diagnostics, effort:m
+labels: effort:m, area:topology, area:diagnostics
 created: 2026-04-15T15:43:32Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 Split from #67. Compute eulerCharacteristic (V - E + F) and hasConsistentGenus. Non-trivial because:
@@ -1225,9 +1225,9 @@ Depends on boundaryLoopCount from #67.
 status: open
 priority: low
 kind: feature
-labels: topology, diagnostics, effort:m
+labels: effort:m, area:topology, area:diagnostics
 created: 2026-04-15T15:43:40Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 Split from #67. hasInconsistentFaceWinding — verify that for every pair of adjacent faces sharing an edge, the shared half-edges run in opposite directions. Non-trivial because:
@@ -1329,11 +1329,12 @@ PLY.write() already exists in SwiftMeshIO but isn't exposed in the demo app. Add
 ## 82: Decimation leaves tombstoned faces, fails validation
 
 +++
-status: new
+status: open
 priority: high
 kind: bug
-labels: decimation, topology
+labels: area:decimation, area:topology, effort:m
 created: 2026-04-15T17:48:08Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 After decimation, the mesh contains hundreds of tombstoned faces (face.edge == nil) that are never compacted out. These cause validation errors ('Has no boundary edge') and isManifold returns false even for meshes that should remain manifold.
@@ -1354,11 +1355,12 @@ The decimation algorithm (QEM edge collapse) tombstones faces and vertices but n
 ## 83: Visually validate all mesh primitives in demo app
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
-labels: qa, demo
+labels: area:qa, area:demo, effort:m
 created: 2026-04-15T18:06:36Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 Go through every mesh in the demo gallery and verify they render correctly in both wireframe and Metal (Blinn-Phong) modes. Check for:
@@ -1392,11 +1394,12 @@ Mesh.border(attributes: .default) or .border(attributes: [.flatNormals, .texture
 ## 85: Performance umbrella
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
-labels: performance, umbrella
+labels: umbrella, area:performance, effort:xs
 created: 2026-04-16T03:22:42Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 Umbrella issue tracking performance work across SwiftMesh.
@@ -1410,12 +1413,13 @@ Use this issue to coordinate priorities and link related sub-issues.
 ## 86: Swift Array is slow in hot paths — explore Spans and swift-collections
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: performance
+labels: area:performance, effort:l
 depends: SwiftMesh#85
 created: 2026-04-16T03:22:53Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 Swift's `Array` shows up as a bottleneck in mesh hot paths (CSG, decimation, topology build, attribute interleaving). Bounds checks, COW traffic, and lack of contiguous typed access hurt throughput.
@@ -1443,12 +1447,13 @@ Depends on a benchmarking harness (to be filed separately under the performance 
 ## 87: Decimation: O(V·E) full half-edge scans per collapse
 
 +++
-status: new
+status: open
 priority: high
 kind: enhancement
-labels: performance, decimation
+labels: area:performance, area:decimation, effort:l
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:19Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 `Mesh.decimate` repeatedly does full sweeps over `topology.halfEdges` and `topology.vertices` for every edge collapse:
@@ -1479,12 +1484,13 @@ Expected impact: orders of magnitude on meshes >10k faces.
 ## 88: MetalMesh: variable-length [UInt8] dedup key is slow per-vertex
 
 +++
-status: new
+status: open
 priority: high
 kind: enhancement
-labels: performance, metal
+labels: area:performance, area:metal, effort:m
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:31Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 In `MetalMesh.init`, vertex deduplication uses a `[[UInt8]: UInt32]` dictionary keyed by the concatenated bytes of every attribute:
@@ -1522,12 +1528,13 @@ Expected impact: large — this runs once per Metal upload but dominates convers
 ## 89: CSG: allPolygons and clipPolygons allocate excessively
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: performance, csg
+labels: area:performance, area:csg, effort:m
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:43Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 Several CSG hot paths allocate intermediate arrays unnecessarily:
@@ -1554,12 +1561,13 @@ Expected impact: significant on CSG of meshes with thousands of polygons.
 ## 90: CSG: cache AABB on CSGPolygon instead of recomputing per clip
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: performance, csg
+labels: area:performance, area:csg, effort:s
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:49Z
+updated: 2026-10-05T20:21:20Z
 +++
 
 In `CSGNode.clipPolygons`, every polygon's AABB is rebuilt on every recursion level:
@@ -1589,12 +1597,13 @@ Update polygon-producing paths (`splitPolygon`, `toPolygons`, `flipped`) to set 
 ## 91: ConvexHull.addPoint rebuilds edgeToFace dictionary every insertion
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: performance, convex-hull
+labels: area:performance, area:convex-hull, effort:l
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:57Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 `ConvexHull.addPoint` rebuilds the entire `edgeToFace` dictionary on every point insertion:
@@ -1623,12 +1632,13 @@ Expected impact: turns O(N²) hull build into closer to O(N log N) for well-dist
 ## 92: HalfEdgeTopology: replace ad-hoc full-array scans with incremental adjacency
 
 +++
-status: new
+status: open
 priority: medium
 kind: enhancement
-labels: performance, topology
+labels: area:performance, area:topology, effort:l
 depends: SwiftMesh#85
 created: 2026-04-16T03:25:08Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 `HalfEdgeTopology` has 10+ instances of `for he in halfEdges where ...` scanning the full half-edge array:
@@ -1651,12 +1661,13 @@ This issue is a prerequisite for proper performance of #87 (decimation) and any 
 ## 93: Add benchmarking harness for SwiftMesh hot paths
 
 +++
-status: new
+status: open
 priority: high
 kind: task
-labels: performance, infrastructure
+labels: area:performance, area:infrastructure, effort:m
 depends: SwiftMesh#85
 created: 2026-04-16T03:25:18Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 We need a baseline benchmark harness so performance work has measurable targets. Most other performance issues are blocked on this.
@@ -1684,12 +1695,13 @@ Once landed: capture baseline numbers, then attach before/after to each performa
 ## 94: Add benchmarks for SwiftMesh hot paths
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
-labels: performance, benchmarks
+labels: area:performance, area:benchmarks, effort:m
 depends: SwiftMesh#93
 created: 2026-04-16T03:27:43Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 Once the benchmarking harness (#93) is in place, add benchmarks covering the major hot paths so performance work has measurable before/after numbers.
@@ -1862,11 +1874,12 @@ Both preserve source submeshes with offset face IDs.
 ## 97: Add a way to extract all MDLMeshes from an MDLAsset as [Mesh]
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
+labels: area:io, effort:s
 created: 2026-05-13T01:51:18Z
-updated: 2026-05-13T18:51:23Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 Mesh.init(mdlMesh:device:) handles a single MDLMesh, but assets in the wild (USDZ exported from RoomPlan, glTF, etc.) typically contain multiple top-level MDLMeshes — one per object. Today every caller has to walk MDLAsset themselves: iterate asset.object(at:), recurse into children, accumulate MDLMeshes, then loop and call Mesh.init(mdlMesh:device:).
@@ -2038,10 +2051,12 @@ Improve documentation across the whole repo:
 ## 101: Consider dropping SwiftMeshIO / PLY support
 
 +++
-status: new
+status: open
 priority: low
 kind: task
+labels: area:io, effort:s
 created: 2026-05-13T19:05:18Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 `SwiftMeshIO` is currently just ASCII PLY read/write (`Sources/SwiftMeshIO/PLY.swift`, ~230 lines).
@@ -2159,11 +2174,12 @@ construction — having this helper in SwiftMeshIO would short-circuit all that.
 ## 104: Investigate faster bin-packing alternatives to MaxRects for large chart counts
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
+labels: area:binpacking, effort:l
 created: 2026-05-13T20:45:31Z
-updated: 2026-05-13T20:45:57Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 Real-world RoomPlan exports produce 700+ charts (1 chart per RoomPlan surface quad + 6 charts per box object). MaxRects packing takes ~1.2 s for 745 charts on a 4096x4096 atlas in release mode — most of the total bake time.
@@ -2219,10 +2235,12 @@ Workaround for callers: call .triangulate() or .makingValid() (if such a thing e
 ## 106: Detect and warn on non-manifold edges in HalfEdgeTopology
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
+labels: area:topology, effort:s
 created: 2026-05-13T20:56:07Z
+updated: 2026-10-05T20:21:21Z
 +++
 
 After the fix for #SwiftMesh#105, HalfEdgeTopology.init(vertexCount:faces:) silently accepts non-manifold edges (\u22653 half-edges sharing an undirected edge). The first two half-edges along such an edge are paired as twins; any extras are left as boundary (twin = nil).
