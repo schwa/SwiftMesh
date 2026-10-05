@@ -11,7 +11,8 @@ let package = Package(
     products: [
         .library(name: "SwiftMesh", targets: ["SwiftMesh"]),
         .library(name: "SwiftMeshIO", targets: ["SwiftMeshIO"]),
-        .library(name: "BinPacking", targets: ["BinPacking"])
+        .library(name: "BinPacking", targets: ["BinPacking"]),
+        .library(name: "SwiftMeshMikkTSpace", targets: ["SwiftMeshMikkTSpace"])
     ],
     dependencies: [
         .package(url: "https://github.com/schwa/GeometryLite2D", from: "0.0.2"),
@@ -27,7 +28,7 @@ let package = Package(
                 .product(name: "GeometryLite3D", package: "GeometryLite3D"),
                 .product(name: "MetalSupport", package: "MetalSupport"),
                 .product(name: "SwiftEarcut", package: "SwiftEarcut"),
-                "MikkTSpace",
+                "SwiftMeshMikkTSpace",
                 "BinPacking"
             ],
             resources: [
@@ -35,7 +36,7 @@ let package = Package(
             ]
         ),
         .target(
-            name: "MikkTSpace",
+            name: "SwiftMeshMikkTSpace",
             publicHeadersPath: "."
         ),
         .target(

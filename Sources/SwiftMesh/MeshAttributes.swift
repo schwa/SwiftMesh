@@ -1,5 +1,5 @@
-import MikkTSpace
 import simd
+import SwiftMeshMikkTSpace
 
 // MARK: - Normal Generation
 

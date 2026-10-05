@@ -1848,7 +1848,7 @@ Constraints / open questions:
 
 Use case: Mac-side viewer in RoomCaptureTestbed loads room.usdz with several MDLMeshes (walls/floor/objects), all single-submesh, identical vertex descriptors. Wants to render them as a single Mesh with one submesh per source for material/styling purposes.
 
-- `2026-05-13T01:06:01Z`: Implemented without label parameters — callers can pre-set `mesh.submeshes` before merging to get labeled submeshes. Final signatures:
+\- `2026-05-13T01:06:01Z`: Implemented without label parameters — callers can pre-set `mesh.submeshes` before merging to get labeled submeshes. Final signatures:
 
 ```swift
 static func merged(_ meshes: [Mesh]) -> Mesh
@@ -2232,5 +2232,20 @@ This is structurally consistent but hides genuinely broken input geometry. Calle
 Suggested: add a HalfEdgeTopology.validate() warning (severity .warning, not .error) of the form 'edge V_a-V_b has N>2 incident half-edges'. This lets callers detect non-manifold input without breaking validation for downstream consumers (e.g. MeshResource export in SwiftMeshIO) that just need consistent twin pointers.
 
 Out of scope: actually supporting non-manifold edges as first-class topology (multi-twin lists, edge splitting). File a separate issue if that's needed.
+
+---
+
+## 107: Namespace the MikkTSpace target under SwiftMesh
+
++++
+status: closed
+priority: medium
+kind: none
+created: 2026-10-05T15:05:50Z
+updated: 2026-10-05T19:37:30Z
+closed: 2026-10-05T19:37:30Z
++++
+
+Rename the MikkTSpace target (declared in Package.swift, sources in Sources/MikkTSpace) so it is namespaced by SwiftMesh, e.g. SwiftMeshMikkTSpace. Update the target name, its path/directory, and all dependency references so the package still builds.
 
 ---

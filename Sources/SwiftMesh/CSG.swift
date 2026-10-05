@@ -380,7 +380,7 @@ public extension TriangleSoup {
         // default thread stack (notably the small stacks used by swift-testing
         // and Swift concurrency tasks). Run on a dedicated thread with a large
         // stack to avoid stack-overflow crashes.
-        var result: TriangleSoup?
+        nonisolated(unsafe) var result: TriangleSoup?
         let done = DispatchSemaphore(value: 0)
         let thread = Thread { [self] in
             result = csgImpl(operation, other)
