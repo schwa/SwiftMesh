@@ -1,19 +1,22 @@
 import Foundation
 import simd
 
+/// Scalar type for BSP internals. Double limits vertex drift from repeated plane splits; inputs and outputs stay Float.
+typealias CSGScalar = Double
+
 // MARK: - AABB
 
 /// Axis-aligned bounding box used for early-out tests in the BSP tree.
 struct AABB: Sendable {
-    var min: SIMD3<Float>
-    var max: SIMD3<Float>
+    var min: SIMD3<CSGScalar>
+    var max: SIMD3<CSGScalar>
 
     init() {
-        self.min = SIMD3<Float>(repeating: .infinity)
-        self.max = SIMD3<Float>(repeating: -.infinity)
+        self.min = SIMD3<CSGScalar>(repeating: .infinity)
+        self.max = SIMD3<CSGScalar>(repeating: -.infinity)
     }
 
-    init(min: SIMD3<Float>, max: SIMD3<Float>) {
+    init(min: SIMD3<CSGScalar>, max: SIMD3<CSGScalar>) {
         self.min = min
         self.max = max
     }
@@ -22,7 +25,7 @@ struct AABB: Sendable {
         min.x > max.x
     }
 
-    mutating func expandToInclude(_ point: SIMD3<Float>) {
+    mutating func expandToInclude(_ point: SIMD3<CSGScalar>) {
         self.min = simd_min(self.min, point)
         self.max = simd_max(self.max, point)
     }
@@ -32,7 +35,7 @@ struct AABB: Sendable {
         self.max = simd_max(self.max, other.max)
     }
 
-    func expanded(by amount: Float) -> Self {
+    func expanded(by amount: CSGScalar) -> Self {
         Self(min: min - amount, max: max + amount)
     }
 
@@ -44,7 +47,7 @@ struct AABB: Sendable {
 }
 
 extension AABB {
-    init(vertices: [SIMD3<Float>]) {
+    init(vertices: [SIMD3<CSGScalar>]) {
         self.init()
         for v in vertices {
             expandToInclude(v)
@@ -56,16 +59,16 @@ extension AABB {
 
 /// A plane in 3D space defined by a normal and distance from origin.
 struct CSGPlane: Sendable {
-    var normal: SIMD3<Float>
-    var w: Float // dot(normal, pointOnPlane)
+    var normal: SIMD3<CSGScalar>
+    var w: CSGScalar // dot(normal, pointOnPlane)
 
-    init(normal: SIMD3<Float>, w: Float) {
+    init(normal: SIMD3<CSGScalar>, w: CSGScalar) {
         self.normal = normal
         self.w = w
     }
 
     /// Build a plane from three points (counter-clockwise winding).
-    init?(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>) {
+    init?(_ a: SIMD3<CSGScalar>, _ b: SIMD3<CSGScalar>, _ c: SIMD3<CSGScalar>) {
         let n = simd_cross(b - a, c - a)
         let len = simd_length(n)
         guard len > 1e-10 else {
@@ -76,7 +79,7 @@ struct CSGPlane: Sendable {
     }
 
     /// Signed distance from a point to this plane.
-    func distanceTo(_ point: SIMD3<Float>) -> Float {
+    func distanceTo(_ point: SIMD3<CSGScalar>) -> CSGScalar {
         simd_dot(normal, point) - w
     }
 
@@ -89,21 +92,21 @@ struct CSGPlane: Sendable {
 
 /// A convex polygon used internally by the BSP tree.
 struct CSGPolygon: Sendable {
-    let vertices: [SIMD3<Float>]
+    let vertices: [SIMD3<CSGScalar>]
     var plane: CSGPlane
     let bounds: AABB
 
-    init(vertices: [SIMD3<Float>], plane: CSGPlane) {
+    init(vertices: [SIMD3<CSGScalar>], plane: CSGPlane) {
         self.init(vertices: vertices, plane: plane, bounds: AABB(vertices: vertices))
     }
 
-    private init(vertices: [SIMD3<Float>], plane: CSGPlane, bounds: AABB) {
+    private init(vertices: [SIMD3<CSGScalar>], plane: CSGPlane, bounds: AABB) {
         self.vertices = vertices
         self.plane = plane
         self.bounds = bounds
     }
 
-    init?(vertices: [SIMD3<Float>]) {
+    init?(vertices: [SIMD3<CSGScalar>]) {
         guard vertices.count >= 3 else {
             return nil
         }
@@ -117,8 +120,8 @@ struct CSGPolygon: Sendable {
         Self(vertices: vertices.reversed(), plane: plane.flipped(), bounds: bounds)
     }
 
-    var centroid: SIMD3<Float> {
-        vertices.reduce(.zero, +) / Float(vertices.count)
+    var centroid: SIMD3<CSGScalar> {
+        vertices.reduce(.zero, +) / CSGScalar(vertices.count)
     }
 
     func isStrictlyOneSide(of plane: CSGPlane) -> Bool {
@@ -223,7 +226,7 @@ final class CSGNode: @unchecked Sendable {
     }
 
     /// Whether `point` is inside the solid, or nil if it lies on a splitting plane.
-    func contains(_ point: SIMD3<Float>) -> Bool? {
+    func contains(_ point: SIMD3<CSGScalar>) -> Bool? {
         guard let plane else {
             return false
         }
@@ -314,7 +317,7 @@ final class CSGNode: @unchecked Sendable {
 
 // MARK: - Polygon Splitting
 
-private let epsilon: Float = 1e-5
+private let epsilon: CSGScalar = 1e-5
 
 private enum PointClassification: Int {
     case coplanar = 0
@@ -332,7 +335,7 @@ private func splitPolygon(
     coplanarFront: inout [CSGPolygon],
     coplanarBack: inout [CSGPolygon]
 ) {
-    func classify(_ vertex: SIMD3<Float>) -> PointClassification {
+    func classify(_ vertex: SIMD3<CSGScalar>) -> PointClassification {
         let t = plane.distanceTo(vertex)
         if t < -epsilon {
             return .back
@@ -364,8 +367,8 @@ private func splitPolygon(
 
     case .spanning:
         let types = polygon.vertices.map(classify)
-        var frontVerts: [SIMD3<Float>] = []
-        var backVerts: [SIMD3<Float>] = []
+        var frontVerts: [SIMD3<CSGScalar>] = []
+        var backVerts: [SIMD3<CSGScalar>] = []
         frontVerts.reserveCapacity(polygon.vertices.count + 2)
         backVerts.reserveCapacity(polygon.vertices.count + 2)
 
@@ -545,9 +548,9 @@ extension TriangleSoup {
     /// Convert triangles to CSG polygons.
     func toPolygons() -> [CSGPolygon] {
         triangles.compactMap { tri in
-            let a = positions[tri.0]
-            let b = positions[tri.1]
-            let c = positions[tri.2]
+            let a = SIMD3<CSGScalar>(positions[tri.0])
+            let b = SIMD3<CSGScalar>(positions[tri.1])
+            let c = SIMD3<CSGScalar>(positions[tri.2])
             return CSGPolygon(vertices: [a, b, c])
         }
     }
@@ -561,7 +564,7 @@ extension TriangleSoup {
             }
             // Fan triangulation from vertex 0
             let base = soup.positions.count
-            soup.positions.append(contentsOf: polygon.vertices)
+            soup.positions.append(contentsOf: polygon.vertices.map { SIMD3<Float>($0) })
             for i in 1..<(polygon.vertices.count - 1) {
                 soup.triangles.append((base, base + i, base + i + 1))
             }

@@ -885,17 +885,19 @@ Make Mesh generic over scalar type (Float vs Double). Positions, normals, UVs et
 ## 58: CSG operations in Double precision
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:l
 created: 2026-04-15T07:09:54Z
-updated: 2026-04-15T17:03:09Z
+updated: 2026-10-11T22:06:03Z
+closed: 2026-10-11T22:06:03Z
 +++
 
 Run CSG BSP internals in Double precision to reduce vertex drift from plane splitting. Convert back to Float (or keep as Double if Mesh supports it) at the end. Depends on generic Mesh or a separate DoubleMesh type.
 
 - `2026-04-15T17:03:09Z`: Depends on #57 (generic Mesh over scalar type). Related: #59.
+- `2026-10-11T22:06:02Z`: Implemented without #57: BSP internals (AABB, CSGPlane, CSGPolygon, splitting) use CSGScalar = Double; TriangleSoup/Mesh stay Float, converted at toPolygons/fromPolygons. Keeping results in Double end-to-end still needs #57.
 
 ---
 

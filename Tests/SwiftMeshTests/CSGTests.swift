@@ -35,6 +35,31 @@ struct CSGTests {
         #expect(onCubeSurface.count == cube.triangles.count)
     }
 
+    // Float BSP internals drift ~8.6e-8 off the input planes here; Double leaves only output rounding (~1.7e-8).
+    @Test("CSG output vertices stay on input surfaces")
+    func outputVerticesOnInputPlanes() {
+        let rotation = simd_quatf(angle: 0.7, axis: simd_normalize([1, 2, 3]))
+        let a = TriangleSoup(mesh: Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 3, attributes: []))
+        var b = TriangleSoup(mesh: Mesh.box(extents: [0.7, 0.7, 0.7], attributes: []))
+        b.positions = b.positions.map { rotation.act($0) + [0.1, 0.05, 0.02] }
+        let result = a.intersection(b)
+        var planes: [(normal: SIMD3<Double>, w: Double)] = []
+        for soup in [a, b] {
+            for triangle in soup.triangles {
+                let p0 = SIMD3<Double>(soup.positions[triangle.0])
+                let p1 = SIMD3<Double>(soup.positions[triangle.1])
+                let p2 = SIMD3<Double>(soup.positions[triangle.2])
+                let normal = simd_normalize(simd_cross(p1 - p0, p2 - p0))
+                planes.append((normal, simd_dot(normal, p0)))
+            }
+        }
+        let worst = result.positions.map { position in
+            let point = SIMD3<Double>(position)
+            return planes.map { abs(simd_dot($0.normal, point) - $0.w) }.min()!
+        }.max()!
+        #expect(worst < 4e-8)
+    }
+
     /// Two identical unit cubes at origin.
     private func identicalCubes() -> (Mesh, Mesh) {
         let a = Mesh.box(extents: [1, 1, 1], attributes: [])
