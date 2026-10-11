@@ -48,6 +48,17 @@ struct DecimationTests {
         #expect(simplified.positions.count == simplified.vertexCount)
     }
 
+    @Test("Decimating a CSG difference doesn't open holes")
+    func decimateCSGDifference() {
+        let sphere = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 2, attributes: [])
+        let cube = Mesh.box(extents: [0.5, 0.5, 0.5], attributes: []).translated(by: [0.2, 0.2, 0.2])
+        let mesh = sphere.difference(cube)
+        let boundaryBefore = mesh.topology.halfEdges.filter { $0.twin == nil }.count
+        let simplified = mesh.decimated(ratio: 0.5)
+        let boundaryAfter = simplified.topology.halfEdges.filter { $0.twin == nil }.count
+        #expect(boundaryAfter <= boundaryBefore)
+    }
+
     // MARK: - Edge cases
 
     @Test("Decimate with target >= current face count is a no-op")

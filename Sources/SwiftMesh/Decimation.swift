@@ -161,6 +161,13 @@ public extension Mesh {
     /// - Parameter targetFaceCount: The desired number of faces. The algorithm stops
     ///   when this count is reached or no more edges can be collapsed.
     mutating func decimate(targetFaceCount: Int) {
+        // Edge collapse only handles triangles; it drops other faces whole, opening holes.
+        let hasNonTriangles = topology.faces.contains { face in
+            face.edge != nil && (!face.holeEdges.isEmpty || topology.halfEdgeLoop(for: face.id).count != 3)
+        }
+        if hasNonTriangles {
+            self = triangulated()
+        }
         let vertexCount = topology.vertices.count
 
         // 1. Compute initial quadrics per vertex
@@ -356,8 +363,9 @@ public extension Mesh {
     ///   For example, 0.5 keeps roughly half the faces.
     /// - Returns: A new simplified mesh.
     func decimated(ratio: Float) -> Mesh {
-        let currentCount = topology.faces.filter { $0.edge != nil }.count
+        let source = triangulated()
+        let currentCount = source.topology.faces.filter { $0.edge != nil }.count
         let target = max(1, Int(Float(currentCount) * ratio))
-        return decimated(targetFaceCount: target)
+        return source.decimated(targetFaceCount: target)
     }
 }

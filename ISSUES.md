@@ -919,12 +919,13 @@ Add conversion between Float and Double precision meshes. MetalMesh only works w
 ## 60: Decimation damages CSG difference mesh (sphere − cube)
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: effort:l
 created: 2026-04-15T07:40:25Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-11T21:55:01Z
+closed: 2026-10-11T21:55:01Z
 +++
 
 Decimating the 'Difference: Sphere − Cube' gallery mesh produces a gaping hole. The decimation algorithm likely collapses edges on the CSG boundary where the carved-out region meets the sphere surface, breaking the manifold.
