@@ -26,6 +26,15 @@ enum MeshRenderMode: Hashable, Identifiable {
         case .topology(let overlay): overlay.label
         }
     }
+
+    /// What the mode shows and when it's useful; used as hover help.
+    var helpText: String {
+        switch self {
+        case .blinnPhong: "Lit, shaded view with three lights."
+        case .debug(let mode): mode.helpText
+        case .topology(let overlay): overlay.helpText
+        }
+    }
 }
 
 /// Topology views the stock debug shaders can't compute. The data is encoded into texture
@@ -42,6 +51,13 @@ enum TopologyOverlay: CaseIterable, Identifiable {
         switch self {
         case .valenceHeatmap: "Valence Heatmap"
         case .boundaryEdges: "Boundary Edges"
+        }
+    }
+
+    var helpText: String {
+        switch self {
+        case .valenceHeatmap: "Vertex valence: green is low (3), red is high (8 or more). Spots of red or green are poles."
+        case .boundaryEdges: "Red where vertices sit on open (boundary) edges. A watertight mesh shows no red."
         }
     }
 
@@ -85,6 +101,25 @@ enum MeshDebugMode: Int32, CaseIterable, Identifiable {
     case frontFacing = 21
 
     var id: Int32 { rawValue }
+
+    var helpText: String {
+        switch self {
+        case .normal: "Normals as RGB (x, y, z mapped to 0-1). Hard edges show as color jumps."
+        case .texCoord: "UVs as red (u) and green (v). Seams show as color jumps."
+        case .tangent: "Tangents as RGB. Needs UVs; discontinuities reveal tangent-space seams."
+        case .bitangent: "Bitangents as RGB, the third axis of the tangent frame."
+        case .worldPosition: "World position as repeating RGB bands."
+        case .localPosition: "Object-space position as RGB."
+        case .faceNormal: "Flat per-triangle normal as RGB, ignoring stored normals."
+        case .checkerboard: "Checkerboard in UV space. Stretched or uneven squares mean UV distortion."
+        case .uvGrid: "Grid lines in UV space. Use with the Atlas Baking items to check texel density."
+        case .depth: "Distance from the camera as brightness."
+        case .wireframeOverlay: "Triangle edges drawn over the surface, showing the triangulation sent to the GPU."
+        case .normalDeviation: "How far stored normals differ from the face normal. Bright means heavy smoothing."
+        case .barycentricCoord: "Barycentric coordinates per triangle as RGB."
+        case .frontFacing: "Front faces and back faces in different colors. Back faces facing you mean flipped winding."
+        }
+    }
 
     var debugShadersMode: DebugShadersMode {
         // swiftlint:disable:next force_unwrapping

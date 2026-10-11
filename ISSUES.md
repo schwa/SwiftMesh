@@ -2529,11 +2529,13 @@ Every inspector control and readout should explain itself on hover via .help():\
 ## 120: Demo: add .help() tooltips to gallery items, sections, and toolbar
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:demo, effort:s
 created: 2026-10-11T23:14:02Z
+updated: 2026-10-11T23:18:37Z
+closed: 2026-10-11T23:18:37Z
 +++
 
 Add hover help outside the inspector:\n- Gallery items: a one-line explanation of what the item demonstrates and which API it uses (e.g. 'Mesh.chamfered(distance:edges:) on one box edge'). Consider adding a help string to MeshGalleryItem so each section supplies it.\n- Section headers: what the section covers.\n- Render mode picker: what each debug mode visualizes (Normals, Tex Coords, Checkerboard, UV Grid, Front Facing, Valence Heatmap, Boundary Edges, ...) and when to use it (e.g. UV Grid for the Atlas Baking items).\n- Toolbar: Export PLY (ASCII vs binary), Inspector toggle, Metal renderer and Animate toggles, import by drag and drop.

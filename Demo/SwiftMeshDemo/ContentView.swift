@@ -26,6 +26,7 @@ struct ContentView: View {
                 NavigationLink(value: SidebarSelection.all) {
                     Label("All", systemImage: "square.grid.2x2")
                 }
+                .help("Every gallery mesh in a grid. Drop a mesh file (OBJ, USDZ, PLY, ...) on the window to import it.")
                 if !importedItems.isEmpty {
                     Section("Imported") {
                         ForEach(importedItems) { item in
@@ -43,11 +44,12 @@ struct ContentView: View {
                                     }
                                 }
                             }
+                            .help("Imported by drag and drop. Files with several objects load as one mesh with a submesh per object.")
                         }
                     }
                 }
                 ForEach(MeshGallerySection.all) { section in
-                    Section(section.name) {
+                    Section {
                         ForEach(section.items) { item in
                             NavigationLink(value: SidebarSelection.item(item)) {
                                 HStack {
@@ -63,7 +65,11 @@ struct ContentView: View {
                                     }
                                 }
                             }
+                            .help(section.help(for: item))
                         }
+                    } header: {
+                        Text(section.name)
+                            .help(section.help)
                     }
                 }
             }
@@ -86,6 +92,7 @@ struct ContentView: View {
             Toggle(isOn: $useMetalRenderer) {
                 Label("Metal", systemImage: "cube")
             }
+            .help("Render with Metal (lit or debug shaders). Off shows the interactive wireframe view, which supports vertex and edge selection.")
             if useMetalRenderer {
                 Picker("Mode", selection: $renderMode) {
                     Text("Blinn-Phong").tag(MeshRenderMode.blinnPhong)
@@ -99,9 +106,11 @@ struct ContentView: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .help("\(renderMode.label): \(renderMode.helpText)")
                 Toggle(isOn: $animateRotation) {
                     Label("Animate", systemImage: "play")
                 }
+                .help("Slowly rotate the mesh in the Metal view.")
             }
         }
         .dropDestination(for: URL.self) { urls, _ in
@@ -199,12 +208,14 @@ struct GalleryGridView: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                            .help(section.help(for: item))
                         }
                     } header: {
                         Text(section.name)
                             .font(.title2.bold())
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, 10)
+                            .help(section.help)
                     }
                 }
             }
@@ -501,9 +512,11 @@ struct MeshDetailView: View {
             } label: {
                 Label("Export PLY", systemImage: "square.and.arrow.up")
             }
+            .help("Save the current mesh as PLY. ASCII is readable text; binary is several times smaller and faster to load.")
             Toggle(isOn: $showInspector) {
                 Label("Inspector", systemImage: "sidebar.right")
             }
+            .help("Show mesh info, diagnostics, selection edits, and operations.")
         }
         .fileExporter(
             isPresented: $isExporting,
@@ -620,23 +633,31 @@ struct MeshGalleryItem: Identifiable, Hashable {
 struct MeshGallerySection: Identifiable {
     let id: String
     let name: String
+    /// What the section demonstrates and which API it uses; shown as hover help.
+    let help: String
     let items: [MeshGalleryItem]
 
-    init(_ name: String, items: [MeshGalleryItem]) {
+    init(_ name: String, help: String = "", items: [MeshGalleryItem]) {
         self.id = name
         self.name = name
+        self.help = help
         self.items = items
     }
 
+    /// Hover help for an item: its subtitle, then the section's API note.
+    func help(for item: MeshGalleryItem) -> String {
+        [item.subtitle, help.isEmpty ? nil : help].compactMap { $0 }.joined(separator: "\n\n")
+    }
+
     static let all: [Self] = [
-        Self("Platonic Solids", items: [
+        Self("Platonic Solids", help: "The five regular polyhedra: Mesh.tetrahedron(), .cube(), .octahedron(), .icosahedron(), .dodecahedron(). Good small test inputs.", items: [
             MeshGalleryItem("Tetrahedron", mesh: .tetrahedron()),
             MeshGalleryItem("Cube", mesh: .cube()),
             MeshGalleryItem("Octahedron", mesh: .octahedron()),
             MeshGalleryItem("Icosahedron", mesh: .icosahedron()),
             MeshGalleryItem("Dodecahedron", mesh: .dodecahedron())
         ]),
-        Self("Surfaces", items: [
+        Self("Surfaces", help: "Parametric primitives such as Mesh.sphere(), .torus(), .cylinder(), .capsule(), .icoSphere(), and the Utah teapot. Most take extents, segment counts, and attributes.", items: [
             MeshGalleryItem("Sphere", mesh: .sphere()),
             MeshGalleryItem("Torus", mesh: .torus()),
             MeshGalleryItem("Cylinder", mesh: .cylinder()),
@@ -652,7 +673,7 @@ struct MeshGallerySection: Identifiable {
             MeshGalleryItem("IcoSphere", mesh: .icoSphere()),
             MeshGalleryItem("CubeSphere", mesh: .cubeSphere())
         ]),
-        Self("CSG", items: {
+        Self("CSG", help: "Boolean solids: mesh.union(_:), .intersection(_:), .difference(_:) (or csg(_:_:options:)). Inputs should be closed; results drop attributes and may not be watertight (#65).", items: {
             let cubeA = Mesh.box(extents: [0.6, 0.6, 0.6], attributes: [])
             let cubeB = Mesh.box(extents: [0.6, 0.6, 0.6], attributes: []).translated(by: [0.3, 0.3, 0.3])
             let sphere = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 2, attributes: [])
@@ -669,7 +690,7 @@ struct MeshGallerySection: Identifiable {
                 ))
             ]
         }()),
-        Self("2D CSG", items: {
+        Self("2D CSG", help: "Planar booleans on Mesh2D: walls with door and window openings and a floor plan, built from line segments with face classification and holes.", items: {
             let t: Float = 0.02 // wall thickness
 
             // Wall with door
@@ -710,7 +731,7 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("Floor Plan", subtitle: "Room with doorway", mesh: room)
             ]
         }()),
-        Self("Subdivision", items: [
+        Self("Subdivision", help: "Smoothing by refinement: mesh.loopSubdivided(iterations:) for triangles, .catmullClarkSubdivided(iterations:) for any polygons (produces quads).", items: [
             MeshGalleryItem("Tetrahedron", subtitle: "Original (4 faces)", mesh: .tetrahedron(attributes: [])),
             MeshGalleryItem("Loop ×1", subtitle: "16 faces", mesh: Mesh.tetrahedron(attributes: []).loopSubdivided(iterations: 1)),
             MeshGalleryItem("Loop ×2", subtitle: "64 faces", mesh: Mesh.tetrahedron(attributes: []).loopSubdivided(iterations: 2)),
@@ -724,7 +745,7 @@ struct MeshGallerySection: Identifiable {
             MeshGalleryItem("Icosahedron", subtitle: "Original (20 faces)", mesh: .icosahedron(attributes: [])),
             MeshGalleryItem("Loop Icosahedron ×2", subtitle: "320 faces", mesh: Mesh.icosahedron(attributes: []).loopSubdivided(iterations: 2))
         ]),
-        Self("Marching Cubes", items: {
+        Self("Marching Cubes", help: "Isosurfaces of a scalar field: Mesh.marchingCubes(resolution:bounds:isoValue:field:). The surface is where the field equals isoValue.", items: {
             let bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5))
             return [
                 MeshGalleryItem("MC Sphere", subtitle: "SDF sphere", mesh: .marchingCubes(resolution: 32, bounds: bounds) { p in
@@ -747,7 +768,7 @@ struct MeshGallerySection: Identifiable {
                 })
             ]
         }()),
-        Self("Extrusion", items: {
+        Self("Extrusion", help: "Solids from 2D outlines and spheres: Mesh.extruded(Path, depth:), Mesh.extrudedText(_:depth:), and Mesh.convexHull(ofSpheres:). Nested outlines become holes.", items: {
             func fitted(_ mesh: Mesh) -> Mesh {
                 var mesh = mesh
                 mesh.fitToExtents([0.8, 0.8, 0.8])
@@ -776,7 +797,7 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("Sphere Hull: Mixed", subtitle: "Four spheres, mixed radii", mesh: Mesh.convexHull(ofSpheres: mixedSpheres, subdivisions: 3) ?? .tetrahedron())
             ]
         }()),
-        Self("Editing", items: {
+        Self("Editing", help: "Local edits: splitEdge(_:at:), flipEdge(_:), extrudingFace(_:distance:), chamfered(distance:edges:), and split(planeNormal:point:capped:). Try the same edits interactively from the inspector's Selection section.", items: {
             // Split every 7th edge of an icosphere once.
             var split = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 1, attributes: [])
             for halfEdge in split.topology.halfEdges.indices where halfEdge.isMultiple(of: 7) {
@@ -822,7 +843,7 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("Torus Cut", subtitle: "Annulus cap with a hole", mesh: Mesh.torus(attributes: []).split(planeNormal: [0, 1, 0], point: .zero).front)
             ]
         }()),
-        Self("Convex Hull", items: {
+        Self("Convex Hull", help: "Mesh.convexHull(of:): the smallest convex solid containing the points. Interior points are ignored.", items: {
             // Random point cloud
             var randomPoints: [SIMD3<Float>] = []
             var seed: UInt32 = 12_345
@@ -870,7 +891,7 @@ struct MeshGallerySection: Identifiable {
                     mesh: Mesh.convexHull(of: noisyCubePoints, attributes: []) ?? .tetrahedron(attributes: []))
             ]
         }()),
-        Self("Wireframe", items: {
+        Self("Wireframe", help: "mesh.wireframe(radius:sides:): replaces every edge with a solid prism, for printable or renderable wireframes.", items: {
             let cube = Mesh.cube(attributes: [])
             let icosahedron = Mesh.icosahedron(attributes: [])
             let dodecahedron = Mesh.dodecahedron(attributes: [])
@@ -890,7 +911,7 @@ struct MeshGallerySection: Identifiable {
                     mesh: cube.wireframe(radius: 0.06, sides: 12))
             ]
         }()),
-        Self("Border", items: {
+        Self("Border", help: "mesh.border(thickness:direction:): replaces each face with a frame along its edges, inset (inside) or grown (outside).", items: {
             let cube = Mesh.cube(attributes: [])
             let dodecahedron = Mesh.dodecahedron(attributes: [])
             let icosahedron = Mesh.icosahedron(attributes: [])
@@ -910,7 +931,7 @@ struct MeshGallerySection: Identifiable {
                     mesh: cube.border(thickness: 0.05, direction: .inside, triangulate: true))
             ]
         }()),
-        Self("Decimation", items: {
+        Self("Decimation", help: "mesh.decimated(ratio:): quadric edge collapse that removes triangles while keeping the shape. Compare face counts in the subtitles.", items: {
             let sphere = Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 3, attributes: [])
             let sphereFaces = sphere.topology.faces.filter { $0.edge != nil }.count
             return [
@@ -920,7 +941,7 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("10%", subtitle: "\(sphereFaces / 10) faces", mesh: sphere.decimated(ratio: 0.1))
             ]
         }()),
-        Self("Atlas Baking", items: {
+        Self("Atlas Baking", help: "mesh.bakingPlanarAtlas(texelsPerMeter:atlasSize:padding:): groups coplanar faces into charts and packs them into one texture. View with UV Grid or Checkerboard; even squares mean uniform texel density.", items: {
             // Baked UVs are kept by the renderer; view with the UV Grid or Checkerboard debug mode.
             func baked(_ mesh: Mesh) -> Mesh {
                 (try? mesh.bakingPlanarAtlas(texelsPerMeter: 256, atlasSize: [1_024, 1_024]).mesh) ?? mesh
