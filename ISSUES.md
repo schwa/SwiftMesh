@@ -2033,9 +2033,10 @@ Merge in `~/Projects/Current/SwiftBinPacking` into this repo.
 +++
 status: open
 priority: medium
-kind: enhancement
+kind: documentation
+labels: effort:l, area:docs
 created: 2026-05-13T18:40:28Z
-updated: 2026-05-13T19:01:19Z
+updated: 2026-10-11T21:49:34Z
 +++
 
 Improve documentation across the whole repo:
@@ -2265,5 +2266,26 @@ closed: 2026-10-05T19:37:30Z
 +++
 
 Rename the MikkTSpace target (declared in Package.swift, sources in Sources/MikkTSpace) so it is namespaced by SwiftMesh, e.g. SwiftMeshMikkTSpace. Update the target name, its path/directory, and all dependency references so the package still builds.
+
+---
+
+## 108: MetalMesh.Submesh only supports UInt32 triangles
+
++++
+status: open
+priority: high
+kind: enhancement
+labels: effort:m, area:metal
+created: 2026-10-11T21:48:24Z
+updated: 2026-10-11T21:49:59Z
++++
+
+MetalMesh.Submesh has an index buffer and count but no index type or primitive type. Every MetalMesh init writes UInt32 triangle indices, so renderers hardcode .uint32 and .triangle.
+
+This blocks meshes with UInt16 indices, lines, points, or strips (common in glTF), and wastes memory for small meshes.
+
+Want: add indexType (MTLIndexType) and primitiveType (MTLPrimitiveType) to MetalMesh.Submesh, defaulting to .uint32/.triangle, and let the direct init accept other values.
+
+Found while fixing MetalSprocketsSceneGraph #22.
 
 ---
