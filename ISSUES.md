@@ -838,6 +838,8 @@ created: 2026-04-15T06:39:36Z
 updated: 2026-10-05T20:21:21Z
 +++
 
+- `2026-10-11T23:03:05Z`: Related: #117 (selection-based edit buttons).
+
 ---
 
 ## 55: Stray edges after coplanar face merging
@@ -1017,9 +1019,9 @@ TriangleSoup.welded(tolerance:) merges positions but doesn't rebuild half-edge t
 status: open
 priority: high
 kind: bug
-labels: effort:xl
+labels: effort:xl, area:csg
 created: 2026-04-15T07:54:19Z
-updated: 2026-05-13T18:52:09Z
+updated: 2026-10-11T23:03:12Z
 +++
 
 CSG union/intersection/difference of two manifold closed meshes should produce a manifold result. Currently the BSP-based algorithm produces meshes with boundary edges and standalone faces due to the TriangleSoup round-trip losing topology. Affected: all CSG operations between closed solids (e.g. cube∪cube, sphere∩cube, sphere−cube).
@@ -2423,5 +2425,82 @@ closed: 2026-10-11T22:59:09Z
 +++
 
 Calling the same Mesh CSG operation twice can return meshes with the same geometry but different vertex/face order (Mesh == fails). Likely Dictionary/Set iteration in welding or coplanar merge. Makes exports and snapshot tests non-reproducible. Found while fixing #74.
+
+---
+
+## 114: Demo: add Editing gallery section
+
++++
+status: open
+priority: medium
+kind: feature
+labels: area:demo, effort:m
+created: 2026-10-11T23:02:40Z
+updated: 2026-10-11T23:03:05Z
++++
+
+Add a gallery section showing the editing operations, each as before/after pairs where useful:\n- Edge split (Mesh.splitEdge, #42) on a cube and an icosphere\n- Edge flip (Mesh.flipEdge, #41) on a quad strip\n- Face extrude (Mesh.extrudingFace, #43): one face of a box, plus a negative distance\n- Chamfer (Mesh.chamfered, #51): all edges of a box, one edge of a box, icosahedron\n- Plane split (Mesh.split(planeNormal:point:capped:), #66): sphere capped and uncapped, torus cut showing an annulus cap
+
+---
+
+## 115: Demo: add Extrusion & construction gallery section
+
++++
+status: open
+priority: medium
+kind: feature
+labels: area:demo, effort:s
+created: 2026-10-11T23:02:40Z
+updated: 2026-10-11T23:03:05Z
++++
+
+Add a gallery section for newer constructors:\n- Path extrusion (Mesh.extruded(Path), #49): star, rounded rect, shape with a hole\n- Text extrusion (Mesh.extrudedText, #48): a word with holes, e.g. "SwiftMesh"\n- Hull of spheres (Mesh.convexHull(ofSpheres:), #78): equal radii (capsule) and mixed radii
+
+---
+
+## 116: Demo: inspector diagnostics panel and repair actions
+
++++
+status: open
+priority: medium
+kind: feature
+labels: area:demo, effort:m
+created: 2026-10-11T23:02:41Z
+updated: 2026-10-11T23:03:05Z
++++
+
+The inspector shows counts but none of the diagnostics API. Add a panel showing, for the current mesh: Euler characteristic, components with genus and orientability (surfaceComponents, #75), boundary loop count, inconsistent winding edge count (#76), non-manifold edge warnings and other validate() issues (#106), valence histogram (#67).\n\nAdd repair/operation buttons: Fix Winding (withConsistentWinding), Reverse Winding, Merge Coplanar Faces. Pairs with the Valence Heatmap / Boundary Edges render modes from #70.
+
+---
+
+## 117: Demo: selection-based edit buttons in inspector
+
++++
+status: open
+priority: low
+kind: feature
+labels: area:demo, effort:m
+created: 2026-10-11T23:02:41Z
+updated: 2026-10-11T23:03:05Z
++++
+
+Edge and face selection already exist in the inspector but nothing acts on them. Add buttons: Split Edge and Flip Edge for a selected edge, Chamfer Selected Edges, Extrude Selected Face (with a distance field). Disable buttons when the selection doesn't fit (e.g. flip on a boundary edge returns false).
+
+- `2026-10-11T23:03:05Z`: Related: #54 (Select Loop in the inspector) — both extend inspector selection tooling.
+
+---
+
+## 118: Demo: atlas baking and IO samples
+
++++
+status: open
+priority: low
+kind: feature
+labels: area:demo, effort:s
+created: 2026-10-11T23:02:41Z
+updated: 2026-10-11T23:03:05Z
++++
+
+No gallery item shows planar atlas baking (bakingPlanarAtlas): add one that renders the baked UVs with the checkerboard/UV grid debug mode. For IO: add Export as PLY (ASCII/binary, #9) to the inspector, and when importing an asset with several objects use [Mesh](mdlAsset:) (#97) and show them merged with per-object submeshes.
 
 ---
