@@ -97,6 +97,7 @@ public extension MetalMesh {
             Submesh(
                 label: sub.name.isEmpty ? nil : sub.name,
                 indexBuffer: sub.indexBuffer.buffer,
+                indexBufferOffset: sub.indexBuffer.offset,
                 indexCount: sub.indexCount,
                 indexType: sub.indexType,
                 primitiveType: sub.primitiveType
@@ -196,8 +197,8 @@ public extension Mesh {
         for submesh in metalMesh.submeshes {
             let is16Bit = submesh.indexType == .uint16
             let indexData = Data(
-                bytes: submesh.indexBuffer.contents(),
-                count: submesh.indexCount * (is16Bit ? 2 : 4)
+                bytes: submesh.indexBuffer.contents() + submesh.indexBufferOffset,
+                count: submesh.indexByteCount
             )
             let mdlIndexBuffer = allocator.newBuffer(with: indexData, type: .index)
             let geometryType: MDLGeometryType = switch submesh.primitiveType {

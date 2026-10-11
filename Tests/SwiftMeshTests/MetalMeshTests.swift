@@ -408,6 +408,27 @@ struct MetalMeshTests {
         #expect(metalMesh.submeshes[0].primitiveType == .triangle)
     }
 
+    @Test("Submeshes sharing one index buffer honor their offsets")
+    func sharedIndexBufferOffsets() throws {
+        let device = try requireDevice()
+        let packed = [SIMD3<Float>(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0), SIMD3(1, 1, 0)].map { Packed3<Float>($0) }
+        let vBuf = device.makeBuffer(bytes: packed, length: MemoryLayout<Packed3<Float>>.stride * 4, options: [])!
+        // Two triangles packed back to back in one buffer, as MTKMeshBufferAllocator may do.
+        let indices: [UInt32] = [0, 1, 2, 1, 3, 2]
+        let iBuf = device.makeBuffer(bytes: indices, length: MemoryLayout<UInt32>.stride * 6, options: [])!
+        let descriptor = VertexDescriptor(
+            attributes: [.init(semantic: .position, format: .float3, offset: 0, bufferIndex: 0)],
+            layouts: [.init(bufferIndex: 0, stride: MemoryLayout<Packed3<Float>>.stride, stepFunction: .perVertex, stepRate: 1)]
+        )
+        var metalMesh = MetalMesh(vertexBuffers: [0: vBuf], vertexCount: 4, vertexDescriptor: descriptor, indexBuffer: iBuf, indexCount: 3)
+        metalMesh.submeshes.append(.init(indexBuffer: iBuf, indexBufferOffset: 12, indexCount: 3))
+
+        #expect(metalMesh.submeshes[0].indices == [0, 1, 2])
+        #expect(metalMesh.submeshes[1].indices == [1, 3, 2])
+        let mesh = metalMesh.toMesh()
+        #expect(Set(mesh.topology.faces.map { Set(mesh.facePositions($0.id).map { [$0.x, $0.y] }) }) == [[[0, 0], [1, 0], [0, 1]], [[1, 0], [1, 1], [0, 1]]])
+    }
+
     @Test("Direct init with UInt16 indices converts to Mesh")
     func directInitUInt16() throws {
         let device = try requireDevice()

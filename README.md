@@ -39,7 +39,7 @@ encoder.draw(metalMesh)
 // From ModelIO
 let mesh = MetalMesh(mdlMesh: mdlMesh, device: device)
 let mesh = MetalMesh(mtkMesh: mtkMesh)
-let mdlMesh = metalMesh.toMDLMesh(device: device)
+let mdlMesh = mesh.toMDLMesh(device: device)
 
 // From PLY
 let mesh = try PLY.read(from: data)

@@ -20,25 +20,33 @@ public struct MetalMesh {
         public var indexBuffer: MTLBuffer
         /// The number of indices in ``indexBuffer``.
         public var indexCount: Int
+        /// Byte offset of the first index in ``indexBuffer``. Buffers may be shared between submeshes.
+        public var indexBufferOffset: Int
         public var indexType: MTLIndexType
         public var primitiveType: MTLPrimitiveType
 
-        public init(label: String? = nil, indexBuffer: MTLBuffer, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle) {
+        public init(label: String? = nil, indexBuffer: MTLBuffer, indexBufferOffset: Int = 0, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle) {
             self.label = label
             self.indexBuffer = indexBuffer
+            self.indexBufferOffset = indexBufferOffset
             self.indexCount = indexCount
             self.indexType = indexType
             self.primitiveType = primitiveType
+        }
+
+        /// Size of the index data in bytes.
+        public var indexByteCount: Int {
+            indexCount * (indexType == .uint16 ? 2 : 4)
         }
 
         /// The indices widened to `UInt32`.
         public var indices: [UInt32] {
             switch indexType {
             case .uint16:
-                let pointer = indexBuffer.contents().assumingMemoryBound(to: UInt16.self)
+                let pointer = (indexBuffer.contents() + indexBufferOffset).assumingMemoryBound(to: UInt16.self)
                 return (0..<indexCount).map { UInt32(pointer[$0]) }
             default:
-                let pointer = indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
+                let pointer = (indexBuffer.contents() + indexBufferOffset).assumingMemoryBound(to: UInt32.self)
                 return Array(UnsafeBufferPointer(start: pointer, count: indexCount))
             }
         }
@@ -616,11 +624,11 @@ public extension MTLRenderCommandEncoder {
         }
         for submesh in metalMesh.submeshes {
             drawIndexedPrimitives(
-                type: .triangle,
+                type: submesh.primitiveType,
                 indexCount: submesh.indexCount,
-                indexType: .uint32,
+                indexType: submesh.indexType,
                 indexBuffer: submesh.indexBuffer,
-                indexBufferOffset: 0
+                indexBufferOffset: submesh.indexBufferOffset
             )
         }
     }
