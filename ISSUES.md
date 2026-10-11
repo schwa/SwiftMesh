@@ -2463,12 +2463,13 @@ Add a gallery section for newer constructors:\n- Path extrusion (Mesh.extruded(P
 ## 116: Demo: inspector diagnostics panel and repair actions
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:demo, effort:m
 created: 2026-10-11T23:02:41Z
-updated: 2026-10-11T23:03:05Z
+updated: 2026-10-11T23:06:35Z
+closed: 2026-10-11T23:06:35Z
 +++
 
 The inspector shows counts but none of the diagnostics API. Add a panel showing, for the current mesh: Euler characteristic, components with genus and orientability (surfaceComponents, #75), boundary loop count, inconsistent winding edge count (#76), non-manifold edge warnings and other validate() issues (#106), valence histogram (#67).\n\nAdd repair/operation buttons: Fix Winding (withConsistentWinding), Reverse Winding, Merge Coplanar Faces. Pairs with the Valence Heatmap / Boundary Edges render modes from #70.

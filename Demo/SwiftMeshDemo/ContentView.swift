@@ -207,6 +207,69 @@ struct GalleryGridView: View {
     }
 }
 
+// MARK: - Diagnostics
+
+/// Topology diagnostics for the inspector, computed once per mesh.
+struct MeshDiagnosticsReport {
+    var components: [SurfaceComponent]
+    var eulerCharacteristic: Int
+    var boundaryLoops: Int
+    var inconsistentWindingEdges: Int
+    var validationErrors: Int
+    var validationWarnings: [String]
+    var valenceHistogram: [(valence: Int, count: Int)]
+
+    init(mesh: Mesh) {
+        let topology = mesh.topology
+        components = topology.surfaceComponents()
+        eulerCharacteristic = components.reduce(0) { $0 + $1.eulerCharacteristic }
+        boundaryLoops = topology.boundaryLoopCount
+        inconsistentWindingEdges = topology.inconsistentWindingEdges().count
+        let issues = mesh.validate()
+        validationErrors = issues.filter { $0.severity == .error }.count
+        validationWarnings = issues.filter { $0.severity == .warning }.map(\.message)
+        valenceHistogram = topology.valenceHistogram().sorted { $0.key < $1.key }.map { ($0.key, $0.value) }
+    }
+}
+
+struct MeshDiagnosticsSection: View {
+    let report: MeshDiagnosticsReport
+
+    var body: some View {
+        Section("Diagnostics") {
+            LabeledContent("Euler \u{3c7}", value: "\(report.eulerCharacteristic)")
+            LabeledContent("Components", value: "\(report.components.count)")
+            ForEach(Array(report.components.prefix(6).enumerated()), id: \.offset) { index, component in
+                LabeledContent("  #\(index + 1)", value: describe(component))
+            }
+            if report.components.count > 6 {
+                LabeledContent("", value: "+\(report.components.count - 6) more")
+            }
+            LabeledContent("Boundary Loops", value: "\(report.boundaryLoops)")
+            LabeledContent("Bad Winding Edges") {
+                Text("\(report.inconsistentWindingEdges)")
+                    .foregroundStyle(report.inconsistentWindingEdges == 0 ? .green : .red)
+            }
+            LabeledContent("Validation") {
+                Text("\(report.validationErrors) errors, \(report.validationWarnings.count) warnings")
+                    .foregroundStyle(report.validationErrors > 0 ? .red : report.validationWarnings.isEmpty ? .green : .orange)
+            }
+            ForEach(Array(report.validationWarnings.prefix(3).enumerated()), id: \.offset) { _, warning in
+                Text(warning)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            LabeledContent("Valence", value: report.valenceHistogram.map { "\($0.valence):\($0.count)" }.joined(separator: " "))
+        }
+    }
+
+    private func describe(_ component: SurfaceComponent) -> String {
+        let genus = component.genus.map { "genus \($0)" } ?? "invalid genus"
+        let orientation = component.isOrientable ? "" : ", non-orientable"
+        return "\(component.faces.count) faces, \(genus)\(orientation)"
+    }
+}
+
 // MARK: - Detail View
 
 struct MeshDetailView: View {
@@ -290,6 +353,7 @@ struct MeshDetailView: View {
                         }
                     }
                 }
+                MeshDiagnosticsSection(report: MeshDiagnosticsReport(mesh: currentMesh))
                 Section("Attributes") {
                     LabeledContent("Normals", value: currentMesh.normals != nil ? "✓" : "—")
                     LabeledContent("UVs", value: currentMesh.textureCoordinates != nil ? "✓" : "—")
@@ -321,6 +385,16 @@ struct MeshDetailView: View {
                     }
                     Button("Border (Outside)") {
                         applyOperation { $0.border(thickness: 0.02, direction: .outside) }
+                    }
+                    Button("Fix Winding") {
+                        // Non-orientable meshes can't be fixed; leave them unchanged.
+                        applyOperation { $0.withConsistentWinding() ?? $0 }
+                    }
+                    Button("Reverse Winding") {
+                        applyOperation { $0.reversingWinding() }
+                    }
+                    Button("Merge Coplanar Faces") {
+                        applyOperation { $0.mergingCoplanarFaces() }
                     }
 
                     Toggle("Highlight Standalone", isOn: $showStandalone)
