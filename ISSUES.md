@@ -1566,13 +1566,14 @@ Expected impact: significant on CSG of meshes with thousands of polygons.
 ## 90: CSG: cache AABB on CSGPolygon instead of recomputing per clip
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:csg, effort:s
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:49Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-11T22:03:30Z
+closed: 2026-10-11T22:03:30Z
 +++
 
 In `CSGNode.clipPolygons`, every polygon's AABB is rebuilt on every recursion level:

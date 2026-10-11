@@ -44,13 +44,6 @@ struct AABB: Sendable {
 }
 
 extension AABB {
-    init(polygon: CSGPolygon) {
-        self.init()
-        for v in polygon.vertices {
-            expandToInclude(v)
-        }
-    }
-
     init(vertices: [SIMD3<Float>]) {
         self.init()
         for v in vertices {
@@ -96,12 +89,18 @@ struct CSGPlane: Sendable {
 
 /// A convex polygon used internally by the BSP tree.
 struct CSGPolygon: Sendable {
-    var vertices: [SIMD3<Float>]
+    let vertices: [SIMD3<Float>]
     var plane: CSGPlane
+    let bounds: AABB
 
     init(vertices: [SIMD3<Float>], plane: CSGPlane) {
+        self.init(vertices: vertices, plane: plane, bounds: AABB(vertices: vertices))
+    }
+
+    private init(vertices: [SIMD3<Float>], plane: CSGPlane, bounds: AABB) {
         self.vertices = vertices
         self.plane = plane
+        self.bounds = bounds
     }
 
     init?(vertices: [SIMD3<Float>]) {
@@ -111,12 +110,11 @@ struct CSGPolygon: Sendable {
         guard let plane = CSGPlane(vertices[0], vertices[1], vertices[2]) else {
             return nil
         }
-        self.vertices = vertices
-        self.plane = plane
+        self.init(vertices: vertices, plane: plane)
     }
 
     func flipped() -> Self {
-        Self(vertices: vertices.reversed(), plane: plane.flipped())
+        Self(vertices: vertices.reversed(), plane: plane.flipped(), bounds: bounds)
     }
 
     var centroid: SIMD3<Float> {
@@ -187,7 +185,7 @@ final class CSGNode: @unchecked Sendable {
             // Early-out: if polygon doesn't overlap this subtree's bounds,
             // classify it by which side of the splitting plane it falls on
             // without recursing deeper or splitting it.
-            let polyBounds = AABB(polygon: polygon)
+            let polyBounds = polygon.bounds
             if !bounds.isEmpty, !polyBounds.overlaps(bounds) {
                 // Determine side by checking any vertex against the splitting plane
                 let d = plane.distanceTo(polygon.vertices[0])
@@ -214,7 +212,7 @@ final class CSGNode: @unchecked Sendable {
     func clipTo(_ other: CSGNode) {
         polygons = polygons.flatMap { polygon -> [CSGPolygon] in
             // A polygon that crosses none of the other surface is wholly inside or outside it, so keep or drop it unsplit.
-            if !other.surfaceIntersects(polygon, bounds: AABB(polygon: polygon)), let inside = other.contains(polygon.centroid) {
+            if !other.surfaceIntersects(polygon, bounds: polygon.bounds), let inside = other.contains(polygon.centroid) {
                 return inside ? [] : [polygon]
             }
             return other.clipPolygons([polygon])
@@ -249,7 +247,7 @@ final class CSGNode: @unchecked Sendable {
         guard !bounds.isEmpty, polygonBounds.overlaps(bounds.expanded(by: epsilon)) else {
             return false
         }
-        for other in polygons where polygonBounds.overlaps(AABB(polygon: other).expanded(by: epsilon)) {
+        for other in polygons where polygonBounds.overlaps(other.bounds.expanded(by: epsilon)) {
             if !polygon.isStrictlyOneSide(of: other.plane), !other.isStrictlyOneSide(of: polygon.plane) {
                 return true
             }
@@ -278,9 +276,7 @@ final class CSGNode: @unchecked Sendable {
 
         // Expand bounds to cover all incoming polygon vertices.
         for polygon in list {
-            for v in polygon.vertices {
-                bounds.expandToInclude(v)
-            }
+            bounds.expandToInclude(polygon.bounds)
         }
 
         if plane == nil {
