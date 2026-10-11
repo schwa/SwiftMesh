@@ -48,15 +48,13 @@ struct DecimationTests {
         #expect(simplified.positions.count == simplified.vertexCount)
     }
 
-    @Test("Decimating a CSG difference doesn't open holes")
-    func decimateCSGDifference() {
-        let sphere = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 2, attributes: [])
-        let cube = Mesh.box(extents: [0.5, 0.5, 0.5], attributes: []).translated(by: [0.2, 0.2, 0.2])
-        let mesh = sphere.difference(cube)
-        let boundaryBefore = mesh.topology.halfEdges.filter { $0.twin == nil }.count
+    // CSG output has n-gon faces; a closed quad mesh exercises the same path deterministically.
+    @Test("Decimating n-gon faces doesn't open holes")
+    func decimateNGonsKeepsClosed() {
+        let mesh = Mesh.box(attributes: []).catmullClarkSubdivided(iterations: 3)
+        #expect(mesh.isManifold)
         let simplified = mesh.decimated(ratio: 0.5)
-        let boundaryAfter = simplified.topology.halfEdges.filter { $0.twin == nil }.count
-        #expect(boundaryAfter <= boundaryBefore)
+        #expect(simplified.topology.halfEdges.allSatisfy { $0.twin != nil })
     }
 
     // MARK: - Edge cases
