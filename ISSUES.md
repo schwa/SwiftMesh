@@ -638,12 +638,13 @@ Insert a vertex at an edge midpoint, splitting the two adjacent faces into four.
 ## 43: Face extrude operation
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:m
 created: 2026-04-15T05:25:33Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-11T22:13:34Z
+closed: 2026-10-11T22:13:34Z
 +++
 
 Push a face outward along its normal, creating side wall quads connecting the original boundary to the extruded face.
