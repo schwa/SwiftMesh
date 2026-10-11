@@ -2294,3 +2294,17 @@ Want: add indexType (MTLIndexType) and primitiveType (MTLPrimitiveType) to Metal
 Found while fixing MetalSprocketsSceneGraph #22.
 
 ---
+
+## 109: MetalMesh ignores MTKSubmesh index buffer offset
+
++++
+status: new
+priority: medium
+kind: bug
+labels: area:metal, effort:s
+created: 2026-10-11T21:56:53Z
++++
+
+MetalMesh(mtkMesh:) uses sub.indexBuffer.buffer but drops sub.indexBuffer.offset. MTKMeshBufferAllocator can pack several submeshes into one buffer, so indices would be read from the wrong place. Add indexBufferOffset to MetalMesh.Submesh and honor it in readers. Found while fixing #108.
+
+---
