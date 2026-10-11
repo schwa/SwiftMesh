@@ -2331,11 +2331,12 @@ Found while fixing MetalSprocketsSceneGraph #22.
 ## 109: MetalMesh ignores MTKSubmesh index buffer offset
 
 +++
-status: new
+status: open
 priority: medium
 kind: bug
 labels: area:metal, effort:s
 created: 2026-10-11T21:56:53Z
+updated: 2026-10-11T22:35:19Z
 +++
 
 MetalMesh(mtkMesh:) uses sub.indexBuffer.buffer but drops sub.indexBuffer.offset. MTKMeshBufferAllocator can pack several submeshes into one buffer, so indices would be read from the wrong place. Add indexBufferOffset to MetalMesh.Submesh and honor it in readers. Found while fixing #108.
@@ -2345,11 +2346,12 @@ MetalMesh(mtkMesh:) uses sub.indexBuffer.buffer but drops sub.indexBuffer.offset
 ## 110: Audit public doc comments and add a DocC catalog
 
 +++
-status: new
+status: open
 priority: low
 kind: documentation
 labels: area:docs, effort:l
 created: 2026-10-11T22:22:18Z
+updated: 2026-10-11T22:35:19Z
 +++
 
 Follow-up from #100 (README refreshed there). Remaining: audit public API for missing or thin doc comments (SwiftMesh, SwiftMeshIO, BinPacking), add a top-level overview per target, and consider a DocC catalog with articles for mesh construction, CSG, decimation, atlas baking, and IO.
