@@ -131,12 +131,13 @@ Convert MetalMesh back to Mesh. Will produce a triangle-only mesh with duplicate
 ## 9: Binary PLY support
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:m
 created: 2026-04-15T00:51:26Z
-updated: 2026-04-15T17:02:58Z
+updated: 2026-10-11T22:44:56Z
+closed: 2026-10-11T22:44:56Z
 +++
 
 Add binary PLY read/write to SwiftMeshIO. Needed for large meshes — ASCII PLY is too slow/large.

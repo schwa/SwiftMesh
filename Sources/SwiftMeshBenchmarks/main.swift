@@ -98,6 +98,10 @@ benchmarks.append(Benchmark(name: "ply.roundTrip.icoSphere4") {
     let mesh = Mesh.icoSphere(subdivisions: 4, attributes: [.smoothNormals])
     return { _ = try? PLY.read(from: PLY.write(mesh)) }
 })
+benchmarks.append(Benchmark(name: "ply.roundTrip.binary.icoSphere4") {
+    let mesh = Mesh.icoSphere(subdivisions: 4, attributes: [.smoothNormals])
+    return { _ = try? PLY.read(from: PLY.write(mesh, format: .binaryLittleEndian)) }
+})
 
 var arguments = Array(CommandLine.arguments.dropFirst())
 let json = arguments.contains("--json")

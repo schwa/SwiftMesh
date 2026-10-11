@@ -18,212 +18,362 @@ public enum PLYError: Error, CustomStringConvertible {
     }
 }
 
-// MARK: - PLY Reader
+// MARK: - PLY
 
 public enum PLY {
-    /// Read a Mesh from PLY ASCII data.
+    /// PLY body encoding.
+    public enum Format: Sendable {
+        case ascii
+        case binaryLittleEndian
+        case binaryBigEndian
+    }
+
+    /// Read a Mesh from PLY data (ASCII or binary, either endianness).
     ///
-    /// Supports vertex positions (x, y, z) and polygon face lists.
-    /// Optional vertex normals (nx, ny, nz) are read if present.
+    /// Reads vertex positions (x, y, z), optional vertex normals (nx, ny, nz), and
+    /// polygon faces (`vertex_indices` or `vertex_index`). Other elements and
+    /// properties are skipped.
     public static func read(from data: Data) throws -> Mesh {
-        guard let string = String(data: data, encoding: .ascii) ?? String(data: data, encoding: .utf8) else {
-            throw PLYError.parseError("Could not decode data as text")
+        let bytes = [UInt8](data)
+        let (header, bodyStart) = try parseHeader(bytes)
+        var reader: any ValueReader = switch header.format {
+        case .ascii: try ASCIIReader(bytes: bytes[bodyStart...])
+        case .binaryLittleEndian: BinaryReader(bytes: bytes, offset: bodyStart, bigEndian: false)
+        case .binaryBigEndian: BinaryReader(bytes: bytes, offset: bodyStart, bigEndian: true)
         }
-        return try read(from: string)
+
+        var positions: [SIMD3<Float>] = []
+        var vertexNormals: [SIMD3<Float>]?
+        var faces: [[Int]] = []
+
+        for element in header.elements {
+            switch element.name {
+            case "vertex":
+                let names = element.properties.map(\.name)
+                guard let x = names.firstIndex(of: "x"), let y = names.firstIndex(of: "y"), let z = names.firstIndex(of: "z") else {
+                    throw PLYError.invalidHeader("Missing x/y/z vertex properties")
+                }
+                let normalIndices = ["nx", "ny", "nz"].compactMap { names.firstIndex(of: $0) }
+                positions.reserveCapacity(element.count)
+                if normalIndices.count == 3 {
+                    vertexNormals = []
+                    vertexNormals!.reserveCapacity(element.count)
+                }
+                for index in 0..<element.count {
+                    var values = [Double](repeating: 0, count: element.properties.count)
+                    for (slot, property) in element.properties.enumerated() {
+                        if let listTypes = property.list {
+                            let count = try reader.read(listTypes.count, context: "vertex \(index)")
+                            for _ in 0..<Int(count) {
+                                _ = try reader.read(listTypes.item, context: "vertex \(index)")
+                            }
+                        } else {
+                            values[slot] = try reader.read(property.type, context: "vertex \(index)")
+                        }
+                    }
+                    positions.append(SIMD3(Float(values[x]), Float(values[y]), Float(values[z])))
+                    if normalIndices.count == 3 {
+                        vertexNormals!.append(SIMD3(Float(values[normalIndices[0]]), Float(values[normalIndices[1]]), Float(values[normalIndices[2]])))
+                    }
+                }
+
+            case "face":
+                guard let indexProperty = element.properties.firstIndex(where: { ($0.name == "vertex_indices" || $0.name == "vertex_index") && $0.list != nil }) else {
+                    throw PLYError.invalidHeader("Missing vertex_indices face property")
+                }
+                faces.reserveCapacity(element.count)
+                for index in 0..<element.count {
+                    for (slot, property) in element.properties.enumerated() {
+                        if let listTypes = property.list {
+                            let count = Int(try reader.read(listTypes.count, context: "face \(index)"))
+                            var items: [Int] = []
+                            items.reserveCapacity(count)
+                            for _ in 0..<count {
+                                items.append(Int(try reader.read(listTypes.item, context: "face \(index)")))
+                            }
+                            if slot == indexProperty {
+                                guard count >= 3 else {
+                                    throw PLYError.parseError("Bad face \(index): \(count) vertices")
+                                }
+                                faces.append(items)
+                            }
+                        } else {
+                            _ = try reader.read(property.type, context: "face \(index)")
+                        }
+                    }
+                }
+
+            default:
+                try reader.skip(element)
+            }
+        }
+
+        let topology = HalfEdgeTopology(vertexCount: positions.count, faces: faces.map { HalfEdgeTopology.FaceDefinition(outer: $0) })
+        let cornerNormals = vertexNormals.map { normals in topology.halfEdges.map { normals[$0.origin.raw] } }
+        return Mesh(topology: topology, positions: positions, normals: cornerNormals)
     }
 
     /// Read a Mesh from a PLY ASCII string.
     public static func read(from string: String) throws -> Mesh {
-        var lines = string.split(separator: "\n", omittingEmptySubsequences: false).makeIterator()
-
-        // Parse header
-        guard let magic = lines.next(), magic.trimmingCharacters(in: .whitespaces) == "ply" else {
-            throw PLYError.invalidHeader("Missing 'ply' magic")
-        }
-
-        guard let formatLine = lines.next(), formatLine.trimmingCharacters(in: .whitespaces).hasPrefix("format ascii") else {
-            throw PLYError.unsupportedFormat("Only ASCII PLY is supported")
-        }
-
-        var vertexCount = 0
-        var faceCount = 0
-        var vertexProperties: [String] = []
-        var inVertexElement = false
-
-        while let line = lines.next() {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed == "end_header" {
-                break
-            }
-            if trimmed.hasPrefix("comment") {
-                continue
-            }
-            if trimmed.hasPrefix("element vertex") {
-                let parts = trimmed.split(separator: " ")
-                guard parts.count >= 3, let count = Int(parts[2]) else {
-                    throw PLYError.invalidHeader("Bad vertex element: \(trimmed)")
-                }
-                vertexCount = count
-                inVertexElement = true
-                continue
-            }
-            if trimmed.hasPrefix("element face") {
-                let parts = trimmed.split(separator: " ")
-                guard parts.count >= 3, let count = Int(parts[2]) else {
-                    throw PLYError.invalidHeader("Bad face element: \(trimmed)")
-                }
-                faceCount = count
-                inVertexElement = false
-                continue
-            }
-            if trimmed.hasPrefix("element") {
-                inVertexElement = false
-                continue
-            }
-            if trimmed.hasPrefix("property"), inVertexElement {
-                let parts = trimmed.split(separator: " ")
-                if parts.count >= 3, !trimmed.contains("list") {
-                    vertexProperties.append(String(parts.last!))
-                }
-            }
-        }
-
-        // Find property indices
-        let xIdx = vertexProperties.firstIndex(of: "x")
-        let yIdx = vertexProperties.firstIndex(of: "y")
-        let zIdx = vertexProperties.firstIndex(of: "z")
-        let nxIdx = vertexProperties.firstIndex(of: "nx")
-        let nyIdx = vertexProperties.firstIndex(of: "ny")
-        let nzIdx = vertexProperties.firstIndex(of: "nz")
-
-        guard let xIdx, let yIdx, let zIdx else {
-            throw PLYError.invalidHeader("Missing x/y/z vertex properties")
-        }
-
-        let hasNormals = nxIdx != nil && nyIdx != nil && nzIdx != nil
-
-        // Parse vertices
-        var positions: [SIMD3<Float>] = []
-        var vertexNormals: [SIMD3<Float>]?
-        positions.reserveCapacity(vertexCount)
-        if hasNormals {
-            vertexNormals = []
-            vertexNormals!.reserveCapacity(vertexCount)
-        }
-
-        for lineNum in 0..<vertexCount {
-            guard let line = lines.next() else {
-                throw PLYError.parseError("Unexpected end of file at vertex \(lineNum)")
-            }
-            let parts = line.split(separator: " ")
-            guard parts.count >= vertexProperties.count else {
-                throw PLYError.parseError("Not enough values on vertex line \(lineNum)")
-            }
-            guard let x = Float(parts[xIdx]), let y = Float(parts[yIdx]), let z = Float(parts[zIdx]) else {
-                throw PLYError.parseError("Could not parse vertex position at line \(lineNum)")
-            }
-            positions.append(SIMD3(x, y, z))
-
-            if hasNormals {
-                let nx = Float(parts[nxIdx!]) ?? 0
-                let ny = Float(parts[nyIdx!]) ?? 0
-                let nz = Float(parts[nzIdx!]) ?? 0
-                vertexNormals!.append(SIMD3(nx, ny, nz))
-            }
-        }
-
-        // Parse faces
-        var faces: [[Int]] = []
-        faces.reserveCapacity(faceCount)
-
-        for lineNum in 0..<faceCount {
-            guard let line = lines.next() else {
-                throw PLYError.parseError("Unexpected end of file at face \(lineNum)")
-            }
-            let parts = line.split(separator: " ")
-            guard let count = Int(parts.first ?? ""), count >= 3, parts.count >= count + 1 else {
-                throw PLYError.parseError("Bad face at line \(lineNum)")
-            }
-            let indices = (1...count).compactMap { Int(parts[$0]) }
-            guard indices.count == count else {
-                throw PLYError.parseError("Could not parse face indices at line \(lineNum)")
-            }
-            faces.append(indices)
-        }
-
-        // Build mesh
-        let faceDefs = faces.map { HalfEdgeTopology.FaceDefinition(outer: $0) }
-        let topology = HalfEdgeTopology(vertexCount: positions.count, faces: faceDefs)
-
-        // Convert per-vertex normals to per-corner normals if present
-        var cornerNormals: [SIMD3<Float>]?
-        if let vertexNormals {
-            cornerNormals = [SIMD3<Float>](repeating: .zero, count: topology.halfEdges.count)
-            for he in topology.halfEdges {
-                cornerNormals![he.id.raw] = vertexNormals[he.origin.raw]
-            }
-        }
-
-        return Mesh(topology: topology, positions: positions, normals: cornerNormals)
+        try read(from: Data(string.utf8))
     }
 
-    /// Write a Mesh to PLY ASCII format.
-    public static func write(_ mesh: Mesh) -> Data {
-        var output = ""
-
-        let hasNormals = mesh.normals != nil
-
-        // Header
-        output += "ply\n"
-        output += "format ascii 1.0\n"
-        output += "element vertex \(mesh.positions.count)\n"
-        output += "property float x\n"
-        output += "property float y\n"
-        output += "property float z\n"
-        if hasNormals {
-            output += "property float nx\n"
-            output += "property float ny\n"
-            output += "property float nz\n"
-        }
-        output += "element face \(mesh.topology.faces.count)\n"
-        output += "property list uchar int vertex_indices\n"
-        output += "end_header\n"
-
-        // Vertices
-        // For normals, average the per-corner normals back to per-vertex
+    /// Write a Mesh to PLY.
+    ///
+    /// Per-corner normals are averaged to per-vertex normals. Faces are written as
+    /// `uchar`-counted `int` index lists.
+    public static func write(_ mesh: Mesh, format: Format = .ascii) -> Data {
         var vertexNormals: [SIMD3<Float>]?
         if let normals = mesh.normals {
-            var accum = [SIMD3<Float>](repeating: .zero, count: mesh.positions.count)
-            var counts = [Int](repeating: 0, count: mesh.positions.count)
-            for he in mesh.topology.halfEdges {
-                accum[he.origin.raw] += normals[he.id.raw]
-                counts[he.origin.raw] += 1
+            var sums = [SIMD3<Float>](repeating: .zero, count: mesh.positions.count)
+            for halfEdge in mesh.topology.halfEdges {
+                sums[halfEdge.origin.raw] += normals[halfEdge.id.raw]
             }
-            vertexNormals = accum.enumerated().map { idx, sum in
-                counts[idx] > 0 ? simd_normalize(sum) : .zero
+            vertexNormals = sums.map { simd_length($0) > 0 ? simd_normalize($0) : .zero }
+        }
+        let faces = mesh.topology.faces.filter { $0.edge != nil }.map { mesh.topology.vertexLoop(for: $0.id) }
+
+        let formatName = switch format {
+        case .ascii: "ascii"
+        case .binaryLittleEndian: "binary_little_endian"
+        case .binaryBigEndian: "binary_big_endian"
+        }
+        var header = "ply\nformat \(formatName) 1.0\n"
+        header += "element vertex \(mesh.positions.count)\n"
+        header += "property float x\nproperty float y\nproperty float z\n"
+        if vertexNormals != nil {
+            header += "property float nx\nproperty float ny\nproperty float nz\n"
+        }
+        header += "element face \(faces.count)\n"
+        header += "property list uchar int vertex_indices\n"
+        header += "end_header\n"
+
+        if format == .ascii {
+            var output = header
+            for index in mesh.positions.indices {
+                let position = mesh.positions[index]
+                output += "\(position.x) \(position.y) \(position.z)"
+                if let normal = vertexNormals?[index] {
+                    output += " \(normal.x) \(normal.y) \(normal.z)"
+                }
+                output += "\n"
             }
+            for face in faces {
+                output += "\(face.count)" + face.map { " \($0.raw)" }.joined() + "\n"
+            }
+            return Data(output.utf8)
         }
 
-        for idx in 0..<mesh.positions.count {
-            let pos = mesh.positions[idx]
-            output += "\(pos.x) \(pos.y) \(pos.z)"
-            if let vertexNormals {
-                let n = vertexNormals[idx]
-                output += " \(n.x) \(n.y) \(n.z)"
-            }
-            output += "\n"
+        let bigEndian = format == .binaryBigEndian
+        var output = Data(header.utf8)
+        func append(_ value: Float) {
+            let bits = bigEndian ? value.bitPattern.bigEndian : value.bitPattern.littleEndian
+            withUnsafeBytes(of: bits) { output.append(contentsOf: $0) }
         }
-
-        // Faces
-        for face in mesh.topology.faces {
-            let verts = mesh.topology.vertexLoop(for: face.id)
-            output += "\(verts.count)"
-            for vid in verts {
-                output += " \(vid.raw)"
-            }
-            output += "\n"
+        func append(_ value: Int32) {
+            let ordered = bigEndian ? value.bigEndian : value.littleEndian
+            withUnsafeBytes(of: ordered) { output.append(contentsOf: $0) }
         }
+        for index in mesh.positions.indices {
+            let position = mesh.positions[index]
+            append(position.x)
+            append(position.y)
+            append(position.z)
+            if let normal = vertexNormals?[index] {
+                append(normal.x)
+                append(normal.y)
+                append(normal.z)
+            }
+        }
+        for face in faces {
+            output.append(UInt8(clamping: face.count))
+            for vertex in face {
+                append(Int32(vertex.raw))
+            }
+        }
+        return output
+    }
+}
 
-        return Data(output.utf8)
+// MARK: - Header
+
+private enum ScalarType {
+    case int8, uint8, int16, uint16, int32, uint32, float32, float64
+
+    init?(_ name: Substring) {
+        switch name {
+        case "char", "int8": self = .int8
+        case "uchar", "uint8": self = .uint8
+        case "short", "int16": self = .int16
+        case "ushort", "uint16": self = .uint16
+        case "int", "int32": self = .int32
+        case "uint", "uint32": self = .uint32
+        case "float", "float32": self = .float32
+        case "double", "float64": self = .float64
+        default: return nil
+        }
+    }
+
+    var size: Int {
+        switch self {
+        case .int8, .uint8: 1
+        case .int16, .uint16: 2
+        case .int32, .uint32, .float32: 4
+        case .float64: 8
+        }
+    }
+}
+
+private struct Property {
+    var name: String
+    var type: ScalarType
+    var list: (count: ScalarType, item: ScalarType)?
+}
+
+private struct Element {
+    var name: String
+    var count: Int
+    var properties: [Property] = []
+}
+
+private struct Header {
+    var format: PLY.Format
+    var elements: [Element]
+}
+
+/// Parse the ASCII header; returns it and the byte offset where the body starts.
+private func parseHeader(_ bytes: [UInt8]) throws -> (Header, Int) {
+    let marker = Array("end_header".utf8)
+    guard let markerStart = (0...max(0, bytes.count - marker.count)).first(where: { bytes[$0..<($0 + marker.count)].elementsEqual(marker) }) else {
+        throw PLYError.invalidHeader("Missing end_header")
+    }
+    var bodyStart = markerStart + marker.count
+    while bodyStart < bytes.count, bytes[bodyStart] == UInt8(ascii: "\r") || bytes[bodyStart] == UInt8(ascii: " ") {
+        bodyStart += 1
+    }
+    if bodyStart < bytes.count, bytes[bodyStart] == UInt8(ascii: "\n") {
+        bodyStart += 1
+    }
+    let text = String(decoding: bytes[0..<markerStart], as: UTF8.self)
+    let lines = text.split(whereSeparator: \.isNewline).map { $0.split(whereSeparator: \.isWhitespace) }
+    guard lines.first == ["ply"] else {
+        throw PLYError.invalidHeader("Missing 'ply' magic")
+    }
+
+    var format: PLY.Format?
+    var elements: [Element] = []
+    for parts in lines.dropFirst() where !parts.isEmpty {
+        switch parts[0] {
+        case "format":
+            guard parts.count >= 2 else {
+                throw PLYError.invalidHeader("Bad format line")
+            }
+            switch parts[1] {
+            case "ascii": format = .ascii
+            case "binary_little_endian": format = .binaryLittleEndian
+            case "binary_big_endian": format = .binaryBigEndian
+            default: throw PLYError.unsupportedFormat(String(parts[1]))
+            }
+        case "element":
+            guard parts.count >= 3, let count = Int(parts[2]) else {
+                throw PLYError.invalidHeader("Bad element: \(parts.joined(separator: " "))")
+            }
+            elements.append(Element(name: String(parts[1]), count: count))
+        case "property":
+            guard !elements.isEmpty else {
+                throw PLYError.invalidHeader("Property before element")
+            }
+            if parts.count >= 5, parts[1] == "list", let count = ScalarType(parts[2]), let item = ScalarType(parts[3]) {
+                elements[elements.count - 1].properties.append(Property(name: String(parts[4]), type: item, list: (count, item)))
+            } else if parts.count >= 3, let type = ScalarType(parts[1]) {
+                elements[elements.count - 1].properties.append(Property(name: String(parts[2]), type: type))
+            } else {
+                throw PLYError.invalidHeader("Bad property: \(parts.joined(separator: " "))")
+            }
+        default:
+            continue // comment, obj_info
+        }
+    }
+    guard let format else {
+        throw PLYError.invalidHeader("Missing format line")
+    }
+    return (Header(format: format, elements: elements), bodyStart)
+}
+
+// MARK: - Body readers
+
+private protocol ValueReader {
+    mutating func read(_ type: ScalarType, context: @autoclosure () -> String) throws -> Double
+}
+
+extension ValueReader {
+    fileprivate mutating func skip(_ element: Element) throws {
+        for index in 0..<element.count {
+            for property in element.properties {
+                if let list = property.list {
+                    let count = Int(try read(list.count, context: "\(element.name) \(index)"))
+                    for _ in 0..<count {
+                        _ = try read(list.item, context: "\(element.name) \(index)")
+                    }
+                } else {
+                    _ = try read(property.type, context: "\(element.name) \(index)")
+                }
+            }
+        }
+    }
+}
+
+/// ASCII bodies are whitespace-separated tokens; line breaks carry no meaning beyond separation.
+private struct ASCIIReader: ValueReader {
+    var tokens: [Substring]
+    var position = 0
+
+    init(bytes: ArraySlice<UInt8>) throws {
+        tokens = String(decoding: bytes, as: UTF8.self).split(whereSeparator: \.isWhitespace)
+    }
+
+    mutating func read(_ type: ScalarType, context: @autoclosure () -> String) throws -> Double {
+        guard position < tokens.count else {
+            throw PLYError.parseError("Unexpected end of file at \(context())")
+        }
+        defer { position += 1 }
+        guard let value = Double(tokens[position]) else {
+            throw PLYError.parseError("Could not parse '\(tokens[position])' at \(context())")
+        }
+        return value
+    }
+}
+
+private struct BinaryReader: ValueReader {
+    var bytes: [UInt8]
+    var offset: Int
+    var bigEndian: Bool
+
+    mutating func read(_ type: ScalarType, context: @autoclosure () -> String) throws -> Double {
+        guard offset + type.size <= bytes.count else {
+            throw PLYError.parseError("Unexpected end of file at \(context())")
+        }
+        defer { offset += type.size }
+        switch type {
+        case .int8: return Double(Int8(bitPattern: bytes[offset]))
+        case .uint8: return Double(bytes[offset])
+        case .int16: return Double(Int16(bitPattern: ordered(UInt16.self)))
+        case .uint16: return Double(ordered(UInt16.self))
+        case .int32: return Double(Int32(bitPattern: ordered(UInt32.self)))
+        case .uint32: return Double(ordered(UInt32.self))
+        case .float32: return Double(Float(bitPattern: ordered(UInt32.self)))
+        case .float64: return Float64(bitPattern: ordered(UInt64.self))
+        }
+    }
+
+    /// Assemble an unsigned integer from the file's byte order.
+    private func ordered<T: FixedWidthInteger & UnsignedInteger>(_: T.Type) -> T {
+        var value: T = 0
+        let size = MemoryLayout<T>.size
+        for index in 0..<size {
+            let byte = T(bytes[offset + (bigEndian ? size - 1 - index : index)])
+            value |= byte << (8 * index)
+        }
+        return value
     }
 }
