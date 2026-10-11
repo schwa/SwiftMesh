@@ -143,3 +143,107 @@ public extension Mesh {
         }
     }
 }
+
+// MARK: - Euler characteristic and genus
+
+/// One connected piece of a surface and its topological invariants.
+public struct SurfaceComponent: Sendable, Equatable {
+    public var faces: [HalfEdgeTopology.FaceID]
+    /// V - E + F, with each hole ring in a face counted as -1 (a holed face is not a disk).
+    public var eulerCharacteristic: Int
+    public var boundaryLoopCount: Int
+    /// False if some edge's two half-edges run the same direction (faces can't be oriented consistently).
+    public var isOrientable: Bool
+
+    /// Genus from chi = 2 - 2g - b (orientable) or chi = 2 - g - b (non-orientable).
+    /// Nil if the result is not a non-negative integer, which means the mesh is not a valid surface.
+    public var genus: Int? {
+        let value = 2 - eulerCharacteristic - boundaryLoopCount
+        if isOrientable {
+            return value >= 0 && value.isMultiple(of: 2) ? value / 2 : nil
+        }
+        return value >= 1 ? value : nil
+    }
+}
+
+public extension HalfEdgeTopology {
+    /// V - E + F over live elements, with hole rings counted as -1 each.
+    var eulerCharacteristic: Int {
+        surfaceComponents().reduce(0) { $0 + $1.eulerCharacteristic }
+    }
+
+    /// Connected pieces (faces joined across twin edges) with their invariants.
+    func surfaceComponents() -> [SurfaceComponent] {
+        // Union faces across twins.
+        var parent = Array(faces.indices)
+        func find(_ index: Int) -> Int {
+            var root = index
+            while parent[root] != root {
+                parent[root] = parent[parent[root]]
+                root = parent[root]
+            }
+            return root
+        }
+        for halfEdge in halfEdges where halfEdge.next != nil {
+            if let face = halfEdge.face, let twin = halfEdge.twin, let other = halfEdges[twin.raw].face {
+                parent[find(face.raw)] = find(other.raw)
+            }
+        }
+
+        var componentFaces: [Int: [FaceID]] = [:]
+        for face in faces where face.edge != nil {
+            componentFaces[find(face.id.raw), default: []].append(face.id)
+        }
+
+        // Boundary loops belong to the component of the face on their inner side.
+        var boundaryCounts: [Int: Int] = [:]
+        var boundaryVertexComponent: [Int: Int] = [:]
+        for halfEdge in halfEdges where halfEdge.next != nil && halfEdge.twin == nil {
+            if let face = halfEdge.face {
+                boundaryVertexComponent[halfEdge.origin.raw] = find(face.raw)
+            }
+        }
+        for loop in boundaryLoops() {
+            if let component = loop.lazy.compactMap({ boundaryVertexComponent[$0.raw] }).first {
+                boundaryCounts[component, default: 0] += 1
+            }
+        }
+
+        return componentFaces.values.sorted { $0[0].raw < $1[0].raw }.map { componentFaceIDs in
+            var vertexSet = Set<Int>()
+            var directed = Set<[Int]>()
+            var undirected = Set<[Int]>()
+            var orientable = true
+            var holeRings = 0
+            for face in componentFaceIDs {
+                holeRings += faces[face.raw].holeEdges.count
+                let loops = [faces[face.raw].edge!] + faces[face.raw].holeEdges
+                for start in loops {
+                    for halfEdge in collectHalfEdgeLoop(startEdge: start) {
+                        let origin = halfEdges[halfEdge.raw].origin.raw
+                        guard let destination = destViaNext(of: halfEdge)?.raw else {
+                            continue
+                        }
+                        vertexSet.insert(origin)
+                        if !directed.insert([origin, destination]).inserted {
+                            orientable = false
+                        }
+                        undirected.insert([min(origin, destination), max(origin, destination)])
+                    }
+                }
+            }
+            let root = find(componentFaceIDs[0].raw)
+            return SurfaceComponent(
+                faces: componentFaceIDs,
+                eulerCharacteristic: vertexSet.count - undirected.count + componentFaceIDs.count - holeRings,
+                boundaryLoopCount: boundaryCounts[root] ?? 0,
+                isOrientable: orientable
+            )
+        }
+    }
+
+    /// Every component has a valid (non-negative integer) genus.
+    var hasConsistentGenus: Bool {
+        surfaceComponents().allSatisfy { $0.genus != nil }
+    }
+}

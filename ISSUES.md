@@ -1224,12 +1224,13 @@ Test impact: Existing CSGTests already test at the boundary (union/intersection/
 ## 75: Implement Euler characteristic and genus computation
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:m, area:topology, area:diagnostics
 created: 2026-04-15T15:43:32Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-11T22:47:29Z
+closed: 2026-10-11T22:47:29Z
 +++
 
 Split from #67. Compute eulerCharacteristic (V - E + F) and hasConsistentGenus. Non-trivial because:
