@@ -1040,12 +1040,13 @@ Split a mesh along an arbitrary plane, producing two separate meshes (one for ea
 ## 67: Add mesh diagnostic API (is/has-style queries)
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:m
 created: 2026-04-15T14:12:08Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-11T22:14:28Z
+closed: 2026-10-11T22:14:28Z
 +++
 
 Add a comprehensive set of diagnostic properties and methods for detecting mesh issues and attributes. We already have `isManifold`.
@@ -1077,6 +1078,7 @@ Add a comprehensive set of diagnostic properties and methods for detecting mesh 
 - `2026-04-15T14:12:08Z`: `hasDuplicateFaces` — two faces sharing all the same vertices
 - `2026-04-15T14:12:08Z`: `hasDuplicateEdges` — more than one edge connecting the same two vertices
 - `2026-04-15T15:43:45Z`: Split out the harder items: #75 (Euler characteristic / genus) and #76 (inconsistent face winding). The remaining items in this issue are straightforward computed properties.
+- `2026-10-11T22:14:27Z`: Implemented all remaining items except hasNonMatchingFaceEdgeCounts: faces don't store a degree, so there's nothing to compare the loop count against. Euler/genus and winding stay in #75/#76.
 
 ---
 
