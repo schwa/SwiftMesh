@@ -584,6 +584,22 @@ extension HalfEdgeTopology {
     /// Returns the surviving vertex ID, or nil if the collapse is invalid.
     @discardableResult
     public mutating func collapseEdge(_ heID: HalfEdgeID) -> VertexID? {
+        var outgoing = outgoingHalfEdges()
+        return collapseEdge(heID, outgoing: &outgoing)
+    }
+
+    /// Outgoing half-edges per vertex, indexed by `VertexID.raw`. May include tombstoned half-edges.
+    func outgoingHalfEdges() -> [[HalfEdgeID]] {
+        var outgoing = [[HalfEdgeID]](repeating: [], count: vertices.count)
+        for he in halfEdges where he.next != nil {
+            outgoing[he.origin.raw].append(he.id)
+        }
+        return outgoing
+    }
+
+    /// Collapse an edge using and updating a precomputed outgoing half-edge table, avoiding full scans.
+    @discardableResult
+    mutating func collapseEdge(_ heID: HalfEdgeID, outgoing: inout [[HalfEdgeID]]) -> VertexID? {
         let he = halfEdges[heID.raw]
         let vertexA = he.origin // kept
         guard let vertexB = destViaNext(of: heID) else {
@@ -591,9 +607,12 @@ extension HalfEdgeTopology {
         }
 
         // Repoint all half-edges originating from B to originate from A
-        for i in halfEdges.indices where halfEdges[i].origin == vertexB {
-            halfEdges[i].origin = vertexA
+        for id in outgoing[vertexB.raw] where halfEdges[id.raw].origin == vertexB {
+            halfEdges[id.raw].origin = vertexA
         }
+        outgoing[vertexA.raw] += outgoing[vertexB.raw]
+        outgoing[vertexB.raw] = []
+        var touchedVertices: Set<VertexID> = [vertexA]
 
         // Collect the faces adjacent to this edge (via he and twin)
         // These triangle faces will become degenerate and need removal
@@ -645,10 +664,12 @@ extension HalfEdgeTopology {
 
                     // Tombstone P, Q, and the self-loop
                     for hid in [selfLoopHE, edgeP, edgeQ] {
+                        touchedVertices.insert(halfEdges[hid.raw].origin)
                         tombstoneHalfEdge(hid)
                     }
                 } else {
                     // Unexpected topology — tombstone the self-loop at minimum
+                    touchedVertices.insert(halfEdges[selfLoopHE.raw].origin)
                     tombstoneHalfEdge(selfLoopHE)
                 }
             } else {
@@ -657,6 +678,7 @@ extension HalfEdgeTopology {
                     if let twinID = halfEdges[hid.raw].twin {
                         halfEdges[twinID.raw].twin = nil
                     }
+                    touchedVertices.insert(halfEdges[hid.raw].origin)
                     tombstoneHalfEdge(hid)
                 }
             }
@@ -668,14 +690,11 @@ extension HalfEdgeTopology {
         // Tombstone vertex B
         vertices[vertexB.raw].edge = nil
 
-        // Fix vertex A's outgoing edge to point to a live half-edge
-        vertices[vertexA.raw].edge = halfEdges.first { $0.origin == vertexA && $0.next != nil }?.id
-
-        // Fix outgoing edges for all neighbors whose edge ref may now be dead
-        for i in vertices.indices where vertices[i].edge != nil {
-            let eid = vertices[i].edge!
-            if halfEdges[eid.raw].next == nil {
-                vertices[i].edge = halfEdges.first { $0.origin == vertices[i].id && $0.next != nil }?.id
+        // Prune tombstoned half-edges and repair edge refs only where something changed
+        for vertex in touchedVertices where vertex != vertexB {
+            outgoing[vertex.raw].removeAll { halfEdges[$0.raw].next == nil || halfEdges[$0.raw].origin != vertex }
+            if vertex == vertexA || vertices[vertex.raw].edge.map({ halfEdges[$0.raw].next == nil }) == true {
+                vertices[vertex.raw].edge = outgoing[vertex.raw].first
             }
         }
 

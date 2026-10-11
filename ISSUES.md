@@ -1450,13 +1450,14 @@ Depends on a benchmarking harness (to be filed separately under the performance 
 ## 87: Decimation: O(V·E) full half-edge scans per collapse
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: area:performance, area:decimation, effort:l
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:19Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-11T21:58:46Z
+closed: 2026-10-11T21:58:46Z
 +++
 
 `Mesh.decimate` repeatedly does full sweeps over `topology.halfEdges` and `topology.vertices` for every edge collapse:

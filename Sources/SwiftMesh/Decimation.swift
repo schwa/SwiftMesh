@@ -239,6 +239,7 @@ public extension Mesh {
 
         // 5. Iteratively collapse cheapest edge
         var currentFaceCount = topology.faces.filter { $0.edge != nil }.count
+        var outgoing = topology.outgoingHalfEdges()
 
         while currentFaceCount > targetFaceCount {
             guard let entry = heap.removeMin() else {
@@ -281,7 +282,7 @@ public extension Mesh {
             }
 
             // Perform the collapse
-            guard let survivor = topology.collapseEdge(entry.halfEdge) else {
+            guard let survivor = topology.collapseEdge(entry.halfEdge, outgoing: &outgoing) else {
                 continue
             }
 
@@ -295,9 +296,9 @@ public extension Mesh {
             generation[survivor.raw] += 1
 
             // Re-insert edges around the survivor into the heap
-            for neighborHE in topology.halfEdges where neighborHE.next != nil && neighborHE.origin == survivor {
-                if let (cost, _) = collapseCost(heID: neighborHE.id) {
-                    heap.insert(.init(cost: cost, halfEdge: neighborHE.id, generation: generation[survivor.raw]))
+            for neighborHE in outgoing[survivor.raw] where topology.halfEdges[neighborHE.raw].next != nil {
+                if let (cost, _) = collapseCost(heID: neighborHE) {
+                    heap.insert(.init(cost: cost, halfEdge: neighborHE, generation: generation[survivor.raw]))
                 }
             }
         }
