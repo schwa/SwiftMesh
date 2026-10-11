@@ -1023,12 +1023,13 @@ CSG union/intersection/difference of two manifold closed meshes should produce a
 ## 66: Add split-by-plane operation
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:l
 created: 2026-04-15T07:54:33Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-11T22:16:35Z
+closed: 2026-10-11T22:16:35Z
 +++
 
 Split a mesh along an arbitrary plane, producing two separate meshes (one for each side). Faces straddling the plane should be clipped and capped.
