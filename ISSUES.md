@@ -2381,11 +2381,12 @@ Follow-up from #100 (README refreshed there). Remaining: audit public API for mi
 ## 111: MetalMesh ignores MTKMesh vertex buffer offsets
 
 +++
-status: new
+status: open
 priority: medium
 kind: bug
 labels: area:metal, effort:s
 created: 2026-10-11T22:36:45Z
+updated: 2026-10-11T22:56:38Z
 +++
 
 MetalMesh(mtkMesh:) stores mtkBuffer.buffer per vertex buffer index but drops mtkBuffer.offset, and draw(_:) binds vertex buffers at offset 0. If MTKMeshBufferAllocator sub-allocates vertex data, attributes are read from the wrong place. Add per-buffer offsets (e.g. vertexBufferOffsets: [Int: Int]) and honor them in draw(_:), toMesh(), and toMDLMesh. Found while fixing #109.
@@ -2411,11 +2412,12 @@ Mesh.decimate collapses edges without checking the link condition, so it can cre
 ## 113: CSG output order is nondeterministic
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
 labels: area:csg, effort:s
 created: 2026-10-11T22:41:05Z
+updated: 2026-10-11T22:56:38Z
 +++
 
 Calling the same Mesh CSG operation twice can return meshes with the same geometry but different vertex/face order (Mesh == fails). Likely Dictionary/Set iteration in welding or coplanar merge. Makes exports and snapshot tests non-reproducible. Found while fixing #74.
