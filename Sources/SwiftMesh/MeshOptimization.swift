@@ -108,7 +108,8 @@ public extension Mesh {
         // or find the outer boundary of the merged region
         var newFaces: [[Int]] = []
 
-        for (_, group) in groups {
+        // Dictionary order is random; emit groups in order of their lowest face index.
+        for group in groups.values.sorted(by: { $0[0] < $1[0] }) {
             if group.count == 1 {
                 // Single face — keep as-is
                 let verts = topology.vertexLoop(for: HalfEdgeTopology.FaceID(raw: group[0]))

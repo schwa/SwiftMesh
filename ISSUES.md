@@ -2413,12 +2413,13 @@ Mesh.decimate collapses edges without checking the link condition, so it can cre
 ## 113: CSG output order is nondeterministic
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: area:csg, effort:s
 created: 2026-10-11T22:41:05Z
-updated: 2026-10-11T22:56:38Z
+updated: 2026-10-11T22:59:09Z
+closed: 2026-10-11T22:59:09Z
 +++
 
 Calling the same Mesh CSG operation twice can return meshes with the same geometry but different vertex/face order (Mesh == fails). Likely Dictionary/Set iteration in welding or coplanar merge. Makes exports and snapshot tests non-reproducible. Found while fixing #74.

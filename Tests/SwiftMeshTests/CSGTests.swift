@@ -72,6 +72,17 @@ struct CSGTests {
         #expect(summary(a.difference(b, weldTolerance: 1e-3)) == summary(a.csg(.difference, b, options: .init(weldTolerance: 1e-3))))
     }
 
+    @Test("CSG output is deterministic", arguments: [CSGOperation.union, .intersection, .difference])
+    func deterministic(operation: CSGOperation) {
+        let (a, b) = overlappingCubes()
+        let sphere = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 2, attributes: [])
+        let first = (a.csg(operation, b), sphere.csg(operation, a))
+        for _ in 0..<5 {
+            #expect(a.csg(operation, b) == first.0)
+            #expect(sphere.csg(operation, a) == first.1)
+        }
+    }
+
     @Test("CSGOptions.attributes derives attributes on the result")
     func optionsAttributes() throws {
         let (a, b) = overlappingCubes()
