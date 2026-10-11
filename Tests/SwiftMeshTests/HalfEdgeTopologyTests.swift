@@ -220,6 +220,21 @@ struct HalfEdgeTopologyEdgeDeletionTests {
         #expect(activeAfter == 1)
     }
 
+    @Test("Delete shared edge repairs endpoint edge refs to live outgoing edges")
+    func deleteSharedEdgeRepairsVertexEdges() {
+        var topo = makeTwoTrianglesTopology()
+        let shared = topo.halfEdges.first { $0.twin != nil }!
+        let twin = shared.twin!
+        // Point both endpoints at the edges being deleted so repair is required.
+        topo.vertices[shared.origin.raw].edge = shared.id
+        topo.vertices[topo.halfEdges[twin.raw].origin.raw].edge = twin
+        topo.deleteEdge(shared.id)
+        for vertex in topo.vertices {
+            let edge = try? #require(vertex.edge)
+            #expect(edge.map { topo.halfEdges[$0.raw].next != nil && topo.halfEdges[$0.raw].origin == vertex.id } == true)
+        }
+    }
+
     @Test("Delete non-shared edge")
     func deleteNonSharedEdge() {
         var topo = makeTriangleTopology()

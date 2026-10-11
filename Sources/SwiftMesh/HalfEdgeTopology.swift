@@ -495,6 +495,7 @@ extension HalfEdgeTopology {
         let prevA = halfEdges[heA].prev
         let nextA = halfEdges[heA].next
         let faceA = halfEdges[heA].face
+        let nextAfterB = heB.flatMap { halfEdges[$0].next }
 
         if let prevA, let nextA {
             halfEdges[prevA.raw].next = nextA
@@ -563,14 +564,23 @@ extension HalfEdgeTopology {
         halfEdges[heA].prev = nil
         halfEdges[heA].face = nil
 
+        // The edges that followed the deleted pair start at the same vertices, so they are
+        // the natural replacements; fall back to a scan only if they are unusable.
+        func replacementEdge(for vertex: VertexID, candidate: HalfEdgeID?) -> HalfEdgeID? {
+            if let candidate, halfEdges[candidate.raw].next != nil, halfEdges[candidate.raw].origin == vertex {
+                return candidate
+            }
+            return halfEdges.first { $0.origin == vertex && $0.next != nil }?.id
+        }
+
         let originA = halfEdges[heA].origin
         if vertices[originA.raw].edge?.raw == heA {
-            vertices[originA.raw].edge = halfEdges.first { $0.origin == originA && $0.next != nil }?.id
+            vertices[originA.raw].edge = replacementEdge(for: originA, candidate: nextAfterB)
         }
         if let heB {
             let originB = halfEdges[heB].origin
             if vertices[originB.raw].edge?.raw == heB {
-                vertices[originB.raw].edge = halfEdges.first { $0.origin == originB && $0.next != nil }?.id
+                vertices[originB.raw].edge = replacementEdge(for: originB, candidate: nextA)
             }
         }
     }

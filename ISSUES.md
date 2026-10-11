@@ -1649,13 +1649,14 @@ Expected impact: turns O(N²) hull build into closer to O(N log N) for well-dist
 ## 92: HalfEdgeTopology: replace ad-hoc full-array scans with incremental adjacency
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:topology, effort:l
 depends: SwiftMesh#85
 created: 2026-04-16T03:25:08Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-11T22:11:21Z
+closed: 2026-10-11T22:11:21Z
 +++
 
 `HalfEdgeTopology` has 10+ instances of `for he in halfEdges where ...` scanning the full half-edge array:
@@ -1672,6 +1673,8 @@ Approach:
 - Add a `halfEdges(originatingFrom: VertexID)` helper that uses the ring walk
 
 This issue is a prerequisite for proper performance of #87 (decimation) and any future remesh/edit-mode operations.
+
+- `2026-10-11T22:11:21Z`: collapseEdge scans were removed in #87 (outgoing table). deleteEdge now repairs endpoint edge refs from the local successor edges (O(1)), scanning only as a fallback. Remaining full scans are whole-mesh queries (validate, isManifold, boundaryLoops, undirectedEdges) where O(E) is inherent; no caching added.
 
 ---
 
