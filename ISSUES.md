@@ -607,12 +607,13 @@ Merge two vertices connected by an edge into one, removing adjacent faces and re
 ## 41: Edge flip operation on HalfEdgeTopology
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:s
 created: 2026-04-15T05:24:28Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-11T22:42:13Z
+closed: 2026-10-11T22:42:13Z
 +++
 
 Swap the diagonal of two adjacent triangles. Useful for mesh quality improvement and Delaunay-like refinement.
