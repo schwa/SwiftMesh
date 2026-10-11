@@ -622,12 +622,13 @@ Swap the diagonal of two adjacent triangles. Useful for mesh quality improvement
 ## 42: Edge split operation on HalfEdgeTopology
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:m
 created: 2026-04-15T05:25:32Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-11T22:12:37Z
+closed: 2026-10-11T22:12:37Z
 +++
 
 Insert a vertex at an edge midpoint, splitting the two adjacent faces into four. Core editing primitive.
