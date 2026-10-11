@@ -19,7 +19,7 @@ encoder.draw(metalMesh)
 
 ## Types
 
-**`HalfEdgeTopology`** — half-edge wiring with no geometry. Adjacency queries, validation, boundary detection, edge deletion/collapse.
+**`HalfEdgeTopology`** — half-edge wiring with no geometry. Adjacency queries, validation, diagnostics, boundary detection, edge deletion/collapse.
 
 **`Mesh`** — topology + vertex positions + optional per-corner attributes (normals, UVs, tangents, colors). N-gon faces. Multi-material submeshes.
 
@@ -27,7 +27,7 @@ encoder.draw(metalMesh)
 
 **`TriangleSoup`** — flat indexed triangles. Intermediate format for CSG and whole-mesh operations.
 
-**`MetalMesh`** — GPU-ready triangulated buffers. Interleaved or separate buffer layouts.
+**`MetalMesh`** — GPU-ready triangulated buffers. Interleaved or separate buffer layouts. Each submesh records its `indexType` (`.uint16`/`.uint32`) and `primitiveType`.
 
 **`SwiftMeshIO`** — PLY file import/export (ASCII).
 
@@ -81,9 +81,10 @@ Mesh.circle()          // flat disc
 Mesh.teapot()          // Utah teapot
 
 // Procedural
-Mesh.convexHull(of: points)            // 3D convex hull (incremental)
-Mesh.marchingCubes(from: sdf, ...)     // isosurface from SDF
-Mesh.wireframe(of: mesh, radius: r)    // "phat" wireframe — prisms along edges
+Mesh.convexHull(of: points)                                 // 3D convex hull (incremental)
+Mesh.marchingCubes(resolution: [64, 64, 64]) { sdf($0) }    // isosurface of a scalar field
+Mesh.extruded(path, depth: 0.2)                             // SwiftUI.Path or CGPath → solid; nested subpaths become holes
+mesh.wireframe(radius: 0.01)                                // "phat" wireframe — prisms along edges
 ```
 
 ## Operations
@@ -116,8 +117,32 @@ mesh.transformed(by: matrix)
 mesh.triangulated()                    // n-gons → triangles
 mesh.welded(tolerance: 1e-5)           // merge near-duplicate vertices, rebuild topology
 mesh.mergingCoplanarFaces()            // merge adjacent coplanar faces back to n-gons
+mesh.reversingWinding()                // flip every face (inside-out)
 mesh.isManifold                        // true if closed 2-manifold (no boundary edges)
-mesh.topology.validate()               // nil if valid, or error description
+mesh.validate()                        // [ValidationIssue]; empty if valid
+```
+
+### Editing
+
+```swift
+mesh.splitEdge(halfEdgeID, at: 0.5)                 // insert a vertex; adjacent triangles split in two
+mesh.extrudingFace(faceID, distance: 0.3)           // push a face out along its normal, with side walls
+let (front, back) = mesh.split(planeNormal: [0, 1, 0], point: .zero)  // clip and cap; capped: false leaves it open
+```
+
+### Diagnostics
+
+```swift
+mesh.topology.boundaryLoopCount        // 0 = watertight
+mesh.topology.hasOrphanedVertices
+mesh.topology.hasDanglingEdges
+mesh.topology.hasNonConsistentTwins
+mesh.topology.hasNonConsistentNextPrev
+mesh.topology.hasDuplicateFaces
+mesh.topology.hasDuplicateEdges
+mesh.topology.valenceHistogram()       // [valence: vertex count]
+mesh.hasZeroAreaFaces()
+mesh.hasNonPlanarFaces(tolerance: 1e-5)
 ```
 
 ### Subdivision
@@ -134,6 +159,8 @@ mesh.decimated(ratio: 0.5)              // reduce to 50% of faces
 mesh.decimated(targetFaceCount: 100)     // reduce to exact count
 ```
 
+Quadric error metric edge collapse. N-gon faces are triangulated first, and the result is compacted (no tombstoned elements).
+
 ### CSG (Constructive Solid Geometry)
 
 ```swift
@@ -141,6 +168,8 @@ meshA.union(meshB)          // A ∪ B
 meshA.intersection(meshB)   // A ∩ B
 meshA.difference(meshB)     // A − B
 ```
+
+BSP-tree CSG. Internals run in `Double` to limit drift; inputs and outputs stay `Float`. Per-corner attributes are not preserved, and results are not yet guaranteed watertight (see issue #65).
 
 ### Merging
 
@@ -164,10 +193,10 @@ let (uvMesh, layout) = try mesh.bakingPlanarAtlas(
 
 ## Design
 
-- Faces are n-gon. Triangulation only happens at `MetalMesh` export.
+- Faces are n-gon. Triangulation happens at `MetalMesh` export and in operations that need triangles (decimation, CSG).
 - `HalfEdgeTopology` stores no geometry — pure wiring.
 - `Mesh` is a thin wrapper: topology + SoA attribute arrays.
-- Per-corner attributes use `HalfEdgeID` as key (each half-edge = one vertex in one face).
+- Per-corner attributes use `HalfEdgeID` as key (each half-edge = one vertex in one face). Operations that rebuild topology remap them through one internal layer (`CornerAttributes`).
 - `MetalMesh` layout is write-once export; interleave however the vertex descriptor dictates.
 - Submeshes on `Mesh` are face groups (list of `FaceID`s). `MetalMesh` maps 1:1.
 - `MetalMesh` optionally stores corner-table topology buffers (`opposites` + `vertToHalfedge`)
@@ -180,11 +209,11 @@ let (uvMesh, layout) = try mesh.bakingPlanarAtlas(
 
 ## Performance notes
 
-**Mesh → MetalMesh** is O(total triangles) with constant work per corner (attribute lookup, byte interleaving, buffer copy). Negligible for small meshes. For large meshes (100K+ triangles), per-corner dictionary lookups and byte-level interleaving will be the bottleneck — not yet optimized.
+**Mesh → MetalMesh** is O(total triangles) with constant work per corner. Vertex dedup hashes the corner's bytes in a reusable scratch buffer, with no per-corner allocation.
 
 **Triangulation** adds overhead for n-gon faces: each non-triangle face requires a 3D→2D projection and earcut pass. Triangle faces pass through with no extra work.
 
-**Benchmarks** live in the `SwiftMeshBenchmarks` executable. Run `swift run -c release SwiftMeshBenchmarks [--json] [name-filter...]`. Attach before/after numbers to performance changes.
+**Benchmarks** live in the `SwiftMeshBenchmarks` executable. They cover primitives, topology, CSG, decimation, subdivision, convex hull, marching cubes, MetalMesh, and PLY. Run `swift run -c release SwiftMeshBenchmarks [--json] [name-filter...]`. Attach before/after numbers to performance changes.
 
 ## Dependencies
 

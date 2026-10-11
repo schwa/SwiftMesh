@@ -2065,12 +2065,13 @@ Merge in `~/Projects/Current/SwiftBinPacking` into this repo.
 ## 100: Improve documentation across the repo
 
 +++
-status: open
+status: closed
 priority: medium
 kind: documentation
 labels: effort:l, area:docs
 created: 2026-05-13T18:40:28Z
-updated: 2026-10-11T21:49:34Z
+updated: 2026-10-11T22:22:18Z
+closed: 2026-10-11T22:22:18Z
 +++
 
 Improve documentation across the whole repo:
@@ -2080,6 +2081,8 @@ Improve documentation across the whole repo:
 - Add usage examples for common workflows (mesh construction, CSG, decimation, planar charts + atlas baking, IO).
 - Consider a DocC catalog with articles and tutorials.
 - Update README to reflect current feature set.
+
+- `2026-10-11T22:22:18Z`: README refreshed: fixed stale API (validate, marchingCubes, wireframe, MetalMesh perf note), documented new Editing/Diagnostics APIs, path extrusion, reversingWinding, Submesh index/primitive types, CSG precision and watertightness caveat, decimation behavior, benchmark coverage. Doc comment audit + DocC split into the follow-up issue.
 
 ---
 
@@ -2336,5 +2339,19 @@ created: 2026-10-11T21:56:53Z
 +++
 
 MetalMesh(mtkMesh:) uses sub.indexBuffer.buffer but drops sub.indexBuffer.offset. MTKMeshBufferAllocator can pack several submeshes into one buffer, so indices would be read from the wrong place. Add indexBufferOffset to MetalMesh.Submesh and honor it in readers. Found while fixing #108.
+
+---
+
+## 110: Audit public doc comments and add a DocC catalog
+
++++
+status: new
+priority: low
+kind: documentation
+labels: area:docs, effort:l
+created: 2026-10-11T22:22:18Z
++++
+
+Follow-up from #100 (README refreshed there). Remaining: audit public API for missing or thin doc comments (SwiftMesh, SwiftMeshIO, BinPacking), add a top-level overview per target, and consider a DocC catalog with articles for mesh construction, CSG, decimation, atlas baking, and IO.
 
 ---
