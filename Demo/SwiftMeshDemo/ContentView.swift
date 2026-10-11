@@ -294,6 +294,8 @@ struct MeshDetailView: View {
     @State private var isModified = false
     @State private var isExporting = false
     @State private var exportFormat: PLY.Format = .ascii
+    @State private var chamferDistance: Float = 0.05
+    @State private var extrudeDistance: Float = 0.2
 
     init(item: MeshGalleryItem, useMetalRenderer: Bool = false, animateRotation: Bool = true, renderMode: MeshRenderMode = .blinnPhong) {
         self.item = item
@@ -354,6 +356,31 @@ struct MeshDetailView: View {
                                 Button("Select Face Edges") {
                                     selectFaceEdges(edge: edge)
                                 }
+                                if let halfEdge = halfEdge(for: edge) {
+                                    Button("Split Edge") {
+                                        editSelection { $0.splitEdge(halfEdge) }
+                                    }
+                                    Button("Flip Edge") {
+                                        editSelection { $0.flipEdge(halfEdge) }
+                                    }
+                                    .disabled(!canFlip(halfEdge))
+                                }
+                            }
+                            Button("Chamfer Selected (\(edges.count))") {
+                                let halfEdges = Set(edges.compactMap(halfEdge(for:)))
+                                editSelection { mesh in
+                                    if let chamfered = mesh.chamfered(distance: chamferDistance, edges: halfEdges, attributes: .default) {
+                                        mesh = chamfered
+                                    }
+                                }
+                            }
+                            .disabled(!currentMesh.isManifold)
+                            Slider(value: $chamferDistance, in: 0.01...0.2) { Text("Chamfer") }
+                            if let face = face(boundedBy: edges) {
+                                Button("Extrude Face") {
+                                    editSelection { $0 = $0.extrudingFace(face, distance: extrudeDistance) }
+                                }
+                                Slider(value: $extrudeDistance, in: -0.3...0.5) { Text("Distance") }
                             }
                         }
                         Button("Clear Selection") {
@@ -453,6 +480,44 @@ struct MeshDetailView: View {
 
     private func recomputeStandalone() {
         standaloneFaceIDs = currentMesh.standaloneFaces()
+    }
+
+    // MARK: Selection edits
+
+    /// Apply an in-place edit and clear the selection (indices may have changed).
+    private func editSelection(_ edit: (inout Mesh) -> Void) {
+        var mesh = currentMesh
+        edit(&mesh)
+        currentMesh = mesh
+        isModified = true
+        selection = nil
+        recomputeStandalone()
+    }
+
+    private func halfEdge(for edge: MeshEdge) -> HalfEdgeTopology.HalfEdgeID? {
+        currentMesh.topology.halfEdges.first { halfEdge in
+            guard halfEdge.next != nil, let destination = currentMesh.topology.destViaNext(of: halfEdge.id) else {
+                return false
+            }
+            return MeshEdge(halfEdge.origin.raw, destination.raw) == edge
+        }?.id
+    }
+
+    private func canFlip(_ halfEdge: HalfEdgeTopology.HalfEdgeID) -> Bool {
+        var trial = currentMesh.topology
+        return trial.flipEdge(halfEdge)
+    }
+
+    /// The face whose outer boundary is exactly `edges`, if any.
+    private func face(boundedBy edges: Set<MeshEdge>) -> HalfEdgeTopology.FaceID? {
+        currentMesh.topology.faces.first { face in
+            guard face.edge != nil else {
+                return false
+            }
+            let loop = currentMesh.topology.vertexLoop(for: face.id)
+            let boundary = Set(loop.indices.map { MeshEdge(loop[$0].raw, loop[($0 + 1) % loop.count].raw) })
+            return boundary == edges
+        }?.id
     }
 
     private func selectConnectedEdges(vertex idx: Int) {

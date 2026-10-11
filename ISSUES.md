@@ -2479,12 +2479,13 @@ The inspector shows counts but none of the diagnostics API. Add a panel showing,
 ## 117: Demo: selection-based edit buttons in inspector
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: area:demo, effort:m
 created: 2026-10-11T23:02:41Z
-updated: 2026-10-11T23:03:05Z
+updated: 2026-10-11T23:08:26Z
+closed: 2026-10-11T23:08:26Z
 +++
 
 Edge and face selection already exist in the inspector but nothing acts on them. Add buttons: Split Edge and Flip Edge for a selected edge, Chamfer Selected Edges, Extrude Selected Face (with a distance field). Disable buttons when the selection doesn't fit (e.g. flip on a boundary edge returns false).
