@@ -93,31 +93,13 @@ public extension MetalMesh {
         }
         self.vertexBuffers = vtxBuffers
 
-        // Map submeshes — convert uint16 indices to uint32 if needed
-        self.submeshes = try mtkMesh.submeshes.map { sub in
-            let indexBuffer: MTLBuffer
-            if sub.indexType == .uint16 {
-                // Convert UInt16 → UInt32
-                let src = sub.indexBuffer.buffer.contents().assumingMemoryBound(to: UInt16.self)
-                var uint32Indices = [UInt32](repeating: 0, count: sub.indexCount)
-                for i in 0..<sub.indexCount {
-                    uint32Indices[i] = UInt32(src[i])
-                }
-                guard let buf = sub.indexBuffer.buffer.device.makeBuffer(
-                    bytes: uint32Indices,
-                    length: MemoryLayout<UInt32>.stride * sub.indexCount,
-                    options: []
-                ) else {
-                    throw ModelIOConversionError.bufferCreationFailed
-                }
-                indexBuffer = buf
-            } else {
-                indexBuffer = sub.indexBuffer.buffer
-            }
-            return Submesh(
+        self.submeshes = mtkMesh.submeshes.map { sub in
+            Submesh(
                 label: sub.name.isEmpty ? nil : sub.name,
-                indexBuffer: indexBuffer,
-                indexCount: sub.indexCount
+                indexBuffer: sub.indexBuffer.buffer,
+                indexCount: sub.indexCount,
+                indexType: sub.indexType,
+                primitiveType: sub.primitiveType
             )
         }
     }
@@ -212,17 +194,24 @@ public extension Mesh {
         // Build submeshes
         var mdlSubmeshes: [MDLSubmesh] = []
         for submesh in metalMesh.submeshes {
+            let is16Bit = submesh.indexType == .uint16
             let indexData = Data(
                 bytes: submesh.indexBuffer.contents(),
-                count: submesh.indexCount * MemoryLayout<UInt32>.stride
+                count: submesh.indexCount * (is16Bit ? 2 : 4)
             )
             let mdlIndexBuffer = allocator.newBuffer(with: indexData, type: .index)
+            let geometryType: MDLGeometryType = switch submesh.primitiveType {
+            case .point: .points
+            case .line: .lines
+            case .triangleStrip: .triangleStrips
+            default: .triangles
+            }
             let mdlSubmesh = MDLSubmesh(
                 name: submesh.label ?? "",
                 indexBuffer: mdlIndexBuffer,
                 indexCount: submesh.indexCount,
-                indexType: .uInt32,
-                geometryType: .triangles,
+                indexType: is16Bit ? .uInt16 : .uInt32,
+                geometryType: geometryType,
                 material: nil
             )
             mdlSubmeshes.append(mdlSubmesh)

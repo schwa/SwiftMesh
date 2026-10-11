@@ -2276,12 +2276,13 @@ Rename the MikkTSpace target (declared in Package.swift, sources in Sources/Mikk
 ## 108: MetalMesh.Submesh only supports UInt32 triangles
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: effort:m, area:metal
 created: 2026-10-11T21:48:24Z
-updated: 2026-10-11T21:49:59Z
+updated: 2026-10-11T21:56:46Z
+closed: 2026-10-11T21:56:46Z
 +++
 
 MetalMesh.Submesh has an index buffer and count but no index type or primitive type. Every MetalMesh init writes UInt32 triangle indices, so renderers hardcode .uint32 and .triangle.

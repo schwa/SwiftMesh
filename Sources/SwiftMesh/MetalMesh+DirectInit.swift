@@ -157,8 +157,10 @@ public extension MetalMesh {
     ///     buffer for every `bufferIndex` referenced by `vertexDescriptor`.
     ///   - vertexCount: Number of vertices addressable in `vertexBuffers`.
     ///   - vertexDescriptor: Describes the layout and semantics of vertex attributes.
-    ///   - indexBuffer: Buffer of `UInt32` triangle indices.
+    ///   - indexBuffer: Buffer of indices of type `indexType`.
     ///   - indexCount: Number of indices in `indexBuffer`.
+    ///   - indexType: Index element type.
+    ///   - primitiveType: How indices are assembled into primitives.
     ///   - label: Optional label propagated to the mesh.
     init(
         vertexBuffers: [Int: MTLBuffer],
@@ -166,6 +168,8 @@ public extension MetalMesh {
         vertexDescriptor: VertexDescriptor,
         indexBuffer: MTLBuffer,
         indexCount: Int,
+        indexType: MTLIndexType = .uint32,
+        primitiveType: MTLPrimitiveType = .triangle,
         label: String? = nil
     ) {
         for bi in Set(vertexDescriptor.attributes.map(\.bufferIndex)) {
@@ -177,7 +181,7 @@ public extension MetalMesh {
         self.vertexCount = vertexCount
         self.vertexDescriptor = vertexDescriptor
         self.submeshes = [
-            Submesh(label: nil, indexBuffer: indexBuffer, indexCount: indexCount)
+            Submesh(label: nil, indexBuffer: indexBuffer, indexCount: indexCount, indexType: indexType, primitiveType: primitiveType)
         ]
     }
 }

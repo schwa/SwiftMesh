@@ -16,10 +16,32 @@ public struct MetalMesh {
     public struct Submesh {
         /// An optional human-readable name for the submesh.
         public var label: String?
-        /// The Metal buffer containing triangle indices (`UInt32`).
+        /// The Metal buffer containing indices of type ``indexType``.
         public var indexBuffer: MTLBuffer
         /// The number of indices in ``indexBuffer``.
         public var indexCount: Int
+        public var indexType: MTLIndexType
+        public var primitiveType: MTLPrimitiveType
+
+        public init(label: String? = nil, indexBuffer: MTLBuffer, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle) {
+            self.label = label
+            self.indexBuffer = indexBuffer
+            self.indexCount = indexCount
+            self.indexType = indexType
+            self.primitiveType = primitiveType
+        }
+
+        /// The indices widened to `UInt32`.
+        public var indices: [UInt32] {
+            switch indexType {
+            case .uint16:
+                let pointer = indexBuffer.contents().assumingMemoryBound(to: UInt16.self)
+                return (0..<indexCount).map { UInt32(pointer[$0]) }
+            default:
+                let pointer = indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
+                return Array(UnsafeBufferPointer(start: pointer, count: indexCount))
+            }
+        }
     }
 
     /// Controls how vertex attributes are packed into Metal buffers.
@@ -456,10 +478,8 @@ public extension MetalMesh {
         for submesh in submeshes {
             let triCount = submesh.indexCount / 3
             let start = allIndices.count / 3
-            let indexPtr = submesh.indexBuffer.contents().assumingMemoryBound(to: UInt32.self)
-            for i in 0..<submesh.indexCount {
-                allIndices.append(indexPtr[i])
-            }
+            precondition(submesh.primitiveType == .triangle, "Converting MetalMesh to Mesh requires triangle submeshes")
+            allIndices.append(contentsOf: submesh.indices)
             submeshFaceRanges.append((label: submesh.label, start: start, count: triCount))
         }
 
