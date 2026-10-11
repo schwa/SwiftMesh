@@ -455,6 +455,27 @@ struct MetalMeshTests {
         #expect(Set(mesh.topology.faces.map { Set(mesh.facePositions($0.id).map { [$0.x, $0.y] }) }) == [[[0, 0], [1, 0], [0, 1]], [[1, 0], [1, 1], [0, 1]]])
     }
 
+    @Test("Vertex buffer offsets are honored when reading back")
+    func vertexBufferOffset() throws {
+        let device = try requireDevice()
+        // 16 bytes of junk, then three packed positions.
+        var bytes = Data(repeating: 0xFF, count: 16)
+        for position in [SIMD3<Float>(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)].map({ Packed3<Float>($0) }) {
+            withUnsafeBytes(of: position) { bytes.append(contentsOf: $0) }
+        }
+        let vBuf = bytes.withUnsafeBytes { device.makeBuffer(bytes: $0.baseAddress!, length: $0.count, options: []) }!
+        let indices: [UInt32] = [0, 1, 2]
+        let iBuf = device.makeBuffer(bytes: indices, length: MemoryLayout<UInt32>.stride * 3, options: [])!
+        let descriptor = VertexDescriptor(
+            attributes: [.init(semantic: .position, format: .float3, offset: 0, bufferIndex: 0)],
+            layouts: [.init(bufferIndex: 0, stride: MemoryLayout<Packed3<Float>>.stride, stepFunction: .perVertex, stepRate: 1)]
+        )
+        var metalMesh = MetalMesh(vertexBuffers: [0: vBuf], vertexCount: 3, vertexDescriptor: descriptor, indexBuffer: iBuf, indexCount: 3)
+        metalMesh.vertexBufferOffsets = [0: 16]
+        let mesh = metalMesh.toMesh()
+        #expect(Set(mesh.positions.map { [$0.x, $0.y, $0.z] }) == [[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    }
+
     @Test("Direct init with UInt16 indices converts to Mesh")
     func directInitUInt16() throws {
         let device = try requireDevice()

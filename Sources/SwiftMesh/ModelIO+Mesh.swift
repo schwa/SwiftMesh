@@ -88,10 +88,15 @@ public extension MetalMesh {
 
         // Map vertex buffers
         var vtxBuffers: [Int: MTLBuffer] = [:]
+        var offsets: [Int: Int] = [:]
         for (idx, mtkBuffer) in mtkMesh.vertexBuffers.enumerated() {
             vtxBuffers[idx] = mtkBuffer.buffer
+            if mtkBuffer.offset != 0 {
+                offsets[idx] = mtkBuffer.offset
+            }
         }
         self.vertexBuffers = vtxBuffers
+        self.vertexBufferOffsets = offsets
 
         self.submeshes = mtkMesh.submeshes.map { sub in
             Submesh(
@@ -224,7 +229,7 @@ public extension Mesh {
 
         // Create vertex buffer via allocator
         let vertexBuffer = metalMesh.vertexBuffers[0]!
-        let vertexData = Data(bytes: vertexBuffer.contents(), count: metalMesh.vertexCount * stride)
+        let vertexData = Data(bytes: vertexBuffer.contents() + (metalMesh.vertexBufferOffsets[0] ?? 0), count: metalMesh.vertexCount * stride)
         let mdlVertexBuffer = allocator.newBuffer(with: vertexData, type: .vertex)
 
         // Build submeshes

@@ -2381,12 +2381,13 @@ Follow-up from #100 (README refreshed there). Remaining: audit public API for mi
 ## 111: MetalMesh ignores MTKMesh vertex buffer offsets
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: area:metal, effort:s
 created: 2026-10-11T22:36:45Z
-updated: 2026-10-11T22:56:38Z
+updated: 2026-10-11T22:57:29Z
+closed: 2026-10-11T22:57:29Z
 +++
 
 MetalMesh(mtkMesh:) stores mtkBuffer.buffer per vertex buffer index but drops mtkBuffer.offset, and draw(_:) binds vertex buffers at offset 0. If MTKMeshBufferAllocator sub-allocates vertex data, attributes are read from the wrong place. Add per-buffer offsets (e.g. vertexBufferOffsets: [Int: Int]) and honor them in draw(_:), toMesh(), and toMDLMesh. Found while fixing #109.

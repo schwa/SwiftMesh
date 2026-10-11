@@ -67,6 +67,10 @@ public struct MetalMesh {
     public var label: String?
     /// Vertex buffers keyed by buffer index.
     public var vertexBuffers: [Int: MTLBuffer]
+    /// Byte offset of the first vertex in each buffer, keyed by buffer index. Missing keys mean 0.
+    ///
+    /// Non-zero when buffers are sub-allocated, as `MTKMeshBufferAllocator` may do.
+    public var vertexBufferOffsets: [Int: Int] = [:]
     /// The number of vertices across all buffers.
     public var vertexCount: Int
     /// Describes the layout and semantics of vertex attributes.
@@ -439,7 +443,7 @@ public extension MetalMesh {
         var bufferPtrs: [Int: UnsafeMutablePointer<UInt8>] = [:]
         var bufferStrides: [Int: Int] = [:]
         for (bi, buffer) in vertexBuffers {
-            bufferPtrs[bi] = buffer.contents().assumingMemoryBound(to: UInt8.self)
+            bufferPtrs[bi] = (buffer.contents() + (vertexBufferOffsets[bi] ?? 0)).assumingMemoryBound(to: UInt8.self)
             bufferStrides[bi] = vertexDescriptor.layouts[bi]!.stride
         }
 
@@ -626,7 +630,7 @@ public extension MTLRenderCommandEncoder {
     /// The pipeline's vertex descriptor must match `metalMesh.vertexDescriptor`.
     func draw(_ metalMesh: MetalMesh) {
         for (bufferIndex, buffer) in metalMesh.vertexBuffers {
-            setVertexBuffer(buffer, offset: 0, index: bufferIndex)
+            setVertexBuffer(buffer, offset: metalMesh.vertexBufferOffsets[bufferIndex] ?? 0, index: bufferIndex)
         }
         for submesh in metalMesh.submeshes {
             drawIndexedPrimitives(
