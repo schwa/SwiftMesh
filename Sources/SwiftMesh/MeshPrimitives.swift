@@ -455,7 +455,10 @@ public extension Mesh {
     /// An icosphere built by subdividing an icosahedron and projecting vertices
     /// onto a sphere. Produces a more uniform triangle distribution than a UV sphere.
     ///
-    /// - Parameter subdivisions: Number of subdivision iterations (0 = icosahedron, each step ×4 faces).
+    /// - Parameters:
+    ///   - extents: Width, height, and depth of the bounding box the sphere fills.
+    ///   - attributes: Which attributes to generate.
+    ///   - subdivisions: Number of subdivision iterations (0 = icosahedron, each step ×4 faces).
     static func icoSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 3, attributes: MeshAttributes = .default) -> Mesh {
         // Start from icosahedron vertices on the unit sphere
         let phi: Float = (1.0 + sqrt(5.0)) / 2.0
@@ -522,7 +525,10 @@ public extension Mesh {
     /// A cube sphere built by subdividing a cube's faces into grids and projecting
     /// vertices onto a sphere. Produces quad faces with relatively uniform sizing.
     ///
-    /// - Parameter subdivisions: Number of subdivisions per cube face edge (minimum 1).
+    /// - Parameters:
+    ///   - extents: Width, height, and depth of the bounding box the sphere fills.
+    ///   - subdivisions: Number of subdivisions per cube face edge (minimum 1).
+    ///   - attributes: Which attributes to generate.
     static func cubeSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 8, attributes: MeshAttributes = .default) -> Mesh {
         let segs = max(1, subdivisions)
         let radii = extents / 2

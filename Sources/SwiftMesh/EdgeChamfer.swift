@@ -12,6 +12,7 @@ public extension Mesh {
     /// absorbs the cut instead.
     ///
     /// - Parameters:
+    ///   - distance: How far the cut reaches from each chamfered edge along the faces.
     ///   - edges: Half-edges to chamfer (either direction of an edge selects it). `nil`
     ///     chamfers every edge.
     ///   - attributes: Attributes to derive on the result. Input per-corner attributes

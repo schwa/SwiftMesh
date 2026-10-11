@@ -1,12 +1,13 @@
 import BinPacking
 import simd
 
-/// Layout produced by ``Mesh/bakingPlanarAtlas(texelsPerMeter:atlasSize:padding:)``.
+/// Layout produced by ``Mesh/bakingPlanarAtlas(texelsPerMeter:atlasSize:padding:normalAngleTolerance:planeOffsetTolerance:)``.
 ///
 /// Describes the final atlas dimensions and, for each chart, the pixel rectangle it
 /// occupies plus the chart-local plane basis needed to splat 3D positions back into
 /// atlas pixels (e.g. from a ray-traced visibility pass).
 public struct AtlasLayout: Sendable {
+    /// Where one planar chart landed in the atlas, and the plane basis to map world points to its pixels.
     public struct ChartPlacement: Sendable {
         /// Faces that compose this chart.
         public var faces: [HalfEdgeTopology.FaceID]
@@ -54,6 +55,7 @@ public struct AtlasLayout: Sendable {
     /// One entry per packed chart, in placement order.
     public var charts: [ChartPlacement]
 
+    /// Creates a layout. `Mesh.bakingPlanarAtlas` produces these; callers rarely need to.
     public init(atlasSize: SIMD2<Int>, charts: [ChartPlacement]) {
         self.atlasSize = atlasSize
         self.charts = charts

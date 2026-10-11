@@ -20,14 +20,18 @@ public struct MaxRectsPacker<Scalar: RectScalar> {
         case bottomLeft
     }
 
+    /// The bin's width and height.
     public let binSize: SIMD2<Scalar>
+    /// Whether items may be rotated 90° when that fits better. See `PackedRect.rotated`.
     public let allowRotation: Bool
     /// Minimum gap to leave between placed items. Items may still touch the bin border with no padding.
     public let padding: Scalar
+    /// How a free rectangle is chosen for each item. Changing it affects later `pack(_:)` calls.
     public var heuristic: Heuristic
 
     private var freeRects: [Rect<Scalar>]
 
+    /// Creates a packer over an empty bin.
     public init(binSize: SIMD2<Scalar>, allowRotation: Bool = true, padding: Scalar = .zero, heuristic: Heuristic = .bestShortSideFit) {
         self.binSize = binSize
         self.allowRotation = allowRotation
@@ -41,6 +45,10 @@ public struct MaxRectsPacker<Scalar: RectScalar> {
         freeRects = [Rect(origin: SIMD2(repeating: .zero), size: binSize)]
     }
 
+    /// Places items in order into the remaining free space.
+    ///
+    /// Items that don't fit are reported in `PackingResult.unplaced` rather than failing
+    /// the whole call. Space used by earlier calls stays used until ``reset()``.
     public mutating func pack<ID: Hashable & Sendable>(_ items: [PackingItem<ID, Scalar>]) -> PackingResult<ID, Scalar> {
         var placements: [PackedRect<ID, Scalar>] = []
         var unplaced: [ID] = []

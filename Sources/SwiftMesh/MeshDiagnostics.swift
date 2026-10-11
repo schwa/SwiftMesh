@@ -73,6 +73,7 @@ public extension HalfEdgeTopology {
         valences.reduce(into: [:]) { $0[$1, default: 0] += 1 }
     }
 
+    /// Whether any vertex has more than `threshold` neighbors (poles, bad merges).
     func hasHighValenceVertices(threshold: Int) -> Bool {
         valences.contains { $0 > threshold }
     }
@@ -148,9 +149,11 @@ public extension Mesh {
 
 /// One connected piece of a surface and its topological invariants.
 public struct SurfaceComponent: Sendable, Equatable {
+    /// The faces in this component, in face-index order.
     public var faces: [HalfEdgeTopology.FaceID]
     /// V - E + F, with each hole ring in a face counted as -1 (a holed face is not a disk).
     public var eulerCharacteristic: Int
+    /// Open boundary loops in this component. Zero means the component is closed.
     public var boundaryLoopCount: Int
     /// False if some edge's two half-edges run the same direction (faces can't be oriented consistently).
     public var isOrientable: Bool
@@ -260,6 +263,7 @@ public extension HalfEdgeTopology {
         edgeAdjacency().filter(\.sameDirection).map { ($0.first, $0.second) }
     }
 
+    /// Whether ``inconsistentWindingEdges()`` is non-empty.
     var hasInconsistentFaceWinding: Bool {
         edgeAdjacency().contains(where: \.sameDirection)
     }

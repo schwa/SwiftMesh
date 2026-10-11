@@ -8,7 +8,9 @@ public enum BinPackingError: Error, Sendable {
 
 /// An item to pack: a caller-provided identifier and a size.
 public struct PackingItem<ID: Hashable & Sendable, Scalar: RectScalar>: Hashable, Sendable {
+    /// Identifies the item in the `PackingResult`.
     public var id: ID
+    /// The item's width and height before any rotation.
     public var size: SIMD2<Scalar>
 
     public init(id: ID, size: SIMD2<Scalar>) {
@@ -26,6 +28,7 @@ public struct PackedRect<ID: Hashable & Sendable, Scalar: RectScalar>: Hashable,
     /// Whether the item was rotated 90° to fit.
     public var rotated: Bool
 
+    /// Creates a placement. Packers produce these; callers rarely need to.
     public init(id: ID, rect: Rect<Scalar>, rotated: Bool) {
         self.id = id
         self.rect = rect
@@ -45,6 +48,7 @@ public struct PackingResult<ID: Hashable & Sendable, Scalar: RectScalar>: Sendab
     /// Lookup by id (O(n) on first access; cached afterwards).
     private var index: [ID: Int]
 
+    /// Creates a result and indexes placements by id.
     public init(placements: [PackedRect<ID, Scalar>], unplaced: [ID], binSize: SIMD2<Scalar>) {
         self.placements = placements
         self.unplaced = unplaced
@@ -57,6 +61,7 @@ public struct PackingResult<ID: Hashable & Sendable, Scalar: RectScalar>: Sendab
         self.index = index
     }
 
+    /// Whether every input item was placed.
     public var allPlaced: Bool { unplaced.isEmpty }
 
     /// Look up a placement by its caller-provided id. Returns `nil` if the item was not placed.

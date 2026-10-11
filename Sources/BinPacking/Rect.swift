@@ -16,7 +16,9 @@ extension Double: RectScalar {}
 /// `origin` is the minimum corner (top-left in image / bottom-left in math conventions —
 /// the packer is convention-agnostic, it just allocates regions).
 public struct Rect<Scalar: RectScalar>: Hashable, Sendable {
+    /// The minimum corner.
     public var origin: SIMD2<Scalar>
+    /// Width and height. Expected to be non-negative.
     public var size: SIMD2<Scalar>
 
     public init(origin: SIMD2<Scalar>, size: SIMD2<Scalar>) {
@@ -29,6 +31,7 @@ public struct Rect<Scalar: RectScalar>: Hashable, Sendable {
         self.size = SIMD2(width, height)
     }
 
+    /// Creates a rectangle of the given size at the origin.
     public init(size: SIMD2<Scalar>) {
         self.origin = SIMD2(repeating: .zero)
         self.size = size
@@ -40,14 +43,17 @@ public struct Rect<Scalar: RectScalar>: Hashable, Sendable {
     public var minY: Scalar { origin.y }
     public var maxX: Scalar { origin.x + size.x }
     public var maxY: Scalar { origin.y + size.y }
+    /// The maximum corner (`origin + size`).
     public var max: SIMD2<Scalar> { SIMD2(maxX, maxY) }
 
     public var area: Scalar { size.x * size.y }
 
+    /// Whether `other` lies entirely inside this rectangle. Shared edges count as inside.
     public func contains(_ other: Self) -> Bool {
         other.minX >= minX && other.minY >= minY && other.maxX <= maxX && other.maxY <= maxY
     }
 
+    /// Whether the rectangles overlap with positive area. Touching edges don't count.
     public func intersects(_ other: Self) -> Bool {
         !(other.minX >= maxX || other.maxX <= minX || other.minY >= maxY || other.maxY <= minY)
     }

@@ -22,9 +22,12 @@ public struct MetalMesh {
         public var indexCount: Int
         /// Byte offset of the first index in ``indexBuffer``. Buffers may be shared between submeshes.
         public var indexBufferOffset: Int
+        /// The index element size. Meshes built from a ``Mesh`` use `.uint32`.
         public var indexType: MTLIndexType
+        /// How indices assemble into primitives. Converting back to ``Mesh`` requires `.triangle`.
         public var primitiveType: MTLPrimitiveType
 
+        /// Creates a submesh over an existing index buffer.
         public init(label: String? = nil, indexBuffer: MTLBuffer, indexBufferOffset: Int = 0, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle) {
             self.label = label
             self.indexBuffer = indexBuffer
@@ -618,6 +621,9 @@ public extension MetalMesh {
 // MARK: - Drawing
 
 public extension MTLRenderCommandEncoder {
+    /// Binds the mesh's vertex buffers at their buffer indices and draws every submesh.
+    ///
+    /// The pipeline's vertex descriptor must match `metalMesh.vertexDescriptor`.
     func draw(_ metalMesh: MetalMesh) {
         for (bufferIndex, buffer) in metalMesh.vertexBuffers {
             setVertexBuffer(buffer, offset: 0, index: bufferIndex)

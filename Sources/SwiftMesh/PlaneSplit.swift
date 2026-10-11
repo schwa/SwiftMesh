@@ -11,6 +11,8 @@ public extension Mesh {
     /// - Parameters:
     ///   - normal: Plane normal. Need not be unit length.
     ///   - point: Any point on the plane.
+    ///   - capped: Close each part's cut with planar faces.
+    ///   - weldTolerance: Maximum distance for merging vertices created along the cut.
     func split(planeNormal normal: SIMD3<Float>, point: SIMD3<Float>, capped: Bool = true, weldTolerance: Float = 1e-5) -> (front: Mesh, back: Mesh) {
         let unitNormal = simd_normalize(normal)
         var front = TriangleSoup()

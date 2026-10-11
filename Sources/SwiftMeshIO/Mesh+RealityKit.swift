@@ -5,9 +5,13 @@ import SwiftMesh
 
 // MARK: - Errors
 
+/// Errors from converting a SwiftMesh `Mesh` to a RealityKit `MeshResource`.
 public enum MeshResourceConversionError: Error, CustomStringConvertible {
+    /// The mesh has no faces.
     case emptyMesh
+    /// The mesh failed `Mesh.validate()` with these issues.
     case invalidMesh([ValidationIssue])
+    /// RealityKit rejected the generated descriptor.
     case generationFailed(any Error)
 
     public var description: String {

@@ -4,9 +4,13 @@ import SwiftMesh
 
 // MARK: - PLY Errors
 
+/// Errors from reading PLY data.
 public enum PLYError: Error, CustomStringConvertible {
+    /// The header is missing or malformed.
     case invalidHeader(String)
+    /// The `format` line names an encoding other than ASCII or binary.
     case unsupportedFormat(String)
+    /// The body doesn't match the header (bad value or early end of data).
     case parseError(String)
 
     public var description: String {
@@ -20,6 +24,7 @@ public enum PLYError: Error, CustomStringConvertible {
 
 // MARK: - PLY
 
+/// Reads and writes Stanford PLY meshes (ASCII and binary).
 public enum PLY {
     /// PLY body encoding.
     public enum Format: Sendable {

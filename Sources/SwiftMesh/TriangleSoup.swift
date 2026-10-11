@@ -16,6 +16,7 @@ public struct TriangleSoup: Sendable, Equatable {
     /// Triangles as index triples into ``positions``.
     public var triangles: [(Int, Int, Int)]
 
+    /// Creates a soup from positions and index triples. Indices are not validated.
     public init(positions: [SIMD3<Float>] = [], triangles: [(Int, Int, Int)] = []) {
         self.positions = positions
         self.triangles = triangles

@@ -2363,15 +2363,18 @@ MetalMesh(mtkMesh:) uses sub.indexBuffer.buffer but drops sub.indexBuffer.offset
 ## 110: Audit public doc comments and add a DocC catalog
 
 +++
-status: open
+status: closed
 priority: low
 kind: documentation
 labels: area:docs, effort:l
 created: 2026-10-11T22:22:18Z
-updated: 2026-10-11T22:35:19Z
+updated: 2026-10-11T22:55:16Z
+closed: 2026-10-11T22:55:16Z
 +++
 
 Follow-up from #100 (README refreshed there). Remaining: audit public API for missing or thin doc comments (SwiftMesh, SwiftMeshIO, BinPacking), add a top-level overview per target, and consider a DocC catalog with articles for mesh construction, CSG, decimation, atlas baking, and IO.
+
+- `2026-10-11T22:55:16Z`: Added DocC catalogs with curated landing pages for SwiftMesh, SwiftMeshIO, and BinPacking, filled public doc comment gaps, and fixed existing parameter/link warnings. Verified with emitted symbol graphs + docc convert --analyze: 0 warnings per target. No swift-docc-plugin added (would be a new dependency); generate with Xcode or xcrun docc.
 
 ---
 

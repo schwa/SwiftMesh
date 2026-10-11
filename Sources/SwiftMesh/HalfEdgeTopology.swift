@@ -8,31 +8,47 @@ import Foundation
 /// (next/prev/twin). No positions or geometry — pair with external
 /// attribute storage (positions, normals, UVs, etc.) to form a mesh.
 public struct HalfEdgeTopology: Sendable, Equatable {
-    // Stable ids
+    /// A vertex index. `raw` indexes ``vertices`` and per-vertex arrays such as `Mesh.positions`.
     public struct VertexID: Hashable, Sendable { public let raw: Int; public init(raw: Int) { self.raw = raw } }
+    /// A half-edge index. `raw` indexes ``halfEdges`` and per-corner attribute arrays.
     public struct HalfEdgeID: Hashable, Sendable { public let raw: Int; public init(raw: Int) { self.raw = raw } }
+    /// A face index. `raw` indexes ``faces`` and per-face data.
     public struct FaceID: Hashable, Sendable { public let raw: Int; public init(raw: Int) { self.raw = raw } }
 
+    /// A vertex and one of its outgoing half-edges.
     public struct Vertex: Sendable, Equatable {
         public let id: VertexID
-        public var edge: HalfEdgeID? // one outgoing
+        /// An outgoing half-edge, or `nil` if the vertex is unused or tombstoned.
+        public var edge: HalfEdgeID?
     }
 
+    /// A directed edge belonging to one face loop. Its destination is `next`'s origin.
+    ///
+    /// A half-edge with `next == nil` is tombstoned (removed by an editing operation).
     public struct HalfEdge: Sendable, Equatable {
         public let id: HalfEdgeID
+        /// The vertex the half-edge starts at.
         public var origin: VertexID
+        /// The opposite half-edge in the neighboring face, or `nil` on a boundary.
         public var twin: HalfEdgeID?
+        /// The following half-edge in the same face loop.
         public var next: HalfEdgeID?
+        /// The preceding half-edge in the same face loop.
         public var prev: HalfEdgeID?
+        /// The face on the half-edge's left, which owns this loop.
         public var face: FaceID?
     }
 
+    /// A face: one outer loop and any number of hole loops.
     public struct Face: Sendable, Equatable {
         public let id: FaceID
-        public var edge: HalfEdgeID? // outer boundary edge
-        public var holeEdges: [HalfEdgeID] = [] // one half-edge per hole loop
+        /// A half-edge on the outer loop, or `nil` if the face is tombstoned.
+        public var edge: HalfEdgeID?
+        /// One half-edge on each hole loop.
+        public var holeEdges: [HalfEdgeID] = []
     }
 
+    /// All vertices, indexed by `VertexID.raw`.
     public var vertices: [Vertex] = []
     // `halfEdges` and `faces` are `internal(set)` so construction code in sibling
     // files (currently `Mesh2D.swift`) can build topology in-place. External
@@ -41,11 +57,14 @@ public struct HalfEdgeTopology: Sendable, Equatable {
     public internal(set) var halfEdges: [HalfEdge] = []
     public internal(set) var faces: [Face] = []
 
+    /// Creates an empty topology.
     public init() {}
 
     /// A face definition for building topology from indexed vertex references.
     public struct FaceDefinition: Sendable {
+        /// Vertex indices of the outer loop, counter-clockwise when viewed from the front.
         public var outer: [Int]
+        /// Vertex indices of each hole loop.
         public var holes: [[Int]]
 
         public init(outer: [Int], holes: [[Int]] = []) {
@@ -184,8 +203,10 @@ public struct ValidationIssue: Sendable, Equatable, CustomStringConvertible {
 
     public var severity: Severity
     public var location: Location
+    /// A human-readable explanation of the problem.
     public var message: String
 
+    /// Creates an issue. Mostly useful for custom validators and tests.
     public init(severity: Severity, location: Location, message: String) {
         self.severity = severity
         self.location = location

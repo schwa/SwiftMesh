@@ -25,6 +25,7 @@ public struct Mesh2D<ID: Hashable & Sendable>: Sendable {
     /// Per-face signed area of the outer boundary, if computed. Indexed by `FaceID.raw`.
     public var faceSignedAreas: [CGFloat?]
 
+    /// Creates a 2D mesh from parts. Array counts must match the topology (see each property).
     public init(topology: HalfEdgeTopology, positions: [CGPoint], edgeLabels: [ID], faceSignedAreas: [CGFloat?]) {
         self.topology = topology
         self.positions = positions

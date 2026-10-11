@@ -583,7 +583,10 @@ public extension Mesh {
     /// UVs, tangents, colors) are not preserved, and all submeshes are merged
     /// into one.
     ///
-    /// - Parameter other: The mesh to union with.
+    /// - Parameters:
+    ///   - other: The mesh to union with.
+    ///   - mergeCoplanar: Merge adjacent coplanar triangles of the result back into n-gons.
+    ///   - weldTolerance: Maximum distance for merging result vertices.
     /// - Returns: A new mesh representing the combined volume.
     func union(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
         csg(.union, other, options: CSGOptions(weldTolerance: weldTolerance, mergeCoplanar: mergeCoplanar))
@@ -596,7 +599,10 @@ public extension Mesh {
     /// UVs, tangents, colors) are not preserved, and all submeshes are merged
     /// into one.
     ///
-    /// - Parameter other: The mesh to intersect with.
+    /// - Parameters:
+    ///   - other: The mesh to intersect with.
+    ///   - mergeCoplanar: Merge adjacent coplanar triangles of the result back into n-gons.
+    ///   - weldTolerance: Maximum distance for merging result vertices.
     /// - Returns: A new mesh containing only the shared volume.
     func intersection(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
         csg(.intersection, other, options: CSGOptions(weldTolerance: weldTolerance, mergeCoplanar: mergeCoplanar))
@@ -609,7 +615,10 @@ public extension Mesh {
     /// UVs, tangents, colors) are not preserved, and all submeshes are merged
     /// into one.
     ///
-    /// - Parameter other: The mesh volume to subtract.
+    /// - Parameters:
+    ///   - other: The mesh volume to subtract.
+    ///   - mergeCoplanar: Merge adjacent coplanar triangles of the result back into n-gons.
+    ///   - weldTolerance: Maximum distance for merging result vertices.
     /// - Returns: A new mesh with the other's volume carved out.
     func difference(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
         csg(.difference, other, options: CSGOptions(weldTolerance: weldTolerance, mergeCoplanar: mergeCoplanar))
@@ -646,6 +655,7 @@ public struct CSGOptions: Sendable {
     /// Attributes to derive on the result (for example `.flatNormals`). Input attributes are not preserved.
     public var attributes: MeshAttributes
 
+    /// Creates options. The defaults match `union`/`intersection`/`difference` without arguments.
     public init(weldTolerance: Float = 1e-2, mergeCoplanar: Bool = true, coplanarAngleTolerance: Float = 1e-4, coplanarDistanceTolerance: Float = 1e-4, attributes: MeshAttributes = []) {
         self.weldTolerance = weldTolerance
         self.mergeCoplanar = mergeCoplanar

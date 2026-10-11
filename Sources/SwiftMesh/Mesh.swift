@@ -40,8 +40,12 @@ public struct Mesh: Sendable, Equatable {
     // MARK: - Init
 
     /// A named group of faces within the mesh.
+    ///
+    /// Submeshes typically map to materials. Each becomes one `MetalMesh.Submesh` on export.
     public struct Submesh: Sendable, Equatable {
+        /// An optional name, carried through to exported submeshes.
         public var label: String?
+        /// The faces in this group. A face should appear in at most one submesh.
         public var faces: [HalfEdgeTopology.FaceID]
 
         public init(label: String? = nil, faces: [HalfEdgeTopology.FaceID]) {
@@ -50,6 +54,17 @@ public struct Mesh: Sendable, Equatable {
         }
     }
 
+    /// Creates a mesh from existing topology and attribute arrays.
+    ///
+    /// - Parameters:
+    ///   - topology: The wiring.
+    ///   - positions: One position per topology vertex.
+    ///   - normals: Optional per-corner normals, one per half-edge.
+    ///   - textureCoordinates: Optional per-corner UVs, one per half-edge.
+    ///   - tangents: Optional per-corner tangents, one per half-edge.
+    ///   - bitangents: Optional per-corner bitangents, one per half-edge.
+    ///   - colors: Optional per-corner colors, one per half-edge.
+    ///   - submeshes: Face groups. `nil` puts every face in one submesh.
     public init(
         topology: HalfEdgeTopology,
         positions: [SIMD3<Float>],
