@@ -1450,6 +1450,8 @@ Tasks:
 
 Depends on a benchmarking harness (to be filed separately under the performance umbrella).
 
+- `2026-10-11T22:08:30Z`: Punting: open-ended investigation and it proposes a new dependency (swift-collections), which needs your decision. Since filing, the algorithmic hot spots were fixed (#87 decimation scans, #88 MetalMesh dedup, #89/#90 CSG allocations) and the harness (#93) exists. Current medians (release): topology.build.icoSphere5 3.4 ms, decimate.icoSphere5.25% 40.9 ms, csg.difference.sphere-cube 20.4 ms. Unblocker: OK to add swift-collections? And/or pick one concrete target (e.g. 'decimate 2x faster') so this can be scoped into a fixable issue.
+
 ---
 
 ## 87: Decimation: O(V·E) full half-edge scans per collapse
