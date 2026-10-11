@@ -2273,12 +2273,13 @@ Workaround for callers: call .triangulate() or .makingValid() (if such a thing e
 ## 106: Detect and warn on non-manifold edges in HalfEdgeTopology
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:topology, effort:s
 created: 2026-05-13T20:56:07Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-11T22:39:38Z
+closed: 2026-10-11T22:39:38Z
 +++
 
 After the fix for #SwiftMesh#105, HalfEdgeTopology.init(vertexCount:faces:) silently accepts non-manifold edges (\u22653 half-edges sharing an undirected edge). The first two half-edges along such an edge are paired as twins; any extras are left as boundary (twin = nil).

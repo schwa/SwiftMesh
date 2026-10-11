@@ -321,6 +321,23 @@ extension HalfEdgeTopology {
             }
         }
 
+        // Check 7: Non-manifold edges (more than two half-edges on one undirected edge).
+        // Construction pairs the first two as twins and leaves the rest as boundary, so this is a warning.
+        var edgeUse: [Int: (a: VertexID, b: VertexID, count: Int, first: HalfEdgeID)] = [:]
+        for edge in halfEdges where edge.next != nil {
+            guard let destination = destViaNext(of: edge.id) else {
+                continue
+            }
+            let a = min(edge.origin.raw, destination.raw)
+            let b = max(edge.origin.raw, destination.raw)
+            let key = a * vertices.count + b
+            let entry = edgeUse[key] ?? (VertexID(raw: a), VertexID(raw: b), 0, edge.id)
+            edgeUse[key] = (entry.a, entry.b, entry.count + 1, entry.first)
+        }
+        for entry in edgeUse.values.sorted(by: { $0.first.raw < $1.first.raw }) where entry.count > 2 {
+            issues.append(.init(severity: .warning, location: .edge(entry.first), message: "Non-manifold edge \(entry.a)-\(entry.b) has \(entry.count) incident half-edges"))
+        }
+
         // Check 6: No edge should reference non-existent faces
         for edge in halfEdges {
             if let faceID = edge.face {

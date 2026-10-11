@@ -839,3 +839,26 @@ struct NonManifoldEdgeTwinsTests {
         }
     }
 }
+
+// MARK: - Non-manifold edges
+
+@Suite("HalfEdgeTopology — Non-manifold edges")
+struct HalfEdgeTopologyNonManifoldEdgeTests {
+    @Test("Edge shared by three faces produces one warning and no errors")
+    func threeFacesOnOneEdge() {
+        // Three triangles fanned around edge 0–1.
+        let topology = HalfEdgeTopology(vertexCount: 5, faces: [
+            .init(outer: [0, 1, 2]), .init(outer: [1, 0, 3]), .init(outer: [0, 1, 4])
+        ])
+        let issues = topology.validate()
+        let warnings = issues.filter { $0.severity == .warning }
+        #expect(issues.allSatisfy { $0.severity == .warning })
+        #expect(warnings.count == 1)
+        #expect(warnings.first?.message.contains("3 incident half-edges") == true)
+    }
+
+    @Test("Manifold mesh has no non-manifold warnings")
+    func manifold() {
+        #expect(Mesh.icoSphere(subdivisions: 1, attributes: []).topology.validate().isEmpty)
+    }
+}
