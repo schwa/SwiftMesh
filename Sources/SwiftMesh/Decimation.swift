@@ -294,6 +294,60 @@ public extension Mesh {
                 }
             }
         }
+
+        compact()
+    }
+
+    /// Rebuild the mesh without tombstoned faces, vertices, and half-edges, remapping indices and per-corner attributes.
+    mutating func compact() {
+        var vertexMap = [Int](repeating: -1, count: topology.vertices.count)
+        var newPositions: [SIMD3<Float>] = []
+        var faceDefinitions: [HalfEdgeTopology.FaceDefinition] = []
+        var cornerOrder: [Int] = []
+        var faceMap: [HalfEdgeTopology.FaceID: HalfEdgeTopology.FaceID] = [:]
+
+        func remap(_ vertex: HalfEdgeTopology.VertexID) -> Int {
+            if vertexMap[vertex.raw] < 0 {
+                vertexMap[vertex.raw] = newPositions.count
+                newPositions.append(positions[vertex.raw])
+            }
+            return vertexMap[vertex.raw]
+        }
+
+        for face in topology.faces {
+            guard let start = face.edge else {
+                continue
+            }
+            let outer = topology.collectHalfEdgeLoop(startEdge: start)
+            guard outer.count >= 3 else {
+                continue
+            }
+            let holes = face.holeEdges.map { topology.collectHalfEdgeLoop(startEdge: $0) }.filter { $0.count >= 3 }
+            faceMap[face.id] = HalfEdgeTopology.FaceID(raw: faceDefinitions.count)
+            faceDefinitions.append(.init(
+                outer: outer.map { remap(topology.halfEdges[$0.raw].origin) },
+                holes: holes.map { $0.map { remap(topology.halfEdges[$0.raw].origin) } }
+            ))
+            cornerOrder += outer.map(\.raw)
+            for hole in holes {
+                cornerOrder += hole.map(\.raw)
+            }
+        }
+
+        func remapCorners<T>(_ values: [T]?) -> [T]? {
+            values.map { values in cornerOrder.map { values[$0] } }
+        }
+
+        topology = HalfEdgeTopology(vertexCount: newPositions.count, faces: faceDefinitions)
+        positions = newPositions
+        normals = remapCorners(normals)
+        textureCoordinates = remapCorners(textureCoordinates)
+        tangents = remapCorners(tangents)
+        bitangents = remapCorners(bitangents)
+        colors = remapCorners(colors)
+        submeshes = submeshes.map { submesh in
+            Mesh.Submesh(label: submesh.label, faces: submesh.faces.compactMap { faceMap[$0] })
+        }
     }
 
     /// Simplify the mesh by removing a ratio of faces.

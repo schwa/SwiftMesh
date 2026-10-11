@@ -1329,12 +1329,13 @@ PLY.write() already exists in SwiftMeshIO but isn't exposed in the demo app. Add
 ## 82: Decimation leaves tombstoned faces, fails validation
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: area:decimation, area:topology, effort:m
 created: 2026-04-15T17:48:08Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-11T21:51:41Z
+closed: 2026-10-11T21:51:41Z
 +++
 
 After decimation, the mesh contains hundreds of tombstoned faces (face.edge == nil) that are never compacted out. These cause validation errors ('Has no boundary edge') and isManifold returns false even for meshes that should remain manifold.

@@ -37,6 +37,17 @@ struct DecimationTests {
         #expect(liveFaceCount(simplified) <= target)
     }
 
+    @Test("Decimation compacts tombstones and stays valid", arguments: [Float(0.5), 0.25])
+    func decimationCompacts(ratio: Float) {
+        let mesh = Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 3)
+        let simplified = mesh.decimated(ratio: ratio)
+        #expect(simplified.topology.faces.allSatisfy { $0.edge != nil })
+        #expect(simplified.topology.vertices.allSatisfy { $0.edge != nil })
+        #expect(simplified.topology.halfEdges.allSatisfy { $0.next != nil })
+        #expect(simplified.validate().isEmpty)
+        #expect(simplified.positions.count == simplified.vertexCount)
+    }
+
     // MARK: - Edge cases
 
     @Test("Decimate with target >= current face count is a no-op")
