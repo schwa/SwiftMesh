@@ -1,9 +1,9 @@
 [defaults]
 destination = "mac"
-scheme = "SwiftMeshDemo"
-extra_args = []
+container = "SwiftMesh"
 
 [defaults.build]
+scheme = "SwiftMeshDemo"
 skip_plugin_validation = true
 
 [defaults.test]
@@ -11,7 +11,4 @@ scheme = "SwiftMesh"
 skip_plugin_validation = true
 
 [defaults.run]
-
-[output]
-
-[new.blueprint_defaults]
+scheme = "SwiftMeshDemo"
