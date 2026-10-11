@@ -2446,12 +2446,13 @@ Add a gallery section showing the editing operations, each as before/after pairs
 ## 115: Demo: add Extrusion & construction gallery section
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:demo, effort:s
 created: 2026-10-11T23:02:40Z
-updated: 2026-10-11T23:03:05Z
+updated: 2026-10-11T23:04:22Z
+closed: 2026-10-11T23:04:22Z
 +++
 
 Add a gallery section for newer constructors:\n- Path extrusion (Mesh.extruded(Path), #49): star, rounded rect, shape with a hole\n- Text extrusion (Mesh.extrudedText, #48): a word with holes, e.g. "SwiftMesh"\n- Hull of spheres (Mesh.convexHull(ofSpheres:), #78): equal radii (capsule) and mixed radii

@@ -551,6 +551,35 @@ struct MeshGallerySection: Identifiable {
                 })
             ]
         }()),
+        Self("Extrusion", items: {
+            func fitted(_ mesh: Mesh) -> Mesh {
+                var mesh = mesh
+                mesh.fitToExtents([0.8, 0.8, 0.8])
+                return mesh
+            }
+            let star = Path { path in
+                for index in 0..<10 {
+                    let angle = Double(index) * .pi / 5 - .pi / 2
+                    let radius: Double = index.isMultiple(of: 2) ? 1 : 0.45
+                    let point = CGPoint(x: cos(angle) * radius, y: sin(angle) * radius)
+                    if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+                path.closeSubpath()
+            }
+            var frame = Path(roundedRect: CGRect(x: 0, y: 0, width: 2, height: 2), cornerRadius: 0.3)
+            frame.addPath(Path(ellipseIn: CGRect(x: 0.5, y: 0.5, width: 1, height: 1)))
+            let capsuleSpheres: [(center: SIMD3<Float>, radius: Float)] = [([-0.25, 0, 0], 0.15), ([0.25, 0, 0], 0.15)]
+            let mixedSpheres: [(center: SIMD3<Float>, radius: Float)] = [([0, 0, 0], 0.25), ([0.35, 0.1, 0], 0.08), ([-0.1, 0.35, 0.1], 0.12), ([0, -0.1, 0.35], 0.05)]
+            return [
+                MeshGalleryItem("Star", subtitle: "Path extrusion", mesh: fitted(.extruded(star, depth: 0.3))),
+                MeshGalleryItem("Rounded Rect", subtitle: "Curved path", mesh: fitted(.extruded(Path(roundedRect: CGRect(x: 0, y: 0, width: 2, height: 1), cornerRadius: 0.3), depth: 0.4))),
+                MeshGalleryItem("Frame", subtitle: "Path with a hole", mesh: fitted(.extruded(frame, depth: 0.4))),
+                MeshGalleryItem("Text", subtitle: "\"SwiftMesh\" in Helvetica", mesh: fitted(.extrudedText("SwiftMesh", depth: 0.2))),
+                MeshGalleryItem("Text with Holes", subtitle: "\"BOQ\" in Helvetica Bold", mesh: fitted(.extrudedText("BOQ", fontName: "Helvetica-Bold", depth: 0.25))),
+                MeshGalleryItem("Sphere Hull: Capsule", subtitle: "Two equal spheres", mesh: Mesh.convexHull(ofSpheres: capsuleSpheres, subdivisions: 3) ?? .tetrahedron()),
+                MeshGalleryItem("Sphere Hull: Mixed", subtitle: "Four spheres, mixed radii", mesh: Mesh.convexHull(ofSpheres: mixedSpheres, subdivisions: 3) ?? .tetrahedron())
+            ]
+        }()),
         Self("Convex Hull", items: {
             // Random point cloud
             var randomPoints: [SIMD3<Float>] = []
