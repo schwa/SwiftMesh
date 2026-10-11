@@ -733,18 +733,20 @@ updated: 2026-04-15T17:03:10Z
 Generate meshes from text strings by converting font glyphs to paths, triangulating the 2D outline, and extruding to 3D. Should support font, size, and extrusion depth parameters.
 
 - `2026-04-15T17:03:10Z`: Related: #49 (extruded Path) — text extrusion could build on Path extrusion.
+- `2026-10-11T22:17:54Z`: Mesh.extruded(_: Path/CGPath, depth:) landed in #49; text extrusion can build a CGPath from CTFont glyph outlines and call it.
 
 ---
 
 ## 49: Mesh from extruded SwiftUI.Path
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: effort:l
 created: 2026-04-15T05:56:16Z
-updated: 2026-04-15T17:03:10Z
+updated: 2026-10-11T22:17:54Z
+closed: 2026-10-11T22:17:54Z
 +++
 
 Generate meshes by triangulating a SwiftUI Path and extruding to 3D. Should handle holes, produce front/back caps and side walls. Could be the foundation for text extrusion (#48) as well.
