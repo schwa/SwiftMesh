@@ -778,12 +778,13 @@ Round selected edges by replacing them with a smooth arc of faces. Requires edge
 ## 51: Edge chamfer (beveling)
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:l
 created: 2026-04-15T05:57:13Z
-updated: 2026-04-15T17:03:10Z
+updated: 2026-10-11T22:51:12Z
+closed: 2026-10-11T22:51:12Z
 +++
 
 Bevel selected edges by cutting them at an angle, replacing each edge with a flat face. Simpler than fillet — no curvature, just a single angled cut.
