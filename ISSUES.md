@@ -1388,6 +1388,8 @@ Go through every mesh in the demo gallery and verify they render correctly in bo
 - Subdivision results are smooth
 - Decimated meshes degrade gracefully
 
+- `2026-10-11T22:19:56Z`: Automated part done: PrimitiveOrientationTests checks every primitive's corner normals against face winding and that convex solids face outward. It found tetrahedron, sphere, cylinder, capsule, conicalFrustum, rectangularFrustum fully inside-out (winding and normals); fixed via Mesh.reversingWinding(). Still needs a human pass in the demo: UV/checkerboard look, CSG cleanliness, subdivision smoothness, decimation degradation.
+
 ---
 
 ## 84: border() with .textureCoordinates attribute doesn't generate UVs
