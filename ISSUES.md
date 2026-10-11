@@ -2513,11 +2513,13 @@ No gallery item shows planar atlas baking (bakingPlanarAtlas): add one that rend
 ## 119: Demo: add .help() tooltips to inspector fields and actions
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:demo, effort:s
 created: 2026-10-11T23:14:02Z
+updated: 2026-10-11T23:17:14Z
+closed: 2026-10-11T23:17:14Z
 +++
 
 Every inspector control and readout should explain itself on hover via .help():\n- Info: vertices, faces, edges, half-edges, submeshes, manifold, standalone faces (what each means, e.g. half-edges = 2 per interior edge).\n- Diagnostics (#116): Euler characteristic, components/genus/orientability, boundary loops, bad winding edges, validation, valence histogram. Say what a good value is (e.g. 'genus 0 = sphere-like').\n- Attributes: what normals/UVs/tangents/bitangents/colors are and that they're per-corner.\n- Operations: what each button does and its side effects (Weld tolerance, Triangulate, Loop vs Catmull-Clark, Decimate ratio, Wireframe, Border inside/outside, Fix/Reverse Winding, Merge Coplanar), and Reset.\n- Selection edits (#117): Split, Flip (and why it may be disabled), Chamfer and its slider, Extrude and its slider, Select Connected/Face Edges.\n- Toggles: Highlight Standalone, Vertex Dots.
@@ -2532,7 +2534,6 @@ priority: low
 kind: enhancement
 labels: area:demo, effort:s
 created: 2026-10-11T23:14:02Z
-updated: 2026-10-11T23:14:02Z
 +++
 
 Add hover help outside the inspector:\n- Gallery items: a one-line explanation of what the item demonstrates and which API it uses (e.g. 'Mesh.chamfered(distance:edges:) on one box edge'). Consider adding a help string to MeshGalleryItem so each section supplies it.\n- Section headers: what the section covers.\n- Render mode picker: what each debug mode visualizes (Normals, Tex Coords, Checkerboard, UV Grid, Front Facing, Valence Heatmap, Boundary Edges, ...) and when to use it (e.g. UV Grid for the Atlas Baking items).\n- Toolbar: Export PLY (ASCII vs binary), Inspector toggle, Metal renderer and Animate toggles, import by drag and drop.

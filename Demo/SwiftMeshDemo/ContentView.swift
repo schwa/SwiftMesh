@@ -245,28 +245,35 @@ struct MeshDiagnosticsSection: View {
     var body: some View {
         Section("Diagnostics") {
             LabeledContent("Euler \u{3c7}", value: "\(report.eulerCharacteristic)")
+                .help("V - E + F (holed faces count -1 per hole). A closed sphere-like surface has 2; each handle lowers it by 2.")
             LabeledContent("Components", value: "\(report.components.count)")
+                .help("Separate pieces: faces connected across shared edges.")
             ForEach(Array(report.components.prefix(6).enumerated()), id: \.offset) { index, component in
                 LabeledContent("  #\(index + 1)", value: describe(component))
+                    .help("Genus counts handles: 0 = sphere-like, 1 = torus-like. Invalid genus means the piece isn't a proper surface. Non-orientable pieces (like a Mobius strip) have no consistent inside and outside.")
             }
             if report.components.count > 6 {
                 LabeledContent("", value: "+\(report.components.count - 6) more")
             }
             LabeledContent("Boundary Loops", value: "\(report.boundaryLoops)")
+                .help("Open holes in the surface. 0 means watertight. Use the Boundary Edges render mode to see them.")
             LabeledContent("Bad Winding Edges") {
                 Text("\(report.inconsistentWindingEdges)")
                     .foregroundStyle(report.inconsistentWindingEdges == 0 ? .green : .red)
             }
+            .help("Edges where two faces run the same direction, meaning one of them is flipped. Fix Winding repairs this when the surface is orientable.")
             LabeledContent("Validation") {
                 Text("\(report.validationErrors) errors, \(report.validationWarnings.count) warnings")
                     .foregroundStyle(report.validationErrors > 0 ? .red : report.validationWarnings.isEmpty ? .green : .orange)
             }
+            .help("Mesh.validate(): errors are broken wiring or attribute counts; warnings (such as non-manifold edges) are legal but suspicious.")
             ForEach(Array(report.validationWarnings.prefix(3).enumerated()), id: \.offset) { _, warning in
                 Text(warning)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             LabeledContent("Valence", value: report.valenceHistogram.map { "\($0.valence):\($0.count)" }.joined(separator: " "))
+                .help("Neighbor count per vertex, as valence:vertices. Regular triangle meshes are mostly 6, quad meshes mostly 4; outliers are poles. See the Valence Heatmap render mode.")
         }
     }
 
@@ -324,15 +331,22 @@ struct MeshDetailView: View {
             Form {
                 Section("Info") {
                     LabeledContent("Vertices", value: "\(currentMesh.vertexCount)")
+                        .help("Unique positions. Vertices split at UV or normal seams count separately.")
                     LabeledContent("Faces", value: "\(currentMesh.faceCount)")
+                        .help("Polygons of any size, possibly with holes. Not necessarily triangles.")
                     LabeledContent("Edges", value: "\(currentMesh.edgeCount)")
+                        .help("Undirected edges between vertices.")
                     LabeledContent("Half-Edges", value: "\(currentMesh.topology.halfEdges.count)")
+                        .help("Directed edges, one per face corner. Interior edges have two (one per side), boundary edges one.")
                     LabeledContent("Submeshes", value: "\(currentMesh.submeshes.count)")
+                        .help("Face groups, usually one per material. Each becomes a separate draw on export.")
                     LabeledContent("Manifold") {
                         Text(currentMesh.isManifold ? "Yes" : "No")
                             .foregroundStyle(currentMesh.isManifold ? .green : .red)
                     }
+                    .help("Closed 2-manifold: no holes, every edge shared by exactly two faces, and no pinched vertices. Required for chamfer.")
                     LabeledContent("Standalone Faces", value: "\(standaloneFaceIDs?.count ?? 0)")
+                        .help("Faces that share no edge with any other face. Highlighted when Highlight Standalone is on.")
                 }
                 if let selection {
                     Section("Selection") {
@@ -345,6 +359,7 @@ struct MeshDetailView: View {
                             Button("Select Connected Edges") {
                                 selectConnectedEdges(vertex: idx)
                             }
+                            .help("Select every edge touching this vertex.")
 
                         case .edges(let edges):
                             LabeledContent("Type", value: "Edge\(edges.count == 1 ? "" : "s")")
@@ -356,14 +371,17 @@ struct MeshDetailView: View {
                                 Button("Select Face Edges") {
                                     selectFaceEdges(edge: edge)
                                 }
+                                .help("Select the boundary of a face using this edge. A full face boundary enables Extrude Face.")
                                 if let halfEdge = halfEdge(for: edge) {
                                     Button("Split Edge") {
                                         editSelection { $0.splitEdge(halfEdge) }
                                     }
+                                    .help("Insert a vertex at the edge's midpoint. Adjacent triangles split in two; other faces just gain the vertex.")
                                     Button("Flip Edge") {
                                         editSelection { $0.flipEdge(halfEdge) }
                                     }
                                     .disabled(!canFlip(halfEdge))
+                                    .help("Swap the diagonal shared by two triangles. Disabled on boundary edges, non-triangle faces, or when the other diagonal already exists.")
                                 }
                             }
                             Button("Chamfer Selected (\(edges.count))") {
@@ -375,65 +393,88 @@ struct MeshDetailView: View {
                                 }
                             }
                             .disabled(!currentMesh.isManifold)
+                            .help("Bevel the selected edges with a flat strip. Needs a closed manifold mesh. Attributes are regenerated.")
                             Slider(value: $chamferDistance, in: 0.01...0.2) { Text("Chamfer") }
+                                .help("How far the chamfer cuts into the faces on each side of the edge.")
                             if let face = face(boundedBy: edges) {
                                 Button("Extrude Face") {
                                     editSelection { $0 = $0.extrudingFace(face, distance: extrudeDistance) }
                                 }
+                                .help("Push the selected face along its normal and add side walls.")
                                 Slider(value: $extrudeDistance, in: -0.3...0.5) { Text("Distance") }
+                                    .help("Extrusion distance. Negative values push the face inward.")
                             }
                         }
                         Button("Clear Selection") {
                             self.selection = nil
                         }
+                        .help("Deselect everything.")
                     }
                 }
                 MeshDiagnosticsSection(report: MeshDiagnosticsReport(mesh: currentMesh))
                 Section("Attributes") {
                     LabeledContent("Normals", value: currentMesh.normals != nil ? "✓" : "—")
+                        .help("Per-corner surface normals for lighting. Per-corner means a vertex can have different values in different faces (hard edges).")
                     LabeledContent("UVs", value: currentMesh.textureCoordinates != nil ? "✓" : "—")
+                        .help("Per-corner texture coordinates. Seams are corners with different UVs at the same vertex.")
                     LabeledContent("Tangents", value: currentMesh.tangents != nil ? "✓" : "—")
+                        .help("Per-corner tangents (MikkTSpace) for normal mapping. Need normals and UVs.")
                     LabeledContent("Bitangents", value: currentMesh.bitangents != nil ? "✓" : "—")
+                        .help("Per-corner bitangents, completing the tangent frame for normal mapping.")
                     LabeledContent("Colors", value: currentMesh.colors != nil ? "✓" : "—")
+                        .help("Per-corner RGBA vertex colors.")
                 }
                 Section("Operations") {
                     Button("Weld") {
                         applyOperation { $0.welded(tolerance: 1e-4) }
                     }
+                    .help("Merge vertices closer than 0.0001 and rebuild the topology. Joins seams so neighboring faces share edges.")
                     Button("Triangulate") {
                         applyOperation { $0.triangulated() }
                     }
+                    .help("Split every polygon (including faces with holes) into triangles. Attributes are kept.")
                     Button("Subdivide (Loop)") {
                         applyOperation { $0.loopSubdivided(iterations: 1) }
                     }
+                    .help("Loop subdivision: each triangle becomes four and the surface smooths. Best on triangle meshes.")
                     Button("Subdivide (CC)") {
                         applyOperation { $0.catmullClarkSubdivided(iterations: 1) }
                     }
+                    .help("Catmull-Clark subdivision: every face becomes quads and the surface smooths. Works on any polygons.")
                     Button("Decimate 50%") {
                         applyOperation { $0.decimated(ratio: 0.5) }
                     }
+                    .help("Halve the triangle count with quadric edge collapse, keeping the shape as close as possible. Polygons are triangulated first.")
                     Button("Wireframe") {
                         applyOperation { $0.wireframe(radius: 0.015, sides: 8) }
                     }
+                    .help("Replace the mesh with thin solid prisms along every edge.")
                     Button("Border (Inside)") {
                         applyOperation { $0.border(thickness: 0.02, direction: .inside) }
                     }
+                    .help("Replace each face with a thin frame inset from its edges.")
                     Button("Border (Outside)") {
                         applyOperation { $0.border(thickness: 0.02, direction: .outside) }
                     }
+                    .help("Replace each face with a thin frame grown outward from its edges.")
                     Button("Fix Winding") {
                         // Non-orientable meshes can't be fixed; leave them unchanged.
                         applyOperation { $0.withConsistentWinding() ?? $0 }
                     }
+                    .help("Flip faces so every shared edge is used in opposite directions. Does nothing on non-orientable surfaces. Picks the majority orientation, not necessarily outward.")
                     Button("Reverse Winding") {
                         applyOperation { $0.reversingWinding() }
                     }
+                    .help("Flip every face, turning the mesh inside out.")
                     Button("Merge Coplanar Faces") {
                         applyOperation { $0.mergingCoplanarFaces() }
                     }
+                    .help("Join neighboring faces that lie in the same plane into single polygons.")
 
                     Toggle("Highlight Standalone", isOn: $showStandalone)
+                        .help("Highlight faces that share no edge with another face.")
                     Toggle("Vertex Dots", isOn: $showVertexDots)
+                        .help("Draw a dot at every vertex.")
 
                     if isModified {
                         Button("Reset") {
@@ -441,6 +482,7 @@ struct MeshDetailView: View {
                             isModified = false
                             recomputeStandalone()
                         }
+                        .help("Undo all operations and edits, returning to the gallery mesh.")
                     }
                 }
             }
