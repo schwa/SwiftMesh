@@ -114,14 +114,43 @@ public struct MetalMesh {
         // Walk submeshes to build vertex data and per-submesh index arrays.
         // For interleaved: dedup by full vertex bytes across all attributes.
         // For separate: dedup by concatenated attribute bytes (same vertex index across all buffers).
-        var bufferData: [Int: [UInt8]] = [:]
-        for bi in bufferIndices { bufferData[bi] = [] }
+        let strides = bufferIndices.map { descriptor.layouts[$0]!.stride }
+        var scratchOffsets: [Int] = []
+        var totalStride = 0
+        for stride in strides {
+            scratchOffsets.append(totalStride)
+            totalStride += stride
+        }
+        let maxCornerCount = mesh.submeshes.reduce(0) { total, submesh in
+            total + submesh.faces.reduce(0) { $0 + max(0, mesh.topology.halfEdgeLoop(for: $1).count - 2) * 3 }
+        }
+        var bufferStorage: [[UInt8]] = strides.map { _ in [] }
+        for slot in bufferStorage.indices {
+            bufferStorage[slot].reserveCapacity(strides[slot] * maxCornerCount)
+        }
+        var scratch = [UInt8](repeating: 0, count: totalStride)
 
         var currentVertexIndex: UInt32 = 0
         var builtSubmeshes: [(label: String?, indices: [UInt32])] = []
 
-        // For dedup, we build a composite key from all attribute bytes
-        var vertexDedup: [[UInt8]: UInt32] = [:]
+        // Dedup by hash of all attribute bytes; collisions are resolved by comparing bytes.
+        var vertexDedup: [Int: UInt32] = [:]
+        var collidingVertices: [Int: [UInt32]] = [:]
+
+        func matches(_ candidate: UInt32) -> Bool {
+            scratch.withUnsafeBytes { scratchBytes in
+                for slot in strides.indices {
+                    let stride = strides[slot]
+                    let equal = bufferStorage[slot].withUnsafeBytes { stored in
+                        memcmp(stored.baseAddress! + Int(candidate) * stride, scratchBytes.baseAddress! + scratchOffsets[slot], stride) == 0
+                    }
+                    if !equal {
+                        return false
+                    }
+                }
+                return true
+            }
+        }
 
         // Map Metal vertex index → position vertex index (for topology building)
         var metalVertexToPosition: [UInt32] = []
@@ -148,30 +177,39 @@ public struct MetalMesh {
                     for vertexID in [vid0, vid1, vid2] {
                         let heID = vertexToHE[vertexID.raw]
 
-                        // Build per-buffer vertex bytes and a composite dedup key
-                        var perBuffer: [Int: [UInt8]] = [:]
-                        var compositeKey: [UInt8] = []
-
-                        for bi in bufferIndices {
-                            let biStride = descriptor.layouts[bi]!.stride
-                            var bytes = [UInt8](repeating: 0, count: biStride)
-                            bytes.withUnsafeMutableBytes { buf in
-                                guard let base = buf.baseAddress else { return }
+                        let hash = scratch.withUnsafeMutableBytes { buffer -> Int in
+                            let base = buffer.baseAddress!
+                            memset(base, 0, totalStride)
+                            for (slot, bi) in bufferIndices.enumerated() {
                                 for attr in descriptor.attributes where attr.bufferIndex == bi {
-                                    let dest = base.advanced(by: attr.offset)
+                                    let dest = base.advanced(by: scratchOffsets[slot] + attr.offset)
                                     Self.writeAttribute(attr.semantic, dest: dest, vertexID: vertexID, heID: heID, mesh: mesh)
                                 }
                             }
-                            perBuffer[bi] = bytes
-                            compositeKey.append(contentsOf: bytes)
+                            var hasher = Hasher()
+                            hasher.combine(bytes: UnsafeRawBufferPointer(buffer))
+                            return hasher.finalize()
                         }
 
-                        if let existingIndex = vertexDedup[compositeKey] {
+                        var existingIndex: UInt32?
+                        if let candidate = vertexDedup[hash] {
+                            if matches(candidate) {
+                                existingIndex = candidate
+                            } else {
+                                existingIndex = collidingVertices[hash]?.first(where: matches)
+                            }
+                        }
+
+                        if let existingIndex {
                             indices.append(existingIndex)
                         } else {
-                            vertexDedup[compositeKey] = currentVertexIndex
-                            for bi in bufferIndices {
-                                bufferData[bi]!.append(contentsOf: perBuffer[bi]!)
+                            if vertexDedup[hash] == nil {
+                                vertexDedup[hash] = currentVertexIndex
+                            } else {
+                                collidingVertices[hash, default: []].append(currentVertexIndex)
+                            }
+                            for slot in strides.indices {
+                                bufferStorage[slot].append(contentsOf: scratch[scratchOffsets[slot]..<(scratchOffsets[slot] + strides[slot])])
                             }
                             metalVertexToPosition.append(UInt32(vertexID.raw))
                             indices.append(currentVertexIndex)
@@ -188,8 +226,8 @@ public struct MetalMesh {
 
         // Create vertex buffers
         var vtxBuffers: [Int: MTLBuffer] = [:]
-        for bi in bufferIndices {
-            let data = bufferData[bi]!
+        for (slot, bi) in bufferIndices.enumerated() {
+            let data = bufferStorage[slot]
             let buffer: MTLBuffer
             if data.isEmpty {
                 buffer = device.makeBuffer(length: 1, options: [])!

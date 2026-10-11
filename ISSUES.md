@@ -1487,13 +1487,14 @@ Expected impact: orders of magnitude on meshes >10k faces.
 ## 88: MetalMesh: variable-length [UInt8] dedup key is slow per-vertex
 
 +++
-status: open
+status: closed
 priority: high
 kind: enhancement
 labels: area:performance, area:metal, effort:m
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:31Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-11T21:55:39Z
+closed: 2026-10-11T21:55:39Z
 +++
 
 In `MetalMesh.init`, vertex deduplication uses a `[[UInt8]: UInt32]` dictionary keyed by the concatenated bytes of every attribute:
