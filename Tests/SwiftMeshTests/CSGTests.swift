@@ -62,14 +62,10 @@ struct CSGTests {
 
     @Test("Convenience CSG methods match csg(_:_:options:)")
     func optionsPathMatchesConvenience() {
-        // Vertex/face order can differ between runs, so compare order-independent summaries.
-        func summary(_ mesh: Mesh) -> (Int, Int, [[Float]]) {
-            (mesh.faceCount, mesh.vertexCount, mesh.positions.map { [$0.x, $0.y, $0.z] }.sorted { $0.lexicographicallyPrecedes($1) })
-        }
         let (a, b) = overlappingCubes()
-        #expect(summary(a.union(b)) == summary(a.csg(.union, b)))
-        #expect(summary(a.intersection(b, mergeCoplanar: false)) == summary(a.csg(.intersection, b, options: .init(mergeCoplanar: false))))
-        #expect(summary(a.difference(b, weldTolerance: 1e-3)) == summary(a.csg(.difference, b, options: .init(weldTolerance: 1e-3))))
+        #expect(a.union(b) == a.csg(.union, b))
+        #expect(a.intersection(b, mergeCoplanar: false) == a.csg(.intersection, b, options: .init(mergeCoplanar: false)))
+        #expect(a.difference(b, weldTolerance: 1e-3) == a.csg(.difference, b, options: .init(weldTolerance: 1e-3)))
     }
 
     @Test("CSG output is deterministic", arguments: [CSGOperation.union, .intersection, .difference])
