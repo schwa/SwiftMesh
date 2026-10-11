@@ -151,6 +151,41 @@ public extension MetalMesh {
     }
 }
 
+// MARK: - MDLAsset → [Mesh]
+
+public extension Array where Element == Mesh {
+    /// Convert every MDLMesh in an asset into a Mesh, one per source mesh.
+    ///
+    /// Order matches a depth-first walk of the asset's object graph. The caller
+    /// decides what to do with the result (render separately, `Mesh.merged(_:)`, ...).
+    ///
+    /// - Parameter applyingTransforms: Bake each mesh's world transform (its own
+    ///   and its ancestors') into positions and directions. Set `false` to keep
+    ///   meshes in their local space.
+    init(mdlAsset: MDLAsset, device: MTLDevice, applyingTransforms: Bool = true) throws {
+        var meshes: [Mesh] = []
+        func visit(_ object: MDLObject) throws {
+            if let mdlMesh = object as? MDLMesh {
+                var mesh = try Mesh(mdlMesh: mdlMesh, device: device)
+                if applyingTransforms {
+                    let transform = MDLTransform.globalTransform(with: object, atTime: 0)
+                    if transform != matrix_identity_float4x4 {
+                        mesh.transform(by: transform)
+                    }
+                }
+                meshes.append(mesh)
+            }
+            for child in object.children.objects {
+                try visit(child)
+            }
+        }
+        for index in 0..<mdlAsset.count {
+            try visit(mdlAsset.object(at: index))
+        }
+        self = meshes
+    }
+}
+
 // MARK: - Mesh → MDLMesh
 
 public extension Mesh {

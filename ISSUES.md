@@ -1912,12 +1912,13 @@ Both preserve source submeshes with offset face IDs.
 ## 97: Add a way to extract all MDLMeshes from an MDLAsset as [Mesh]
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: area:io, effort:s
 created: 2026-05-13T01:51:18Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-11T22:43:00Z
+closed: 2026-10-11T22:43:00Z
 +++
 
 Mesh.init(mdlMesh:device:) handles a single MDLMesh, but assets in the wild (USDZ exported from RoomPlan, glTF, etc.) typically contain multiple top-level MDLMeshes — one per object. Today every caller has to walk MDLAsset themselves: iterate asset.object(at:), recurse into children, accumulate MDLMeshes, then loop and call Mesh.init(mdlMesh:device:).

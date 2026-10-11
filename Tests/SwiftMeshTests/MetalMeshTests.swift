@@ -292,6 +292,32 @@ struct MetalMeshTests {
         #expect(mesh.textureCoordinates != nil)
     }
 
+    @Test("MDLAsset → [Mesh] walks children depth-first and applies transforms")
+    func meshesFromAsset() throws {
+        let device = try requireDevice()
+        let allocator = MTKMeshBufferAllocator(device: device)
+        func box(_ size: Float) -> MDLMesh {
+            MDLMesh.newBox(withDimensions: SIMD3(repeating: size), segments: [1, 1, 1], geometryType: .triangles, inwardNormals: false, allocator: allocator)
+        }
+        let asset = MDLAsset(bufferAllocator: allocator)
+        asset.add(box(1))
+        let parent = MDLObject()
+        parent.transform = MDLTransform(matrix: simd_float4x4(translation: [10, 0, 0]))
+        let child = box(2)
+        child.transform = MDLTransform(matrix: simd_float4x4(translation: [0, 5, 0]))
+        parent.addChild(child)
+        asset.add(parent)
+
+        let meshes = try [Mesh](mdlAsset: asset, device: device)
+        #expect(meshes.count == 2)
+        #expect(simd_distance((meshes[0].bounds.min + meshes[0].bounds.max) / 2, .zero) < 1e-5)
+        #expect(simd_distance((meshes[1].bounds.min + meshes[1].bounds.max) / 2, [10, 5, 0]) < 1e-5)
+        #expect(simd_distance(meshes[1].bounds.max - meshes[1].bounds.min, [2, 2, 2]) < 1e-5)
+
+        let local = try [Mesh](mdlAsset: asset, device: device, applyingTransforms: false)
+        #expect(simd_distance((local[1].bounds.min + local[1].bounds.max) / 2, .zero) < 1e-5)
+    }
+
     // MARK: - Direct initializers (bypass Mesh / topology)
 
     @Test("Direct init from positions/indices")
