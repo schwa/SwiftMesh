@@ -1726,13 +1726,14 @@ Once landed: capture baseline numbers, then attach before/after to each performa
 ## 94: Add benchmarks for SwiftMesh hot paths
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: area:performance, area:benchmarks, effort:m
 depends: SwiftMesh#93
 created: 2026-04-16T03:27:43Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-11T22:21:37Z
+closed: 2026-10-11T22:21:37Z
 +++
 
 Once the benchmarking harness (#93) is in place, add benchmarks covering the major hot paths so performance work has measurable before/after numbers.
@@ -1752,6 +1753,8 @@ Also consider:
 - A standard fixture corpus (small/medium/large meshes) used across benchmarks
 - Allocation count + peak memory tracking
 - CI regression gating
+
+- `2026-10-11T22:21:37Z`: Added 31 benchmarks: primitives, topology build, CSG union/intersection/difference × small/medium/large, decimation 50/25/10%, Loop and Catmull-Clark x1-3, convex hull 100/10k/100k, marching cubes 32/64, MetalMesh interleaved/separate, PLY round-trip. Not done: OBJ round-trip (no OBJ writer API), allocation/peak-memory tracking, CI gating, shared fixture corpus — the issue lists these under 'also consider'; file follow-ups if wanted.
 
 ---
 
