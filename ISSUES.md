@@ -1287,17 +1287,19 @@ Compute the convex hull of a set of 3D points, returning a Mesh. Standard increm
 ## 78: Add convex hull from points with radii
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:l
 created: 2026-04-15T16:08:59Z
-updated: 2026-04-15T17:03:10Z
+updated: 2026-10-11T22:51:51Z
+closed: 2026-10-11T22:51:51Z
 +++
 
 Compute the convex hull of a set of 3D spheres (point + radius), returning a Mesh. This is the Minkowski sum of the convex hull of the centers with a sphere — effectively rounding the edges and vertices of the hull. Depends on #77 (convex hull from points).
 
 - `2026-04-15T17:03:10Z`: Depends on #77 (convex hull from points).
+- `2026-10-11T22:51:51Z`: Implemented by sampling each sphere with icosphere vertices and hulling the samples, so it works for mixed radii (where the result is not the centers' hull plus one radius, as the description suggests). Approximate from the inside; subdivisions controls fidelity.
 
 ---
 

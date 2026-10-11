@@ -164,6 +164,35 @@ struct ConvexHullTests {
         #expect(outside.isEmpty)
     }
 
+    @Test("Hull of spheres: single sphere, capsule-like pair, and mixed radii")
+    func spheres() throws {
+        let single = try #require(Mesh.convexHull(ofSpheres: [([1, 2, 3], 0.5)], attributes: []))
+        #expect(single.isManifold)
+        #expect(single.positions.allSatisfy { abs(simd_distance($0, [1, 2, 3]) - 0.5) < 1e-5 })
+
+        // Two equal spheres: a capsule along x of length 2 + 2r.
+        let pair = try #require(Mesh.convexHull(ofSpheres: [([-1, 0, 0], 0.5), ([1, 0, 0], 0.5)], subdivisions: 3, attributes: []))
+        #expect(pair.isManifold)
+        #expect(abs(pair.bounds.max.x - 1.5) < 1e-5)
+        #expect(abs(pair.bounds.min.x + 1.5) < 1e-5)
+        #expect(pair.bounds.max.y <= 0.5 + 1e-5)
+        #expect(pair.bounds.max.y > 0.48)
+
+        // Mixed radii: every vertex lies on one of the spheres, and the big sphere dominates its side.
+        let spheres: [(center: SIMD3<Float>, radius: Float)] = [([0, 0, 0], 1), ([3, 0, 0], 0.25), ([0, 3, 0], 0)]
+        let mixed = try #require(Mesh.convexHull(ofSpheres: spheres, attributes: []))
+        #expect(mixed.isManifold)
+        #expect(mixed.positions.allSatisfy { position in spheres.contains { abs(simd_distance(position, $0.center) - $0.radius) < 1e-5 } })
+        #expect(abs(mixed.bounds.min.x + 1) < 1e-5)
+        #expect(abs(mixed.bounds.max.x - 3.25) < 1e-5)
+        #expect(abs(mixed.bounds.max.y - 3) < 1e-5)
+    }
+
+    @Test("Hull of zero-radius coplanar spheres is degenerate")
+    func degenerateSpheres() {
+        #expect(Mesh.convexHull(ofSpheres: [([0, 0, 0], 0), ([1, 0, 0], 0), ([0, 1, 0], 0), ([1, 1, 0], 0)]) == nil)
+    }
+
     @Test("Points on a sphere produce valid hull")
     func spherePoints() throws {
         var points: [SIMD3<Float>] = []

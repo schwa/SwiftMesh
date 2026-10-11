@@ -21,6 +21,28 @@ public extension Mesh {
         mesh.applyAttributes(attributes)
         return mesh
     }
+
+    /// Approximate the convex hull of a set of spheres.
+    ///
+    /// Each sphere is sampled with the vertices of an icosphere of its radius (a zero radius
+    /// contributes just its center), then the hull of all samples is taken. The result lies
+    /// inside the true hull and converges to it as `subdivisions` grows. Works for mixed
+    /// radii, where the hull is not simply the centers' hull grown by one radius.
+    ///
+    /// - Returns: The hull mesh, or `nil` if the samples are degenerate (for example all
+    ///   zero radii on a plane).
+    static func convexHull(ofSpheres spheres: [(center: SIMD3<Float>, radius: Float)], subdivisions: Int = 2, attributes: MeshAttributes = .default) -> Mesh? {
+        let unitDirections = Mesh.icoSphere(extents: [2, 2, 2], subdivisions: subdivisions, attributes: []).positions.map { simd_normalize($0) }
+        var points: [SIMD3<Float>] = []
+        for sphere in spheres {
+            if sphere.radius > 0 {
+                points += unitDirections.map { sphere.center + $0 * sphere.radius }
+            } else {
+                points.append(sphere.center)
+            }
+        }
+        return convexHull(of: points, attributes: attributes)
+    }
 }
 
 // MARK: - ConvexHullBuilder
