@@ -22,6 +22,19 @@ struct CSGTests {
         return (a, b)
     }
 
+    @Test("CSG does not split faces the other solid doesn't touch", arguments: [CSGOperation.union, .difference])
+    func noSplitOfUntouchedFaces(operation: CSGOperation) {
+        let rotation = simd_quatf(angle: 0.5, axis: simd_normalize([1, 1, 0]))
+        var cube = TriangleSoup(mesh: Mesh.box(extents: [2, 2, 2], attributes: []))
+        cube.positions = cube.positions.map { rotation.act($0) }
+        let sphere = TriangleSoup(mesh: Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 2, attributes: []))
+        let result = cube.csg(operation, sphere)
+        let onCubeSurface = result.triangles.filter { tri in
+            [tri.0, tri.1, tri.2].allSatisfy { simd_reduce_max(simd_abs(rotation.inverse.act(result.positions[$0]))) > 0.999 }
+        }
+        #expect(onCubeSurface.count == cube.triangles.count)
+    }
+
     /// Two identical unit cubes at origin.
     private func identicalCubes() -> (Mesh, Mesh) {
         let a = Mesh.box(extents: [1, 1, 1], attributes: [])

@@ -852,12 +852,13 @@ mergingCoplanarFaces() produces degenerate polygons with self-intersecting bound
 ## 56: CSG over-splits faces that don't intersect the other solid
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: effort:l
 created: 2026-04-15T06:58:03Z
-updated: 2026-05-13T18:52:09Z
+updated: 2026-10-11T21:54:20Z
+closed: 2026-10-11T21:54:20Z
 +++
 
 BSP-based CSG splits cube faces even when the sphere is entirely interior and doesn't intersect those faces. This creates unnecessary triangulation on flat surfaces that coplanar merging can only partially clean up, since the BSP split introduces true boundary edges where none should exist.

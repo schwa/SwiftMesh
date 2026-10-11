@@ -32,6 +32,10 @@ struct AABB: Sendable {
         self.max = simd_max(self.max, other.max)
     }
 
+    func expanded(by amount: Float) -> Self {
+        Self(min: min - amount, max: max + amount)
+    }
+
     func overlaps(_ other: Self) -> Bool {
         min.x <= other.max.x && max.x >= other.min.x &&
             min.y <= other.max.y && max.y >= other.min.y &&
@@ -113,6 +117,15 @@ struct CSGPolygon: Sendable {
 
     func flipped() -> Self {
         Self(vertices: vertices.reversed(), plane: plane.flipped())
+    }
+
+    var centroid: SIMD3<Float> {
+        vertices.reduce(.zero, +) / Float(vertices.count)
+    }
+
+    func isStrictlyOneSide(of plane: CSGPlane) -> Bool {
+        let distances = vertices.map { plane.distanceTo($0) }
+        return distances.allSatisfy { $0 > epsilon } || distances.allSatisfy { $0 < -epsilon }
     }
 }
 
@@ -199,9 +212,50 @@ final class CSGNode: @unchecked Sendable {
 
     /// Remove all polygons in this tree that are inside the other BSP tree.
     func clipTo(_ other: CSGNode) {
-        polygons = other.clipPolygons(polygons)
+        polygons = polygons.flatMap { polygon -> [CSGPolygon] in
+            // A polygon that crosses none of the other surface is wholly inside or outside it, so keep or drop it unsplit.
+            if !other.surfaceIntersects(polygon, bounds: AABB(polygon: polygon)), let inside = other.contains(polygon.centroid) {
+                return inside ? [] : [polygon]
+            }
+            return other.clipPolygons([polygon])
+        }
         front?.clipTo(other)
         back?.clipTo(other)
+    }
+
+    /// Whether `point` is inside the solid, or nil if it lies on a splitting plane.
+    func contains(_ point: SIMD3<Float>) -> Bool? {
+        guard let plane else {
+            return false
+        }
+        let distance = plane.distanceTo(point)
+        if distance > epsilon {
+            guard let front else {
+                return false
+            }
+            return front.contains(point)
+        }
+        if distance < -epsilon {
+            guard let back else {
+                return true
+            }
+            return back.contains(point)
+        }
+        return nil
+    }
+
+    /// Conservatively test whether `polygon` touches any polygon in this subtree. Coplanar contact counts as touching.
+    func surfaceIntersects(_ polygon: CSGPolygon, bounds polygonBounds: AABB) -> Bool {
+        guard !bounds.isEmpty, polygonBounds.overlaps(bounds.expanded(by: epsilon)) else {
+            return false
+        }
+        for other in polygons where polygonBounds.overlaps(AABB(polygon: other).expanded(by: epsilon)) {
+            if !polygon.isStrictlyOneSide(of: other.plane), !other.isStrictlyOneSide(of: polygon.plane) {
+                return true
+            }
+        }
+        return front?.surfaceIntersects(polygon, bounds: polygonBounds) == true
+            || back?.surfaceIntersects(polygon, bounds: polygonBounds) == true
     }
 
     /// Return all polygons in this BSP tree.
