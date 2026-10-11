@@ -2431,12 +2431,13 @@ Calling the same Mesh CSG operation twice can return meshes with the same geomet
 ## 114: Demo: add Editing gallery section
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:demo, effort:m
 created: 2026-10-11T23:02:40Z
-updated: 2026-10-11T23:03:05Z
+updated: 2026-10-11T23:05:42Z
+closed: 2026-10-11T23:05:42Z
 +++
 
 Add a gallery section showing the editing operations, each as before/after pairs where useful:\n- Edge split (Mesh.splitEdge, #42) on a cube and an icosphere\n- Edge flip (Mesh.flipEdge, #41) on a quad strip\n- Face extrude (Mesh.extrudingFace, #43): one face of a box, plus a negative distance\n- Chamfer (Mesh.chamfered, #51): all edges of a box, one edge of a box, icosahedron\n- Plane split (Mesh.split(planeNormal:point:capped:), #66): sphere capped and uncapped, torus cut showing an annulus cap

@@ -580,6 +580,52 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("Sphere Hull: Mixed", subtitle: "Four spheres, mixed radii", mesh: Mesh.convexHull(ofSpheres: mixedSpheres, subdivisions: 3) ?? .tetrahedron())
             ]
         }()),
+        Self("Editing", items: {
+            // Split every 7th edge of an icosphere once.
+            var split = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 1, attributes: [])
+            for halfEdge in split.topology.halfEdges.indices where halfEdge.isMultiple(of: 7) {
+                split.splitEdge(.init(raw: halfEdge))
+            }
+            // A strip of triangles with every other diagonal flipped.
+            var stripPositions: [SIMD3<Float>] = []
+            for column in 0...6 {
+                let x = Float(column) * 0.13 - 0.4
+                stripPositions.append([x, -0.15, 0])
+                stripPositions.append([x, 0.15, 0])
+            }
+            var stripFaces: [[Int]] = []
+            for column in 0..<6 {
+                let base = 2 * column
+                stripFaces.append([base, base + 2, base + 3])
+                stripFaces.append([base, base + 3, base + 1])
+            }
+            var strip = Mesh(positions: stripPositions, faces: stripFaces)
+            let unflipped = strip
+            for halfEdge in strip.topology.halfEdges where halfEdge.twin != nil && halfEdge.id.raw < halfEdge.twin!.raw {
+                // Diagonals join vertex 2c to 2c + 3; flip those in even columns.
+                let ends = [halfEdge.origin.raw, strip.topology.destViaNext(of: halfEdge.id)!.raw].sorted()
+                if ends[1] - ends[0] == 3, (ends[0] / 2).isMultiple(of: 2) {
+                    strip.flipEdge(halfEdge.id)
+                }
+            }
+            let box = Mesh.box(extents: [0.5, 0.5, 0.5], attributes: [])
+            let topFace = box.topology.faces.first { box.faceNormal($0.id).y > 0.99 }!.id
+            let sphere = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 3, attributes: [])
+            let cutNormal = simd_normalize(SIMD3<Float>(1, 1, 0.3))
+            return [
+                MeshGalleryItem("Split Edges", subtitle: "Every 7th edge of an icosphere", mesh: split),
+                MeshGalleryItem("Strip", subtitle: "Before flipping", mesh: unflipped),
+                MeshGalleryItem("Flipped Strip", subtitle: "Alternate diagonals flipped", mesh: strip),
+                MeshGalleryItem("Extrude Face", subtitle: "Box top pushed out", mesh: box.extrudingFace(topFace, distance: 0.3)),
+                MeshGalleryItem("Inset Face", subtitle: "Box top pushed in", mesh: box.extrudingFace(topFace, distance: -0.2)),
+                MeshGalleryItem("Chamfer All", subtitle: "Every box edge", mesh: box.chamfered(distance: 0.06, attributes: .default) ?? box),
+                MeshGalleryItem("Chamfer One", subtitle: "A single box edge", mesh: box.chamfered(distance: 0.1, edges: [box.topology.halfEdges.first { $0.twin != nil }!.id], attributes: .default) ?? box),
+                MeshGalleryItem("Chamfer Icosahedron", subtitle: "Every edge", mesh: Mesh.icosahedron(extents: [0.8, 0.8, 0.8], attributes: []).chamfered(distance: 0.05, attributes: .default) ?? box),
+                MeshGalleryItem("Plane Split (Capped)", subtitle: "Sphere, front half", mesh: sphere.split(planeNormal: cutNormal, point: .zero).front),
+                MeshGalleryItem("Plane Split (Open)", subtitle: "Sphere, front half, uncapped", mesh: sphere.split(planeNormal: cutNormal, point: .zero, capped: false).front),
+                MeshGalleryItem("Torus Cut", subtitle: "Annulus cap with a hole", mesh: Mesh.torus(attributes: []).split(planeNormal: [0, 1, 0], point: .zero).front)
+            ]
+        }()),
         Self("Convex Hull", items: {
             // Random point cloud
             var randomPoints: [SIMD3<Float>] = []
