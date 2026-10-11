@@ -1189,12 +1189,13 @@ Test impact: A single boundary test on the attribute-remapping API would replace
 ## 74: Simplify CSG conversion pipeline
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: architecture, refactor, effort:l
 created: 2026-04-15T15:38:15Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-11T22:41:05Z
+closed: 2026-10-11T22:41:05Z
 +++
 
 The CSG pipeline performs 5+ data conversions in sequence: Mesh → TriangleSoup → CSGPolygon → BSPNode → [CSGPolygon] → TriangleSoup → welded TriangleSoup → Mesh → welded Mesh → mergingCoplanarFaces. Each step loses information (all per-corner attributes are stripped) and introduces tolerance-dependent behavior spread across welding (1e-5), coplanar merge (1e-4 angle, 1e-4 distance), BSP splitting (1e-5 epsilon), and the Mesh.union/intersection/difference weldTolerance parameter (1e-2).
@@ -1210,6 +1211,8 @@ Affected files: CSG.swift, TriangleSoup.swift, MeshOptimization.swift, Mesh.swif
 Dependency category: In-process (pure computation).
 
 Test impact: Existing CSGTests already test at the boundary (union/intersection/difference → validate topology). Internal simplification wouldn't require new tests but would make the pipeline easier to debug and extend.
+
+- `2026-10-11T22:41:05Z`: Done: one pipeline (Mesh.csg(_:_:options:)) behind union/intersection/difference; CSGOptions gathers weld and coplanar tolerances plus mergeCoplanar; options.attributes re-derives normals/UVs on the result. Welding already happens once on the mesh path. Not done: removing the TriangleSoup→CSGPolygon round-trip — triangulating to a soup is what makes non-convex n-gons valid BSP input, and the BSP epsilon stays internal. Noticed CSG output vertex/face order varies call to call (filed separately).
 
 ---
 
@@ -2387,5 +2390,19 @@ closed: 2026-10-11T22:39:38Z
 +++
 
 Mesh.decimate collapses edges without checking the link condition, so it can create edges with 3+ incident half-edges. Repro: icoSphere(subdivisions: 3).decimated(ratio: 0.25).validate() reports a non-manifold edge warning (surfaced by #106). Fix: skip collapses where the endpoints share neighbors other than the opposite vertices of the edge's adjacent faces.
+
+---
+
+## 113: CSG output order is nondeterministic
+
++++
+status: new
+priority: low
+kind: bug
+labels: area:csg, effort:s
+created: 2026-10-11T22:41:05Z
++++
+
+Calling the same Mesh CSG operation twice can return meshes with the same geometry but different vertex/face order (Mesh == fails). Likely Dictionary/Set iteration in welding or coplanar merge. Makes exports and snapshot tests non-reproducible. Found while fixing #74.
 
 ---

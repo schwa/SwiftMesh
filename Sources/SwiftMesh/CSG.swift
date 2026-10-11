@@ -586,9 +586,7 @@ public extension Mesh {
     /// - Parameter other: The mesh to union with.
     /// - Returns: A new mesh representing the combined volume.
     func union(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
-        var result = TriangleSoup(mesh: self).union(TriangleSoup(mesh: other)).toMesh(weldTolerance: weldTolerance)
-        if mergeCoplanar { result = result.mergingCoplanarFaces() }
-        return result
+        csg(.union, other, options: CSGOptions(weldTolerance: weldTolerance, mergeCoplanar: mergeCoplanar))
     }
 
     /// Returns the CSG intersection of this mesh with another (A ∩ B).
@@ -601,9 +599,7 @@ public extension Mesh {
     /// - Parameter other: The mesh to intersect with.
     /// - Returns: A new mesh containing only the shared volume.
     func intersection(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
-        var result = TriangleSoup(mesh: self).intersection(TriangleSoup(mesh: other)).toMesh(weldTolerance: weldTolerance)
-        if mergeCoplanar { result = result.mergingCoplanarFaces() }
-        return result
+        csg(.intersection, other, options: CSGOptions(weldTolerance: weldTolerance, mergeCoplanar: mergeCoplanar))
     }
 
     /// Returns the CSG difference of this mesh minus another (A − B).
@@ -616,8 +612,45 @@ public extension Mesh {
     /// - Parameter other: The mesh volume to subtract.
     /// - Returns: A new mesh with the other's volume carved out.
     func difference(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
-        var result = TriangleSoup(mesh: self).difference(TriangleSoup(mesh: other)).toMesh(weldTolerance: weldTolerance)
-        if mergeCoplanar { result = result.mergingCoplanarFaces() }
+        csg(.difference, other, options: CSGOptions(weldTolerance: weldTolerance, mergeCoplanar: mergeCoplanar))
+    }
+
+    /// Perform a CSG operation with explicit options.
+    ///
+    /// Pipeline: triangulate both meshes into soups (the BSP needs convex polygons),
+    /// run the BSP operation, weld the result into a mesh, optionally merge coplanar
+    /// faces, then derive `options.attributes`. Input per-corner attributes and
+    /// submeshes are not carried through.
+    func csg(_ operation: CSGOperation, _ other: Mesh, options: CSGOptions = .init()) -> Mesh {
+        var result = TriangleSoup(mesh: self).csg(operation, TriangleSoup(mesh: other)).toMesh(weldTolerance: options.weldTolerance)
+        if options.mergeCoplanar {
+            result = result.mergingCoplanarFaces(angleTolerance: options.coplanarAngleTolerance, distanceTolerance: options.coplanarDistanceTolerance)
+        }
+        result.applyAttributes(options.attributes)
         return result
+    }
+}
+
+/// Tolerances and post-processing for mesh CSG, gathered in one place.
+///
+/// The BSP split epsilon (1e-5, in Double) is internal and not configurable.
+public struct CSGOptions: Sendable {
+    /// Maximum distance for merging result vertices.
+    public var weldTolerance: Float
+    /// Merge adjacent coplanar triangles back into n-gons.
+    public var mergeCoplanar: Bool
+    /// Maximum angle (radians) between normals for faces to count as coplanar.
+    public var coplanarAngleTolerance: Float
+    /// Maximum distance between planes for faces to count as coplanar.
+    public var coplanarDistanceTolerance: Float
+    /// Attributes to derive on the result (for example `.flatNormals`). Input attributes are not preserved.
+    public var attributes: MeshAttributes
+
+    public init(weldTolerance: Float = 1e-2, mergeCoplanar: Bool = true, coplanarAngleTolerance: Float = 1e-4, coplanarDistanceTolerance: Float = 1e-4, attributes: MeshAttributes = []) {
+        self.weldTolerance = weldTolerance
+        self.mergeCoplanar = mergeCoplanar
+        self.coplanarAngleTolerance = coplanarAngleTolerance
+        self.coplanarDistanceTolerance = coplanarDistanceTolerance
+        self.attributes = attributes
     }
 }
