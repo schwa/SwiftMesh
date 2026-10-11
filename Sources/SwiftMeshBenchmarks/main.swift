@@ -1,4 +1,5 @@
 import Foundation
+import simd
 import SwiftMesh
 
 // Usage: swift run -c release SwiftMeshBenchmarks [--json] [name-filter...]
@@ -13,6 +14,13 @@ let benchmarks: [Benchmark] = [
     Benchmark(name: "decimate.icoSphere5.25%") {
         let mesh = Mesh.icoSphere(subdivisions: 5, attributes: [])
         return { _ = mesh.decimated(ratio: 0.25) }
+    },
+    Benchmark(name: "convexHull.sphere20k") {
+        var generator = SystemRandomNumberGenerator()
+        let points = (0..<20_000).map { _ in
+            simd_normalize(SIMD3<Float>(Float.random(in: -1...1, using: &generator), Float.random(in: -1...1, using: &generator), Float.random(in: -1...1, using: &generator))) * Float.random(in: 0.9...1, using: &generator)
+        }
+        return { _ = Mesh.convexHull(of: points, attributes: []) }
     },
     Benchmark(name: "csg.difference.sphere-cube") {
         let sphere = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 3, attributes: [])

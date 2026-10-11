@@ -144,6 +144,26 @@ struct ConvexHullTests {
         }
     }
 
+    @Test("Large point cloud hull is closed and contains every point")
+    func largePointCloud() throws {
+        var points: [SIMD3<Float>] = []
+        var seed: UInt32 = 7
+        func next() -> Float {
+            seed = seed &* 1_664_525 &+ 1_013_904_223
+            return Float(seed % 10_000) / 5_000 - 1
+        }
+        for _ in 0..<5_000 {
+            points.append(SIMD3(next(), next(), next()))
+        }
+        let mesh = try #require(Mesh.convexHull(of: points, attributes: []))
+        #expect(mesh.validate().isEmpty)
+        #expect(mesh.isManifold)
+        #expect(mesh.vertexCount - mesh.edgeCount + mesh.faceCount == 2)
+        let planes = mesh.topology.faces.map { (normal: mesh.faceNormal($0.id), point: mesh.faceCentroid($0.id)) }
+        let outside = points.filter { point in planes.contains { simd_dot($0.normal, point - $0.point) > 1e-4 } }
+        #expect(outside.isEmpty)
+    }
+
     @Test("Points on a sphere produce valid hull")
     func spherePoints() throws {
         var points: [SIMD3<Float>] = []

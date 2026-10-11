@@ -33,8 +33,15 @@ private struct ConvexHullBuilder {
     /// Deduplicated positions used by the hull.
     var positions: [SIMD3<Float>]
 
-    /// Triangular faces as index triples (CCW winding, outward-facing).
+    /// Triangular faces as index triples (CCW winding, outward-facing). Includes removed faces; see `alive`.
     var faces: [(Int, Int, Int)]
+    var alive: [Bool] = []
+    /// Directed edge → live face containing it.
+    var edgeToFace: [Int64: Int] = [:]
+    /// Unprocessed points that see each face.
+    var faceConflicts: [[Int]] = []
+    /// One face each unprocessed point sees, or -1 if it is inside the hull.
+    var pointConflict: [Int] = []
 
     /// Build the convex hull of `points`, or return `nil` if degenerate.
     init?(points: [SIMD3<Float>]) {
@@ -74,11 +81,24 @@ private struct ConvexHullBuilder {
             ]
         }
 
-        // --- Incrementally add remaining points ---
+        let seedFaces = faces
+        faces = []
+        for face in seedFaces {
+            appendFace(face)
+        }
+
+        // --- Assign each remaining point to a face it sees, then insert ---
         let seedSet: Set<Int> = [i0, i1, i2, i3]
+        pointConflict = [Int](repeating: -1, count: points.count)
+        for idx in points.indices where !seedSet.contains(idx) {
+            if let face = faces.indices.first(where: { sees(idx, face: $0) }) {
+                assign(idx, to: face)
+            }
+        }
         for idx in points.indices where !seedSet.contains(idx) {
             addPoint(idx)
         }
+        faces = faces.indices.filter { alive[$0] }.map { faces[$0] }
     }
 
     /// Convert the hull into a ``Mesh``.
@@ -110,69 +130,88 @@ private struct ConvexHullBuilder {
 
     /// Add a single point to the hull. If the point is already inside or on the
     /// hull, this is a no-op.
+    private static func edgeKey(_ a: Int, _ b: Int) -> Int64 {
+        Int64(a) << 32 | Int64(b & 0x7FFF_FFFF)
+    }
+
+    private func sees(_ pointIndex: Int, face faceIndex: Int) -> Bool {
+        let (a, b, c) = faces[faceIndex]
+        let normal = simd_cross(positions[b] - positions[a], positions[c] - positions[a])
+        return simd_dot(normal, positions[pointIndex] - positions[a]) > 1e-7
+    }
+
+    private mutating func assign(_ pointIndex: Int, to faceIndex: Int) {
+        pointConflict[pointIndex] = faceIndex
+        faceConflicts[faceIndex].append(pointIndex)
+    }
+
+    @discardableResult
+    private mutating func appendFace(_ face: (Int, Int, Int)) -> Int {
+        let index = faces.count
+        faces.append(face)
+        alive.append(true)
+        faceConflicts.append([])
+        edgeToFace[Self.edgeKey(face.0, face.1)] = index
+        edgeToFace[Self.edgeKey(face.1, face.2)] = index
+        edgeToFace[Self.edgeKey(face.2, face.0)] = index
+        return index
+    }
+
+    private mutating func removeFace(_ index: Int) {
+        alive[index] = false
+        let (a, b, c) = faces[index]
+        for key in [Self.edgeKey(a, b), Self.edgeKey(b, c), Self.edgeKey(c, a)] where edgeToFace[key] == index {
+            edgeToFace[key] = nil
+        }
+    }
+
     private mutating func addPoint(_ pointIndex: Int) {
-        let p = positions[pointIndex]
+        let start = pointConflict[pointIndex]
+        guard start >= 0 else {
+            return // point is inside or on the hull
+        }
+        pointConflict[pointIndex] = -1
 
-        // Find all faces visible from p
-        var visible = [Bool](repeating: false, count: faces.count)
-        var anyVisible = false
-
-        for (fIdx, face) in faces.enumerated() {
-            let (a, b, c) = face
-            let normal = simd_cross(positions[b] - positions[a], positions[c] - positions[a])
-            let d = simd_dot(normal, p - positions[a])
-            if d > 1e-7 {
-                visible[fIdx] = true
-                anyVisible = true
+        // Flood-fill the visible region from the conflict face.
+        var visible: Set<Int> = [start]
+        var stack = [start]
+        while let faceIndex = stack.popLast() {
+            let (a, b, c) = faces[faceIndex]
+            for (u, v) in [(a, b), (b, c), (c, a)] {
+                if let twin = edgeToFace[Self.edgeKey(v, u)], !visible.contains(twin), sees(pointIndex, face: twin) {
+                    visible.insert(twin)
+                    stack.append(twin)
+                }
             }
         }
 
-        guard anyVisible else {
-            return // point is inside or on the hull
-        }
-
-        // Find the horizon edges (edges shared between a visible and non-visible face).
-        // An edge (u, v) in a visible face is a horizon edge if the twin edge (v, u)
-        // belongs to a non-visible face.
-        var edgeToFace: [Int64: Int] = [:] // edge key → face index
-
-        func edgeKey(_ a: Int, _ b: Int) -> Int64 {
-            Int64(a) << 32 | Int64(b & 0x7FFF_FFFF)
-        }
-
-        for (fIdx, face) in faces.enumerated() {
-            let (a, b, c) = face
-            edgeToFace[edgeKey(a, b)] = fIdx
-            edgeToFace[edgeKey(b, c)] = fIdx
-            edgeToFace[edgeKey(c, a)] = fIdx
-        }
-
-        // Collect horizon edges in order
+        // Horizon: edges of visible faces whose twin face is not visible.
         var horizonEdges: [(Int, Int)] = []
-        for (fIdx, face) in faces.enumerated() where visible[fIdx] {
-            let verts = [face.0, face.1, face.2]
-            for i in 0..<3 {
-                let u = verts[i]
-                let v = verts[(i + 1) % 3]
-                // Check if the twin edge's face is non-visible
-                if let twinFace = edgeToFace[edgeKey(v, u)], !visible[twinFace] {
+        for faceIndex in visible {
+            let (a, b, c) = faces[faceIndex]
+            for (u, v) in [(a, b), (b, c), (c, a)] {
+                if let twin = edgeToFace[Self.edgeKey(v, u)], !visible.contains(twin) {
                     horizonEdges.append((u, v))
                 }
             }
         }
 
-        // Remove visible faces
-        var newFaces: [(Int, Int, Int)] = []
-        for (fIdx, face) in faces.enumerated() where !visible[fIdx] {
-            newFaces.append(face)
+        var orphans: [Int] = []
+        for faceIndex in visible {
+            orphans += faceConflicts[faceIndex]
+            faceConflicts[faceIndex] = []
+            removeFace(faceIndex)
         }
 
-        // Create new faces connecting the horizon edges to the new point
-        for (u, v) in horizonEdges {
-            newFaces.append((u, v, pointIndex))
-        }
+        let newFaces = horizonEdges.map { u, v in appendFace((u, v, pointIndex)) }
 
-        faces = newFaces
+        // Reassign points that saw a removed face; fall back to a full scan if no new face is visible.
+        for orphan in orphans where orphan != pointIndex && pointConflict[orphan] >= 0 {
+            pointConflict[orphan] = -1
+            if let face = newFaces.first(where: { sees(orphan, face: $0) }) ?? faces.indices.first(where: { alive[$0] && sees(orphan, face: $0) }) {
+                assign(orphan, to: face)
+            }
+        }
     }
 
     // MARK: - Initial tetrahedron

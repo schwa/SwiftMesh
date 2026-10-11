@@ -1613,13 +1613,14 @@ Update polygon-producing paths (`splitPolygon`, `toPolygons`, `flipped`) to set 
 ## 91: ConvexHull.addPoint rebuilds edgeToFace dictionary every insertion
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:convex-hull, effort:l
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:57Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-11T22:10:35Z
+closed: 2026-10-11T22:10:35Z
 +++
 
 `ConvexHull.addPoint` rebuilds the entire `edgeToFace` dictionary on every point insertion:
