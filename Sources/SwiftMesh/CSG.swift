@@ -205,7 +205,8 @@ final class CSGNode: @unchecked Sendable {
         frontList = front?.clipPolygons(frontList) ?? frontList
         backList = back?.clipPolygons(backList) ?? []
 
-        return frontList + backList
+        frontList.append(contentsOf: backList)
+        return frontList
     }
 
     /// Remove all polygons in this tree that are inside the other BSP tree.
@@ -258,14 +259,15 @@ final class CSGNode: @unchecked Sendable {
 
     /// Return all polygons in this BSP tree.
     func allPolygons() -> [CSGPolygon] {
-        var result = polygons
-        if let front {
-            result.append(contentsOf: front.allPolygons())
-        }
-        if let back {
-            result.append(contentsOf: back.allPolygons())
-        }
+        var result: [CSGPolygon] = []
+        collectPolygons(into: &result)
         return result
+    }
+
+    private func collectPolygons(into result: inout [CSGPolygon]) {
+        result.append(contentsOf: polygons)
+        front?.collectPolygons(into: &result)
+        back?.collectPolygons(into: &result)
     }
 
     /// Build a BSP tree from a list of polygons. Called on a fresh or existing node.
@@ -330,22 +332,20 @@ private func splitPolygon(
     coplanarFront: inout [CSGPolygon],
     coplanarBack: inout [CSGPolygon]
 ) {
-    // Classify each vertex
-    var types: [PointClassification] = []
-    var polygonType: Int = 0
-
-    for vertex in polygon.vertices {
+    func classify(_ vertex: SIMD3<Float>) -> PointClassification {
         let t = plane.distanceTo(vertex)
-        let type: PointClassification
         if t < -epsilon {
-            type = .back
-        } else if t > epsilon {
-            type = .front
-        } else {
-            type = .coplanar
+            return .back
         }
-        polygonType |= type.rawValue
-        types.append(type)
+        if t > epsilon {
+            return .front
+        }
+        return .coplanar
+    }
+
+    var polygonType: Int = 0
+    for vertex in polygon.vertices {
+        polygonType |= classify(vertex).rawValue
     }
 
     switch PointClassification(rawValue: polygonType) ?? .spanning {
@@ -363,8 +363,11 @@ private func splitPolygon(
         back.append(polygon)
 
     case .spanning:
+        let types = polygon.vertices.map(classify)
         var frontVerts: [SIMD3<Float>] = []
         var backVerts: [SIMD3<Float>] = []
+        frontVerts.reserveCapacity(polygon.vertices.count + 2)
+        backVerts.reserveCapacity(polygon.vertices.count + 2)
 
         for i in 0..<polygon.vertices.count {
             let j = (i + 1) % polygon.vertices.count

@@ -1533,13 +1533,14 @@ Expected impact: large — this runs once per Metal upload but dominates convers
 ## 89: CSG: allPolygons and clipPolygons allocate excessively
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, area:csg, effort:m
 depends: SwiftMesh#85
 created: 2026-04-16T03:24:43Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-11T22:04:28Z
+closed: 2026-10-11T22:04:28Z
 +++
 
 Several CSG hot paths allocate intermediate arrays unnecessarily:
@@ -1560,6 +1561,8 @@ func collectPolygons(into result: inout [CSGPolygon]) {
 **`CSGPolygon` plane** is recomputed via `CSGPlane(a, b, c)` for every triangle in `toPolygons`, including a `simd_length` + division. For triangle inputs we can compute plane with a single cross product without normalizing if we store both `normal` and `w` raw, then normalize lazily — or just inline the plane construction.
 
 Expected impact: significant on CSG of meshes with thousands of polygons.
+
+- `2026-10-11T22:04:28Z`: Fixed allPolygons (inout accumulator), clipPolygons concat, and splitPolygon (types array only built for spanning polygons; split vertex arrays reserved). Did not change toPolygons plane construction: classification epsilon assumes unit normals, so lazy normalization would change semantics; normalization is not the hot spot after these changes.
 
 ---
 
