@@ -184,6 +184,8 @@ let (uvMesh, layout) = try mesh.bakingPlanarAtlas(
 
 **Triangulation** adds overhead for n-gon faces: each non-triangle face requires a 3D→2D projection and earcut pass. Triangle faces pass through with no extra work.
 
+**Benchmarks** live in the `SwiftMeshBenchmarks` executable. Run `swift run -c release SwiftMeshBenchmarks [--json] [name-filter...]`. Attach before/after numbers to performance changes.
+
 ## Dependencies
 
 - [GeometryLite2D](https://github.com/schwa/GeometryLite2D) — `LineSegment`, `Polygon`, `Identified` (used by `Mesh2D`)

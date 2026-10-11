@@ -1666,13 +1666,14 @@ This issue is a prerequisite for proper performance of #87 (decimation) and any 
 ## 93: Add benchmarking harness for SwiftMesh hot paths
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:performance, area:infrastructure, effort:m
 depends: SwiftMesh#85
 created: 2026-04-16T03:25:18Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-11T22:02:40Z
+closed: 2026-10-11T22:02:40Z
 +++
 
 We need a baseline benchmark harness so performance work has measurable targets. Most other performance issues are blocked on this.
