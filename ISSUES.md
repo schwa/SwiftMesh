@@ -1246,12 +1246,13 @@ Depends on boundaryLoopCount from #67.
 ## 76: Detect inconsistent face winding
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:m, area:topology, area:diagnostics
 created: 2026-04-15T15:43:40Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-11T22:48:36Z
+closed: 2026-10-11T22:48:36Z
 +++
 
 Split from #67. hasInconsistentFaceWinding — verify that for every pair of adjacent faces sharing an edge, the shared half-edges run in opposite directions. Non-trivial because:

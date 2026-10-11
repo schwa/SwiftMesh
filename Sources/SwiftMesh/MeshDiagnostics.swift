@@ -247,3 +247,96 @@ public extension HalfEdgeTopology {
         surfaceComponents().allSatisfy { $0.genus != nil }
     }
 }
+
+// MARK: - Face winding
+
+public extension HalfEdgeTopology {
+    /// Pairs of faces that share an edge and use it in the same direction.
+    ///
+    /// Faces are adjacent when they share an undirected edge, twinned or not. Boundary
+    /// edges (one face) are ignored, and edges with more than two faces are left to
+    /// `validate()`'s non-manifold warning.
+    func inconsistentWindingEdges() -> [(HalfEdgeID, HalfEdgeID)] {
+        edgeAdjacency().filter(\.sameDirection).map { ($0.first, $0.second) }
+    }
+
+    var hasInconsistentFaceWinding: Bool {
+        edgeAdjacency().contains(where: \.sameDirection)
+    }
+
+    /// Faces to reverse so every shared edge is used in opposite directions.
+    ///
+    /// Propagates orientation from one face per connected component and flips the
+    /// smaller side. Returns `nil` if some component is non-orientable (for example a
+    /// Möbius strip), where no choice of flips works.
+    func facesToFlipForConsistentWinding() -> Set<FaceID>? {
+        var neighbors: [Int: [(face: Int, sameDirection: Bool)]] = [:]
+        for adjacency in edgeAdjacency() {
+            let a = halfEdges[adjacency.first.raw].face!.raw
+            let b = halfEdges[adjacency.second.raw].face!.raw
+            neighbors[a, default: []].append((b, adjacency.sameDirection))
+            neighbors[b, default: []].append((a, adjacency.sameDirection))
+        }
+        // flip[f] = whether face f must be reversed relative to its component's seed.
+        var flip: [Int: Bool] = [:]
+        var result = Set<FaceID>()
+        for face in faces where face.edge != nil && flip[face.id.raw] == nil {
+            var component: [Int] = []
+            flip[face.id.raw] = false
+            var queue = [face.id.raw]
+            while let current = queue.popLast() {
+                component.append(current)
+                for (other, sameDirection) in neighbors[current] ?? [] {
+                    // Same direction means exactly one of the two must flip.
+                    let wanted = flip[current]! != sameDirection
+                    if let existing = flip[other] {
+                        if existing != wanted {
+                            return nil
+                        }
+                    } else {
+                        flip[other] = wanted
+                        queue.append(other)
+                    }
+                }
+            }
+            let flipped = component.filter { flip[$0]! }
+            let chosen = flipped.count * 2 <= component.count ? flipped : component.filter { !flip[$0]! }
+            result.formUnion(chosen.map { FaceID(raw: $0) })
+        }
+        return result
+    }
+}
+
+private extension HalfEdgeTopology {
+    struct EdgeAdjacency {
+        var first: HalfEdgeID
+        var second: HalfEdgeID
+        var sameDirection: Bool
+    }
+
+    /// Every undirected edge used by exactly two live faces.
+    func edgeAdjacency() -> [EdgeAdjacency] {
+        var uses: [[Int]: [HalfEdgeID]] = [:]
+        for halfEdge in halfEdges where halfEdge.next != nil && halfEdge.face != nil {
+            guard let destination = destViaNext(of: halfEdge.id) else {
+                continue
+            }
+            uses[[min(halfEdge.origin.raw, destination.raw), max(halfEdge.origin.raw, destination.raw)], default: []].append(halfEdge.id)
+        }
+        return uses.values.filter { $0.count == 2 }.map { pair in
+            EdgeAdjacency(first: pair[0], second: pair[1], sameDirection: halfEdges[pair[0].raw].origin == halfEdges[pair[1].raw].origin)
+        }.sorted { $0.first.raw < $1.first.raw }
+    }
+}
+
+public extension Mesh {
+    /// The mesh with faces reversed so winding is consistent across shared edges, or `nil`
+    /// if a component is non-orientable. Picks the majority orientation per component; it
+    /// does not decide inside versus outside.
+    func withConsistentWinding() -> Mesh? {
+        guard let toFlip = topology.facesToFlipForConsistentWinding() else {
+            return nil
+        }
+        return toFlip.isEmpty ? self : reversingWinding(of: toFlip)
+    }
+}

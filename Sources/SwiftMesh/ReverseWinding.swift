@@ -3,6 +3,15 @@ public extension Mesh {
     ///
     /// Per-corner attributes stay with their vertex; normals are not negated.
     func reversingWinding() -> Mesh {
+        reversingWinding(of: nil)
+    }
+
+    /// The same mesh with only `faces` reversed. Other faces keep their winding.
+    func reversingWinding(of faces: Set<HalfEdgeTopology.FaceID>) -> Mesh {
+        reversingWinding(of: Optional(faces))
+    }
+
+    private func reversingWinding(of selected: Set<HalfEdgeTopology.FaceID>?) -> Mesh {
         var definitions: [HalfEdgeTopology.FaceDefinition] = []
         var corners: [Int] = []
         var faceMap: [HalfEdgeTopology.FaceID: HalfEdgeTopology.FaceID] = [:]
@@ -18,7 +27,7 @@ public extension Mesh {
                 continue
             }
             let holes = face.holeEdges.map { topology.collectHalfEdgeLoop(startEdge: $0) }.filter { $0.count >= 3 }
-            let loops = ([outer] + holes).map(reversed)
+            let loops = selected.map { $0.contains(face.id) } ?? true ? ([outer] + holes).map(reversed) : [outer] + holes
             faceMap[face.id] = .init(raw: definitions.count)
             definitions.append(.init(
                 outer: loops[0].map { topology.halfEdges[$0.raw].origin.raw },
