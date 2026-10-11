@@ -724,12 +724,13 @@ CSG boolean operations produce excessive triangulation on flat surfaces — e.g.
 ## 48: Mesh from extruded text
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:l
 created: 2026-04-15T05:55:51Z
-updated: 2026-04-15T17:03:10Z
+updated: 2026-10-11T22:49:17Z
+closed: 2026-10-11T22:49:17Z
 +++
 
 Generate meshes from text strings by converting font glyphs to paths, triangulating the 2D outline, and extruding to 3D. Should support font, size, and extrusion depth parameters.
