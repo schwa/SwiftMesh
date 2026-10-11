@@ -15,6 +15,7 @@ import SwiftUI
 enum MeshRenderMode: Hashable, Identifiable {
     case blinnPhong
     case debug(MeshDebugMode)
+    case topology(TopologyOverlay)
 
     var id: Self { self }
 
@@ -22,6 +23,46 @@ enum MeshRenderMode: Hashable, Identifiable {
         switch self {
         case .blinnPhong: "Blinn-Phong"
         case .debug(let mode): mode.label
+        case .topology(let overlay): overlay.label
+        }
+    }
+}
+
+/// Topology views the stock debug shaders can't compute. The data is encoded into texture
+/// coordinates and drawn with the Tex Coords debug mode, which shows (u, v, 0) as RGB.
+enum TopologyOverlay: CaseIterable, Identifiable {
+    /// Red = high valence, green = low (3 is green, 8+ is red).
+    case valenceHeatmap
+    /// Red at vertices on boundary (open) edges, dim green elsewhere.
+    case boundaryEdges
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .valenceHeatmap: "Valence Heatmap"
+        case .boundaryEdges: "Boundary Edges"
+        }
+    }
+
+    func textureCoordinates(for mesh: Mesh) -> [SIMD2<Float>] {
+        let topology = mesh.topology
+        switch self {
+        case .valenceHeatmap:
+            let valences = topology.valences
+            return topology.halfEdges.map { halfEdge in
+                let heat = simd_clamp(Float(valences[halfEdge.origin.raw] - 3) / 5, 0, 1)
+                return SIMD2(heat, 1 - heat)
+            }
+        case .boundaryEdges:
+            var onBoundary = [Bool](repeating: false, count: topology.vertices.count)
+            for halfEdge in topology.halfEdges where halfEdge.twin == nil && halfEdge.next != nil {
+                onBoundary[halfEdge.origin.raw] = true
+                if let destination = topology.destViaNext(of: halfEdge.id) {
+                    onBoundary[destination.raw] = true
+                }
+            }
+            return topology.halfEdges.map { onBoundary[$0.origin.raw] ? SIMD2(1, 0) : SIMD2(0, 0.3) }
         }
     }
 }
@@ -169,7 +210,8 @@ struct MetalMeshView: View {
                             .depthCompare(function: .less, enabled: true)
                         }
 
-                    case .debug(let debugMode):
+                    case .debug, .topology:
+                        let debugMode: MeshDebugMode = if case .debug(let mode) = renderMode { mode } else { .texCoord }
                         let upperLeft = simd_float3x3(
                             SIMD3<Float>(modelMatrix.columns.0.x, modelMatrix.columns.0.y, modelMatrix.columns.0.z),
                             SIMD3<Float>(modelMatrix.columns.1.x, modelMatrix.columns.1.y, modelMatrix.columns.1.z),
@@ -211,6 +253,9 @@ struct MetalMeshView: View {
         .onChange(of: mesh) {
             prepareMesh()
         }
+        .onChange(of: renderMode) {
+            prepareMesh()
+        }
         .onChange(of: animating) { _, newValue in
             if newValue {
                 startAnimationTimer()
@@ -238,6 +283,9 @@ struct MetalMeshView: View {
         }
         if prepared.tangents == nil || prepared.bitangents == nil {
             prepared = prepared.withTangents()
+        }
+        if case .topology(let overlay) = renderMode {
+            prepared.textureCoordinates = overlay.textureCoordinates(for: prepared)
         }
         // Lift mesh so its bottom sits on the ground plane
         let (lo, _) = prepared.bounds

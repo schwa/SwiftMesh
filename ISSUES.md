@@ -1124,15 +1124,18 @@ Replace the current TabView with Gallery/Inspector tabs and the full-screen over
 ## 70: Add Metal debug shaders for topology visualization
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:m
 created: 2026-04-15T14:14:11Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-11T22:46:15Z
+closed: 2026-10-11T22:46:15Z
 +++
 
 Integrate debug shaders from MetalSprocketsAddons to visualize mesh topology in the demo app. Include: normal visualization (lines or color-mapped), wireframe overlay, face winding display, boundary edge highlighting, vertex valence heatmap.
+
+- `2026-10-11T22:46:15Z`: Normals, face normal, wireframe overlay, and winding (Front Facing) were already in the demo via the AddOns debug shaders. Added Valence Heatmap and Boundary Edges render modes: the AddOns shaders have no vertex-color mode, so the topology data is encoded into texture coordinates and drawn with Tex Coords mode (u, v, 0 as RGB). Builds; not visually verified by me — please check alongside the #83 demo pass.
 
 ---
 

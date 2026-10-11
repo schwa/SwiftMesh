@@ -93,6 +93,10 @@ struct ContentView: View {
                     ForEach(MeshDebugMode.allCases) { mode in
                         Text(mode.label).tag(MeshRenderMode.debug(mode))
                     }
+                    Divider()
+                    ForEach(TopologyOverlay.allCases) { overlay in
+                        Text(overlay.label).tag(MeshRenderMode.topology(overlay))
+                    }
                 }
                 .pickerStyle(.menu)
                 Toggle(isOn: $animateRotation) {
