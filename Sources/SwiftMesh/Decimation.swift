@@ -263,6 +263,30 @@ public extension Mesh {
                 continue
             }
 
+            // Link condition: the endpoints may only share the opposite vertices of the edge's faces,
+            // otherwise the collapse creates a non-manifold edge.
+            func neighbors(of vertex: HalfEdgeTopology.VertexID) -> Set<Int> {
+                var result = Set<Int>()
+                for outgoingEdge in outgoing[vertex.raw] where topology.halfEdges[outgoingEdge.raw].next != nil {
+                    if let next = topology.destViaNext(of: outgoingEdge) {
+                        result.insert(next.raw)
+                    }
+                    if let previous = topology.halfEdges[outgoingEdge.raw].prev {
+                        result.insert(topology.halfEdges[previous.raw].origin.raw)
+                    }
+                }
+                return result
+            }
+            var opposite = Set<Int>()
+            for edge in [entry.halfEdge, he.twin].compactMap({ $0 }) where topology.halfEdges[edge.raw].face != nil {
+                if let previous = topology.halfEdges[edge.raw].prev {
+                    opposite.insert(topology.halfEdges[previous.raw].origin.raw)
+                }
+            }
+            if !neighbors(of: origin).intersection(neighbors(of: dest)).isSubset(of: opposite) {
+                continue
+            }
+
             // Compute optimal position for the collapse
             let combined = quadrics[origin.raw] + quadrics[dest.raw]
             let newPos: SIMD3<Float>

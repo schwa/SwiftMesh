@@ -57,6 +57,18 @@ struct DecimationTests {
         #expect(simplified.topology.halfEdges.allSatisfy { $0.twin != nil })
     }
 
+    @Test("Decimation never creates edges with more than two faces", arguments: [Float(0.5), 0.25, 0.1])
+    func noNonManifoldEdges(ratio: Float) {
+        // Default attributes add UV seams (duplicated vertices), which is where bad collapses showed up.
+        let simplified = Mesh.icoSphere(subdivisions: 3).decimated(ratio: ratio)
+        var counts: [[Int]: Int] = [:]
+        for halfEdge in simplified.topology.halfEdges {
+            let destination = simplified.topology.destViaNext(of: halfEdge.id)!.raw
+            counts[[min(halfEdge.origin.raw, destination), max(halfEdge.origin.raw, destination)], default: 0] += 1
+        }
+        #expect(counts.values.allSatisfy { $0 <= 2 })
+    }
+
     // MARK: - Edge cases
 
     @Test("Decimate with target >= current face count is a no-op")

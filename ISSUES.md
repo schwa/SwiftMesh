@@ -2372,3 +2372,19 @@ created: 2026-10-11T22:36:45Z
 MetalMesh(mtkMesh:) stores mtkBuffer.buffer per vertex buffer index but drops mtkBuffer.offset, and draw(_:) binds vertex buffers at offset 0. If MTKMeshBufferAllocator sub-allocates vertex data, attributes are read from the wrong place. Add per-buffer offsets (e.g. vertexBufferOffsets: [Int: Int]) and honor them in draw(_:), toMesh(), and toMDLMesh. Found while fixing #109.
 
 ---
+
+## 112: Decimation can create non-manifold edges
+
++++
+status: closed
+priority: medium
+kind: bug
+labels: area:decimation, effort:s
+created: 2026-10-11T22:37:27Z
+updated: 2026-10-11T22:39:38Z
+closed: 2026-10-11T22:39:38Z
++++
+
+Mesh.decimate collapses edges without checking the link condition, so it can create edges with 3+ incident half-edges. Repro: icoSphere(subdivisions: 3).decimated(ratio: 0.25).validate() reports a non-manifold edge warning (surfaced by #106). Fix: skip collapses where the endpoints share neighbors other than the opposite vertices of the edge's adjacent faces.
+
+---
