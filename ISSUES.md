@@ -1155,12 +1155,13 @@ updated: 2026-10-05T20:21:21Z
 ## 73: Unify per-corner attribute handling into a reusable remapping layer
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: architecture, refactor, effort:l
 created: 2026-04-15T15:38:03Z
-updated: 2026-04-15T17:02:59Z
+updated: 2026-10-11T22:07:48Z
+closed: 2026-10-11T22:07:48Z
 +++
 
 Every file that touches per-corner attributes (normals, textureCoordinates, tangents, bitangents, colors) manually zips/copies/remaps 5–6 optional arrays in lockstep. This boilerplate is duplicated across welding, triangulation, MetalMesh conversion, PLY export, subdivision, and coplanar merge. Adding a new attribute (e.g. bone weights) requires touching 8+ files.
@@ -1172,6 +1173,8 @@ Affected files: Mesh.swift (welded), Triangulation.swift (triangulated), MetalMe
 Dependency category: In-process (pure data, no I/O).
 
 Test impact: A single boundary test on the attribute-remapping API would replace scattered attribute-plumbing assertions across MeshTests, MeshAttributesTests, TriangulationTests, MetalMeshTests, and PLYTests.
+
+- `2026-10-11T22:07:48Z`: Added internal CornerAttributes (gathered/concatenated/apply) plus HalfEdgeTopology.rebuildCornerOrder(for:), and moved welded, triangulated, merged, and decimation compact onto it. Not migrated: MetalMesh init/toMesh and PLY (per-semantic byte/format code, PLY is normals-only and in SwiftMeshIO), mergingCoplanarFaces and subdivision (they drop attributes; carrying them is new behavior, not plumbing). File follow-ups if those should carry attributes.
 
 ---
 

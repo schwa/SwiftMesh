@@ -425,44 +425,10 @@ public extension Mesh {
         // Rebuild topology
         let newTopology = HalfEdgeTopology(vertexCount: newPositions.count, faces: faceDefs)
 
-        // Map per-corner attributes from old half-edges to new ones.
-        // Walk old and new faces in parallel — face order and corner order are preserved.
-        var newNormals: [SIMD3<Float>]? = normals != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
-        var newTexCoords: [SIMD2<Float>]? = textureCoordinates != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
-        var newTangents: [SIMD3<Float>]? = tangents != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
-        var newBitangents: [SIMD3<Float>]? = bitangents != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
-        var newColors: [SIMD4<Float>]? = colors != nil ? .init(repeating: .zero, count: newTopology.halfEdges.count) : nil
-
-        for faceIdx in topology.faces.indices {
-            let oldFaceID = HalfEdgeTopology.FaceID(raw: faceIdx)
-            let newFaceID = HalfEdgeTopology.FaceID(raw: faceIdx)
-            let oldLoop = topology.halfEdgeLoop(for: oldFaceID)
-            let newLoop = newTopology.halfEdgeLoop(for: newFaceID)
-
-            for (oldHE, newHE) in zip(oldLoop, newLoop) {
-                if let n = normals { newNormals![newHE.raw] = n[oldHE.raw] }
-                if let tc = textureCoordinates { newTexCoords![newHE.raw] = tc[oldHE.raw] }
-                if let t = tangents { newTangents![newHE.raw] = t[oldHE.raw] }
-                if let b = bitangents { newBitangents![newHE.raw] = b[oldHE.raw] }
-                if let c = colors { newColors![newHE.raw] = c[oldHE.raw] }
-            }
-        }
-
-        // Remap submeshes (face indices are stable)
-        let newSubmeshes = submeshes.map { sub in
-            Submesh(label: sub.label, faces: sub.faces)
-        }
-
-        return Mesh(
-            topology: newTopology,
-            positions: newPositions,
-            normals: newNormals,
-            textureCoordinates: newTexCoords,
-            tangents: newTangents,
-            bitangents: newBitangents,
-            colors: newColors,
-            submeshes: newSubmeshes
-        )
+        let corners = topology.faces.flatMap { topology.rebuildCornerOrder(for: $0.id).map(\.raw) }
+        var result = Mesh(topology: newTopology, positions: newPositions, submeshes: submeshes)
+        CornerAttributes(of: self).gathered(corners).apply(to: &result)
+        return result
     }
 }
 

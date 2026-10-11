@@ -331,28 +331,18 @@ public extension Mesh {
                 continue
             }
             let holes = face.holeEdges.map { topology.collectHalfEdgeLoop(startEdge: $0) }.filter { $0.count >= 3 }
+            cornerOrder += topology.rebuildCornerOrder(for: face.id).map(\.raw)
             faceMap[face.id] = HalfEdgeTopology.FaceID(raw: faceDefinitions.count)
             faceDefinitions.append(.init(
                 outer: outer.map { remap(topology.halfEdges[$0.raw].origin) },
                 holes: holes.map { $0.map { remap(topology.halfEdges[$0.raw].origin) } }
             ))
-            cornerOrder += outer.map(\.raw)
-            for hole in holes {
-                cornerOrder += hole.map(\.raw)
-            }
         }
 
-        func remapCorners<T>(_ values: [T]?) -> [T]? {
-            values.map { values in cornerOrder.map { values[$0] } }
-        }
-
+        let corners = CornerAttributes(of: self).gathered(cornerOrder)
         topology = HalfEdgeTopology(vertexCount: newPositions.count, faces: faceDefinitions)
         positions = newPositions
-        normals = remapCorners(normals)
-        textureCoordinates = remapCorners(textureCoordinates)
-        tangents = remapCorners(tangents)
-        bitangents = remapCorners(bitangents)
-        colors = remapCorners(colors)
+        corners.apply(to: &self)
         submeshes = submeshes.map { submesh in
             Mesh.Submesh(label: submesh.label, faces: submesh.faces.compactMap { faceMap[$0] })
         }
