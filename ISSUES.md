@@ -2496,12 +2496,13 @@ Edge and face selection already exist in the inspector but nothing acts on them.
 ## 118: Demo: atlas baking and IO samples
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: area:demo, effort:s
 created: 2026-10-11T23:02:41Z
-updated: 2026-10-11T23:03:05Z
+updated: 2026-10-11T23:07:51Z
+closed: 2026-10-11T23:07:51Z
 +++
 
 No gallery item shows planar atlas baking (bakingPlanarAtlas): add one that renders the baked UVs with the checkerboard/UV grid debug mode. For IO: add Export as PLY (ASCII/binary, #9) to the inspector, and when importing an asset with several objects use [Mesh](mdlAsset:) (#97) and show them merged with per-object submeshes.

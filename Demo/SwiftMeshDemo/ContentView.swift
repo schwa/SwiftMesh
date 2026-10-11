@@ -136,10 +136,17 @@ struct ContentView: View {
         }
         let allocator = MTKMeshBufferAllocator(device: device)
         let asset = MDLAsset(url: url, vertexDescriptor: nil, bufferAllocator: allocator)
-        guard let mdlMesh = asset.childObjects(of: MDLMesh.self).first as? MDLMesh else {
+        // Every mesh in the asset, placed by its world transform; each becomes a labeled submesh.
+        let meshes = try [Mesh](mdlAsset: asset, device: device)
+        guard !meshes.isEmpty else {
             throw MeshImportError.noMeshFound(url.lastPathComponent)
         }
-        var mesh = try Mesh(mdlMesh: mdlMesh, device: device)
+        var mesh = Mesh.merged(meshes)
+        if meshes.count > 1 {
+            for index in mesh.submeshes.indices {
+                mesh.submeshes[index].label = mesh.submeshes[index].label ?? "Object \(index + 1)"
+            }
+        }
         mesh.normals = nil
         mesh.textureCoordinates = nil
         mesh.tangents = nil
@@ -286,6 +293,7 @@ struct MeshDetailView: View {
     @State private var showVertexDots = false
     @State private var isModified = false
     @State private var isExporting = false
+    @State private var exportFormat: PLY.Format = .ascii
 
     init(item: MeshGalleryItem, useMetalRenderer: Bool = false, animateRotation: Bool = true, renderMode: MeshRenderMode = .blinnPhong) {
         self.item = item
@@ -412,8 +420,15 @@ struct MeshDetailView: View {
             .inspectorColumnWidth(min: 220, ideal: 260, max: 320)
         }
         .toolbar {
-            Button {
-                isExporting = true
+            Menu {
+                Button("PLY (ASCII)") {
+                    exportFormat = .ascii
+                    isExporting = true
+                }
+                Button("PLY (Binary)") {
+                    exportFormat = .binaryLittleEndian
+                    isExporting = true
+                }
             } label: {
                 Label("Export PLY", systemImage: "square.and.arrow.up")
             }
@@ -423,7 +438,7 @@ struct MeshDetailView: View {
         }
         .fileExporter(
             isPresented: $isExporting,
-            document: PLYDocument(mesh: currentMesh),
+            document: PLYDocument(mesh: currentMesh, format: exportFormat),
             contentType: .ply,
             defaultFilename: "\(item.name).ply"
         ) { _ in }
@@ -797,6 +812,19 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("25%", subtitle: "\(sphereFaces / 4) faces", mesh: sphere.decimated(ratio: 0.25)),
                 MeshGalleryItem("10%", subtitle: "\(sphereFaces / 10) faces", mesh: sphere.decimated(ratio: 0.1))
             ]
+        }()),
+        Self("Atlas Baking", items: {
+            // Baked UVs are kept by the renderer; view with the UV Grid or Checkerboard debug mode.
+            func baked(_ mesh: Mesh) -> Mesh {
+                (try? mesh.bakingPlanarAtlas(texelsPerMeter: 256, atlasSize: [1_024, 1_024]).mesh) ?? mesh
+            }
+            let room = Mesh.box(extents: [0.8, 0.5, 0.6], attributes: [])
+                .difference(Mesh.box(extents: [0.3, 0.3, 0.8], attributes: []).translated(by: [0.1, 0, 0]))
+            return [
+                MeshGalleryItem("Box Atlas", subtitle: "6 charts \u{2014} use UV Grid mode", mesh: baked(.box(extents: [0.6, 0.4, 0.5], attributes: []))),
+                MeshGalleryItem("Frustum Atlas", subtitle: "Slanted charts \u{2014} use UV Grid mode", mesh: baked(.rectangularFrustum(attributes: []))),
+                MeshGalleryItem("CSG Atlas", subtitle: "Box with a hole \u{2014} use Checkerboard mode", mesh: baked(room))
+            ]
         }())
     ]
 }
@@ -808,8 +836,8 @@ struct PLYDocument: FileDocument {
 
     let data: Data
 
-    init(mesh: Mesh) {
-        self.data = PLY.write(mesh)
+    init(mesh: Mesh, format: PLY.Format = .ascii) {
+        self.data = PLY.write(mesh, format: format)
     }
 
     init(configuration: ReadConfiguration) {
