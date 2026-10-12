@@ -243,41 +243,14 @@ public extension Mesh {
         // For now, build a vertex→halfedge lookup per face
         var cornerToHE = [HalfEdgeTopology.HalfEdgeID?](repeating: nil, count: cornerCount)
 
-        // Build per-face vertexID→heID maps
-        var faceVertexToHE: [Int: [Int: HalfEdgeTopology.HalfEdgeID]] = [:]
-        for face in topology.faces {
-            let heLoop = topology.halfEdgeLoop(for: face.id)
-            var mapping: [Int: HalfEdgeTopology.HalfEdgeID] = [:]
-            for heID in heLoop {
-                mapping[topology.halfEdges[heID.raw].origin.raw] = heID
-            }
-            faceVertexToHE[face.id.raw] = mapping
-        }
-
-        // Fill flat arrays
-        // We need face info per triangle — rebuild from triangulate()
-        // Since triangulate() walks faces in order, we can track which face each triangle came from
+        // Fill flat arrays in the same face order as triangulate().
         var cornerIdx = 0
         for face in topology.faces {
-            let verts = topology.vertexLoop(for: face.id)
-            let faceTriangles: [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
-            if verts.count == 3 {
-                faceTriangles = [(verts[0], verts[1], verts[2])]
-            } else if verts.count < 3 {
-                continue
-            } else {
-                faceTriangles = triangulateFace(vertexIDs: verts)
-            }
-
-            let mapping = faceVertexToHE[face.id.raw] ?? [:]
-            for (v0, v1, v2) in faceTriangles {
-                for vid in [v0, v1, v2] {
-                    flatPositions[cornerIdx] = positions[vid.raw]
-                    let heID = mapping[vid.raw]
-                    if let heID {
-                        flatNormals[cornerIdx] = existingNormals[heID.raw]
-                        flatUVs[cornerIdx] = existingUVs[heID.raw]
-                    }
+            for triangle in triangulatedCorners(of: face.id) {
+                for heID in [triangle.0, triangle.1, triangle.2] {
+                    flatPositions[cornerIdx] = positions[topology.halfEdges[heID.raw].origin.raw]
+                    flatNormals[cornerIdx] = existingNormals[heID.raw]
+                    flatUVs[cornerIdx] = existingUVs[heID.raw]
                     cornerToHE[cornerIdx] = heID
                     cornerIdx += 1
                 }

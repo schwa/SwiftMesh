@@ -113,33 +113,15 @@ public extension MeshResource {
         var dedup: [VertexKey: UInt32] = [:]
 
         for faceID in submesh.faces {
-            let vertexIDs = mesh.topology.vertexLoop(for: faceID)
-            guard vertexIDs.count >= 3 else { continue }
-
-            // VertexID → HalfEdgeID in this face (for per-corner attribute lookup).
-            let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
-            var vertexToHE: [Int: HalfEdgeTopology.HalfEdgeID] = [:]
-            for heID in heLoop {
-                vertexToHE[mesh.topology.halfEdges[heID.raw].origin.raw] = heID
-            }
-
-            // Triangulate (passes triangles through unchanged).
-            let triangles: [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
-            if vertexIDs.count == 3 {
-                triangles = [(vertexIDs[0], vertexIDs[1], vertexIDs[2])]
-            } else {
-                triangles = mesh.triangulateFace(vertexIDs: vertexIDs)
-            }
-
-            for (v0, v1, v2) in triangles {
-                for vid in [v0, v1, v2] {
-                    let heID = vertexToHE[vid.raw]
+            for triangle in mesh.triangulatedCorners(of: faceID) {
+                for heID in [triangle.0, triangle.1, triangle.2] {
+                    let vid = mesh.topology.halfEdges[heID.raw].origin
                     let key = VertexKey(
                         vertex: vid.raw,
-                        normal: hasNormals ? mesh.normals![heID!.raw] : nil,
-                        uv: hasUVs ? mesh.textureCoordinates![heID!.raw] : nil,
-                        tangent: hasTangents ? mesh.tangents![heID!.raw] : nil,
-                        color: hasColors ? mesh.colors![heID!.raw] : nil
+                        normal: hasNormals ? mesh.normals![heID.raw] : nil,
+                        uv: hasUVs ? mesh.textureCoordinates![heID.raw] : nil,
+                        tangent: hasTangents ? mesh.tangents![heID.raw] : nil,
+                        color: hasColors ? mesh.colors![heID.raw] : nil
                     )
 
                     if let existing = dedup[key] {
@@ -147,10 +129,10 @@ public extension MeshResource {
                     } else {
                         let newIndex = UInt32(positions.count)
                         positions.append(mesh.positions[vid.raw])
-                        if hasNormals { normals.append(mesh.normals![heID!.raw]) }
-                        if hasUVs { uvs.append(mesh.textureCoordinates![heID!.raw]) }
-                        if hasTangents { tangents.append(mesh.tangents![heID!.raw]) }
-                        if hasColors { colors.append(mesh.colors![heID!.raw]) }
+                        if hasNormals { normals.append(mesh.normals![heID.raw]) }
+                        if hasUVs { uvs.append(mesh.textureCoordinates![heID.raw]) }
+                        if hasTangents { tangents.append(mesh.tangents![heID.raw]) }
+                        if hasColors { colors.append(mesh.colors![heID.raw]) }
                         dedup[key] = newIndex
                         triangleIndices.append(newIndex)
                     }

@@ -2788,3 +2788,39 @@ closed: 2026-10-12T02:01:50Z
 Mesh.torus() and the capped Mesh.hemisphere() are wound clockwise: every face normal points into the solid, and robust winding numbers inside them are -1. Same class of bug as #83's six primitives; PrimitiveOrientationTests only checked outwardness for convex solids, so non-convex ones slipped through. Found while testing #125.
 
 ---
+
+## 132: mergingCoplanarFaces drops holes and creates T-junctions (non-manifold CSG results)
+
++++
+status: closed
+priority: high
+kind: bug
+labels: area:csg, effort:m
+created: 2026-10-12T02:20:34Z
+updated: 2026-10-12T02:30:15Z
+closed: 2026-10-12T02:30:15Z
++++
+
+Mesh.mergingCoplanarFaces (the default CSG post-pass) breaks manifold Boolean results:
+1. Each merged group traces only one boundary loop (from boundaryEdges[0]), so merged regions with holes lose the hole loops (e.g. a wall face around a window, a cube face pierced by a sphere). Single-face groups also pass through only the outer loop.
+2. removeCollinearVertices drops vertices still used by a third face, creating T-junctions.
+
+Repro: Mesh.box(0.5).translated(0.2).difference(icoSphere(0.45)) is manifold with mergeCoplanar: false (176 faces) but has 3 boundary loops with the default merge. Chained differences in the demo's 2D CSG section (Wall + Door + Windows, Arch Window, Floor Plan) come out empty because an intermediate merged result is non-manifold and the next robust Boolean rejects it.
+
+---
+
+## 133: Mesh.triangulated() and MetalMesh ignore face holes
+
++++
+status: closed
+priority: high
+kind: bug
+labels: area:topology, effort:m
+created: 2026-10-12T02:23:08Z
+updated: 2026-10-12T02:30:15Z
+closed: 2026-10-12T02:30:15Z
++++
+
+Mesh.triangulate(), Mesh.triangulated(), and MetalMesh.init(mesh:) triangulate only each face's outer loop (topology.vertexLoop) and ignore hole loops. Faces with holes are filled in, their hole edges are left unpaired, and the triangulated mesh is non-manifold; MetalMesh renders holes filled. Found via #132: a merged CSG result with window holes converts to a non-manifold triangle mesh, so the next Boolean rejects it. Fix: triangulate faces with the robust triangulator (#127), which handles holes, returning corner (half-edge) triples so attributes map exactly.
+
+---

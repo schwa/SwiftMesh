@@ -45,7 +45,12 @@ struct BooleanAttributeTests {
             let p = result.positions[halfEdge.origin.raw]
             #expect(simd_distance(uvs[halfEdge.id.raw], SIMD2(p.x, p.y)) < 1e-5)
             #expect(simd_distance(colors[halfEdge.id.raw], SIMD4(p.x, p.y, p.z, 1)) < 1e-5)
-            #expect(simd_dot(normals[halfEdge.id.raw], result.faceNormal(halfEdge.face!)) > 0.999)
+            // Uncleaned results can hold slivers whose computed normal is noise.
+            let corners = result.facePositions(halfEdge.face!)
+            let area = simd_length(simd_cross(corners[1] - corners[0], corners[2] - corners[0])) / 2
+            if area > 1e-8 {
+                #expect(simd_dot(normals[halfEdge.id.raw], result.faceNormal(halfEdge.face!)) > 0.999)
+            }
         }
     }
 

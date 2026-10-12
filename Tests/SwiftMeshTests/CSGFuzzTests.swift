@@ -73,6 +73,39 @@ struct CSGFuzzTests {
         #expect(abs(volume(shared) - 1.75) < 1e-6)
     }
 
+    @Test("Coplanar merge keeps holes: cube minus a protruding sphere stays manifold")
+    func mergeKeepsHoles() {
+        let cube = Mesh.box(extents: [0.5, 0.5, 0.5], attributes: []).translated(by: [0.2, 0.2, 0.2])
+        let sphere = Mesh.icoSphere(extents: [0.45, 0.45, 0.45], subdivisions: 2, attributes: [])
+        let merged = cube.difference(sphere)
+        let raw = cube.difference(sphere, mergeCoplanar: false)
+        #expect(merged.isManifold)
+        #expect(merged.topology.boundaryLoopCount == 0)
+        #expect(merged.validate().isEmpty)
+        #expect(merged.faceCount < raw.faceCount)
+        #expect(abs(volume(merged) - volume(raw)) < 1e-6)
+    }
+
+    @Test("Chained differences with merged coplanar faces stay manifold and non-empty")
+    func chainedDifferences() {
+        let t: Float = 0.02
+        let wall = Mesh.box(extents: [0.8, 0.5, t], attributes: [])
+        let door = Mesh.box(extents: [0.18, 0.3, t * 2], attributes: []).translated(by: [0.1, -0.1, 0])
+        let window1 = Mesh.box(extents: [0.12, 0.12, t * 2], attributes: []).translated(by: [-0.25, 0.06, 0])
+        let window2 = Mesh.box(extents: [0.12, 0.12, t * 2], attributes: []).translated(by: [0.3, 0.06, 0])
+        var result = wall
+        for cutter in [door, window1, window2] {
+            result = result.difference(cutter)
+            #expect(result.isManifold)
+            #expect(result.faceCount > 0)
+        }
+        // Merged front and back faces each have two window holes (the door opens the bottom edge).
+        #expect(result.topology.faces.filter { $0.holeEdges.count == 2 }.count == 2)
+        // The door spans y -0.25...0.05, flush with the wall's bottom edge (a notch, not a hole).
+        let expected = (0.8 * 0.5 - 0.18 * 0.3 - 2 * 0.12 * 0.12) * Double(t)
+        #expect(abs(volume(result) - expected) < 1e-6)
+    }
+
     @Test("Non-manifold input gives an empty result")
     func nonManifoldInput() {
         #expect(Mesh.quad().union(Mesh.cube()).faceCount == 0)

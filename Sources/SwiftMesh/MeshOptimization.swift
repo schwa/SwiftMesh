@@ -106,15 +106,19 @@ public extension Mesh {
 
         // For each group, either pass through unchanged (single face)
         // or find the outer boundary of the merged region
-        var newFaces: [[Int]] = []
+        // Per group: its plane normal and every boundary loop (outer and holes), before
+        // collinear cleanup, which needs to know how many groups share each vertex.
+        var groupLoops: [(normal: SIMD3<Float>, loops: [[Int]])] = []
 
         // Dictionary order is random; emit groups in order of their lowest face index.
         for group in groups.values.sorted(by: { $0[0] < $1[0] }) {
             if group.count == 1 {
                 // Single face — keep as-is
-                let verts = topology.vertexLoop(for: HalfEdgeTopology.FaceID(raw: group[0]))
+                let faceID = HalfEdgeTopology.FaceID(raw: group[0])
+                let verts = topology.vertexLoop(for: faceID)
                 guard verts.count >= 3 else { continue }
-                newFaces.append(verts.map(\.raw))
+                let holes = topology.holeVertexLoops(for: faceID).map { $0.map(\.raw) }.filter { $0.count >= 3 }
+                groupLoops.append((faceNormal(faceID), [verts.map(\.raw)] + holes))
                 continue
             }
 
@@ -161,12 +165,16 @@ public extension Mesh {
                     let origin = he.origin.raw
                     let dest = topology.halfEdges[next.raw].origin.raw
 
-                    // Check twin linkage
+                    // Check twin linkage. A twin in another group makes this a real boundary;
+                    // only twinless edges (unwelded input) fall back to geometric matching, since
+                    // short exact edges near cuts would otherwise match unrelated neighbors.
                     if let twinID = he.twin {
                         let twinFace = topology.halfEdges[twinID.raw].face
                         if let tf = twinFace, groupSet.contains(tf.raw) {
                             continue // interior via twin
                         }
+                        boundaryEdges.append((origin, dest))
+                        continue
                     }
 
                     // Check geometric match: is there a reverse edge in this group?
@@ -190,35 +198,72 @@ public extension Mesh {
             guard !boundaryEdges.isEmpty else { continue }
 
             // Build adjacency: from vertex → next vertex
-            var nextVertex: [Int: Int] = [:]
+            // Several boundary edges can leave one vertex (holes touching the outline), so keep
+            // a list per vertex and walk until every edge is used: one loop per boundary.
+            var outgoing: [Int: [Int]] = [:]
             for (a, b) in boundaryEdges {
-                nextVertex[a] = b
+                outgoing[a, default: []].append(b)
             }
+            var loops: [[Int]] = []
+            for (firstStart, _) in boundaryEdges {
+                guard outgoing[firstStart]?.isEmpty == false else {
+                    continue
+                }
+                var loop: [Int] = []
+                var current = firstStart
+                var safety = boundaryEdges.count + 1
+                repeat {
+                    loop.append(current)
+                    guard var targets = outgoing[current], !targets.isEmpty else {
+                        break
+                    }
+                    let next = targets.removeFirst()
+                    outgoing[current] = targets
+                    current = next
+                    safety -= 1
+                } while current != firstStart && safety > 0
+                if loop.count >= 3 {
+                    loops.append(loop)
+                }
+            }
+            guard !loops.isEmpty else { continue }
+            groupLoops.append((faceNormal(HalfEdgeTopology.FaceID(raw: group[0])), loops))
+        }
 
-            // Walk the loop
-            let start = boundaryEdges[0].0
-            var loop: [Int] = []
-            var current = start
-            var safety = nextVertex.count + 1
-            repeat {
-                loop.append(current)
-                guard let next = nextVertex[current] else { break }
-                current = next
-                safety -= 1
-            } while current != start && safety > 0
-
-            guard loop.count >= 3 else { continue }
-
-            // Remove collinear vertices
-            let cleaned = removeCollinearVertices(loop, positions: positions)
-            guard cleaned.count >= 3 else { continue }
-            newFaces.append(cleaned)
+        // A collinear vertex can only be dropped if at most two groups use it: then no other face
+        // keeps it, and a second group shares the same neighbors through it and drops it too.
+        // With a third group it stays, or dropping it would leave a T-junction.
+        var groupsPerVertex = [Int](repeating: 0, count: positions.count)
+        for (_, loops) in groupLoops {
+            for vertex in Set(loops.flatMap { $0 }) {
+                groupsPerVertex[vertex] += 1
+            }
+        }
+        var newFaces: [HalfEdgeTopology.FaceDefinition] = []
+        for (normal, loops) in groupLoops {
+            let cleaned = loops.map { loop in
+                removeCollinearVertices(loop, positions: positions) { groupsPerVertex[$0] <= 2 }
+            }.filter { $0.count >= 3 }
+            // Loops wound with the face normal are outlines; the rest are holes.
+            let outlines = cleaned.filter { loopArea(along: normal, $0, positions) > 0 }
+            let holes = cleaned.filter { loopArea(along: normal, $0, positions) <= 0 }
+            guard !outlines.isEmpty else { continue }
+            if outlines.count == 1 {
+                newFaces.append(.init(outer: outlines[0], holes: holes))
+            } else {
+                // Several outlines (a pinched region): give each hole to the outline containing it.
+                for outline in outlines {
+                    let mine = holes.filter { contains(outline, positions[$0[0]], normal: normal, positions) }
+                    newFaces.append(.init(outer: outline, holes: mine))
+                }
+            }
         }
 
         // Compact positions
         var usedVertices = Set<Int>()
         for face in newFaces {
-            for idx in face { usedVertices.insert(idx) }
+            usedVertices.formUnion(face.outer)
+            for hole in face.holes { usedVertices.formUnion(hole) }
         }
         var remap = [Int](repeating: -1, count: positions.count)
         var compactPositions: [SIMD3<Float>] = []
@@ -226,14 +271,45 @@ public extension Mesh {
             remap[idx] = compactPositions.count
             compactPositions.append(positions[idx])
         }
-        let remappedFaces = newFaces.map { $0.map { remap[$0] } }
+        let remappedFaces = newFaces.map { face in
+            HalfEdgeTopology.FaceDefinition(outer: face.outer.map { remap[$0] }, holes: face.holes.map { $0.map { remap[$0] } })
+        }
 
         return Mesh(positions: compactPositions, faces: remappedFaces)
     }
 }
 
-/// Remove vertices that lie on the straight line between their neighbors.
-private func removeCollinearVertices(_ indices: [Int], positions: [SIMD3<Float>], tolerance: Float = 1e-4) -> [Int] {
+/// Signed area of a loop measured along `normal` (positive when wound counter-clockwise around it).
+private func loopArea(along normal: SIMD3<Float>, _ loop: [Int], _ positions: [SIMD3<Float>]) -> Float {
+    var sum = SIMD3<Float>.zero
+    for index in loop.indices {
+        sum += simd_cross(positions[loop[index]], positions[loop[(index + 1) % loop.count]])
+    }
+    return simd_dot(sum, normal) / 2
+}
+
+/// Whether `point` lies inside `loop`, tested in the plane perpendicular to `normal`.
+private func contains(_ loop: [Int], _ point: SIMD3<Float>, normal: SIMD3<Float>, _ positions: [SIMD3<Float>]) -> Bool {
+    let axis = abs(normal.x) > abs(normal.y) && abs(normal.x) > abs(normal.z) ? 0 : (abs(normal.y) > abs(normal.z) ? 1 : 2)
+    func flat(_ p: SIMD3<Float>) -> SIMD2<Float> {
+        axis == 0 ? SIMD2(p.y, p.z) : (axis == 1 ? SIMD2(p.z, p.x) : SIMD2(p.x, p.y))
+    }
+    let test = flat(point)
+    var inside = false
+    var previous = loop.count - 1
+    for index in loop.indices {
+        let a = flat(positions[loop[index]])
+        let b = flat(positions[loop[previous]])
+        if (a.y > test.y) != (b.y > test.y), test.x < (b.x - a.x) * (test.y - a.y) / (b.y - a.y) + a.x {
+            inside.toggle()
+        }
+        previous = index
+    }
+    return inside
+}
+
+/// Remove vertices that lie on the straight line between their neighbors, if `canRemove` allows.
+private func removeCollinearVertices(_ indices: [Int], positions: [SIMD3<Float>], tolerance: Float = 1e-4, canRemove: (Int) -> Bool = { _ in true }) -> [Int] {
     guard indices.count >= 3 else { return indices }
     var result: [Int] = []
     let n = indices.count
@@ -247,7 +323,7 @@ private func removeCollinearVertices(_ indices: [Int], positions: [SIMD3<Float>]
         let cross = simd_cross(edge1, edge2)
         let crossLen = simd_length(cross)
         let edgeLen = simd_length(edge1) * simd_length(edge2)
-        if edgeLen > 0, crossLen / edgeLen < tolerance {
+        if edgeLen > 0, crossLen / edgeLen < tolerance, canRemove(indices[i]) {
             continue
         }
         result.append(indices[i])

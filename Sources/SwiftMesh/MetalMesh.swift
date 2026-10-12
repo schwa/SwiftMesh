@@ -196,20 +196,10 @@ public struct MetalMesh {
             var indices: [UInt32] = []
 
             for faceID in submesh.faces {
-                let vertexIDs = mesh.topology.vertexLoop(for: faceID)
-                let faceTriangles: [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
-                if vertexIDs.count == 3 {
-                    faceTriangles = [(vertexIDs[0], vertexIDs[1], vertexIDs[2])]
-                } else {
-                    faceTriangles = mesh.triangulateFace(vertexIDs: vertexIDs)
-                }
-
-                let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
-
-                for (vid0, vid1, vid2) in faceTriangles {
-                    for vertexID in [vid0, vid1, vid2] {
-                        // Faces are small: a linear search beats building a dictionary per face.
-                        let heID = heLoop.last { mesh.topology.halfEdges[$0.raw].origin == vertexID }
+                for triangle in mesh.triangulatedCorners(of: faceID) {
+                    for corner in [triangle.0, triangle.1, triangle.2] {
+                        let heID: HalfEdgeTopology.HalfEdgeID? = corner
+                        let vertexID = mesh.topology.halfEdges[corner.raw].origin
 
                         let hash = scratch.withUnsafeMutableBytes { buffer -> Int in
                             let base = buffer.baseAddress!
