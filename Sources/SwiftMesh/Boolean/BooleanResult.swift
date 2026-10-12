@@ -410,6 +410,7 @@ extension BooleanFaces {
         mesh.setFaceAndVertNormals()
         // Keep the source faces' normals: they are more accurate than recomputed ones for slivers.
         mesh.faceNormal = triangleFace.map { faceNormal[$0] }
+        mesh.triRef = triangleFace.map { SIMD2(faceSource[$0].fromQ ? 1 : 0, faceSource[$0].face) }
         return mesh
     }
 

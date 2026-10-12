@@ -2726,11 +2726,13 @@ Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elal
 ## 128: Robust Boolean: degenerate removal and topology cleanup
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:csg, effort:l
 created: 2026-10-12T01:22:19Z
+updated: 2026-10-12T02:08:35Z
+closed: 2026-10-12T02:08:35Z
 +++
 
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort edge_op.cpp: collapse short edges, swap degenerate triangles, split pinched verts, and other cleanup Manifold runs after a Boolean, preserving manifoldness.\n\nTests: Boolean results contain no zero-area triangles or edges shorter than epsilon; outputs stay manifold.\n\nDepends on: #126, #127.

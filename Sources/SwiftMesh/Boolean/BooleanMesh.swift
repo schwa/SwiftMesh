@@ -35,6 +35,9 @@ package struct BooleanMesh: Sendable {
     var boundsMax = SIMD3<Double>(repeating: -.infinity)
     /// Accumulated numerical error bound. Geometry closer than this may be treated as coincident.
     var epsilon: Double = 0
+    /// Per triangle: which input (0 = P, 1 = Q) and which of its faces it came from (Manifold's
+    /// `triRef`). Empty for meshes that weren't produced by a Boolean.
+    var triRef: [SIMD2<Int>] = []
 
     var numVert: Int { vertPos.count }
     package var numTri: Int { halfedges.count / 3 }
