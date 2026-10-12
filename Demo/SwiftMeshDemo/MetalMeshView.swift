@@ -227,6 +227,7 @@ struct MetalMeshView: View {
                                 try Draw { encoder in
                                     encoder.draw(metalMesh)
                                 }
+                                .metalMesh(metalMesh)
                                 .blinnPhongMaterial(BlinnPhongMaterial(
                                     ambient: .color([0.05, 0.06, 0.08]),
                                     diffuse: .color([0.45, 0.55, 0.65]),
@@ -271,6 +272,7 @@ struct MetalMeshView: View {
                             Draw { encoder in
                                 encoder.draw(metalMesh)
                             }
+                            .metalMesh(metalMesh)
                         }
                         .vertexDescriptor(MTLVertexDescriptor(metalMesh.vertexDescriptor))
                         .depthCompare(function: .less, enabled: true)
