@@ -1,3 +1,4 @@
+import BinPacking
 import Foundation
 import Metal
 import simd
@@ -92,6 +93,29 @@ if let device = MTLCreateSystemDefaultDevice() {
         })
     }
 }
+
+// Bin packing: RoomPlan-like charts in pixels at ~256 texels/m. 145 large surfaces
+// (walls, floors) plus 100 boxes with 6 small faces each = 745 charts.
+func roomPlanChartSizes() -> [SIMD2<Int>] {
+    var state: UInt64 = 7
+    func next(_ range: ClosedRange<Int>) -> Int {
+        state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+        return range.lowerBound + Int(state >> 33) % (range.upperBound - range.lowerBound + 1)
+    }
+    var sizes = (0..<145).map { _ in SIMD2(next(60...420), next(60...300)) }
+    for _ in 0..<100 {
+        let box = SIMD3(next(10...120), next(10...120), next(10...120))
+        sizes += [[box.x, box.y], [box.x, box.y], [box.y, box.z], [box.y, box.z], [box.x, box.z], [box.x, box.z]]
+    }
+    return sizes
+}
+benchmarks.append(Benchmark(name: "binPacking.maxRects.roomPlan745") {
+    let sizes = roomPlanChartSizes()
+    return {
+        var packer = MaxRectsPacker<Int>(binSize: [4_096, 4_096], padding: 2)
+        _ = packer.pack(sizes)
+    }
+})
 
 // IO
 benchmarks.append(Benchmark(name: "ply.roundTrip.icoSphere4") {

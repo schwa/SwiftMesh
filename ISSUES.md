@@ -2281,12 +2281,13 @@ construction — having this helper in SwiftMeshIO would short-circuit all that.
 ## 104: Investigate faster bin-packing alternatives to MaxRects for large chart counts
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:binpacking, effort:l
 created: 2026-05-13T20:45:31Z
-updated: 2026-10-12T00:12:25Z
+updated: 2026-10-12T00:36:04Z
+closed: 2026-10-12T00:36:04Z
 +++
 
 Real-world RoomPlan exports produce 700+ charts (1 chart per RoomPlan surface quad + 6 charts per box object). MaxRects packing takes ~1.2 s for 745 charts on a 4096x4096 atlas in release mode — most of the total bake time.

@@ -44,7 +44,7 @@ let package = Package(
             dependencies: ["SwiftMesh"]
         ),
         .target(name: "BinPacking"),
-        .executableTarget(name: "SwiftMeshBenchmarks", dependencies: ["SwiftMesh", "SwiftMeshIO"]),
+        .executableTarget(name: "SwiftMeshBenchmarks", dependencies: ["SwiftMesh", "SwiftMeshIO", "BinPacking"]),
         .testTarget(name: "SwiftMeshTests", dependencies: ["SwiftMesh"]),
         .testTarget(name: "SwiftMeshIOTests", dependencies: ["SwiftMeshIO"]),
         .testTarget(name: "BinPackingTests", dependencies: ["BinPacking"])

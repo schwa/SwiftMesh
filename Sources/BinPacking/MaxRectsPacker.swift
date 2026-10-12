@@ -117,14 +117,20 @@ public struct MaxRectsPacker<Scalar: RectScalar> {
             )
         }
         var newFree: [Rect<Scalar>] = []
+        var isNew: [Bool] = []
         newFree.reserveCapacity(freeRects.count * 2)
+        isNew.reserveCapacity(freeRects.count * 2)
         for free in freeRects {
-            if splitFreeRect(free: free, used: inflated, into: &newFree) == false {
+            let before = newFree.count
+            if splitFreeRect(free: free, used: inflated, into: &newFree) {
+                isNew += repeatElement(true, count: newFree.count - before)
+            } else {
                 newFree.append(free)
+                isNew.append(false)
             }
         }
         freeRects = newFree
-        pruneFreeRects()
+        pruneFreeRects(isNew: isNew)
 
         return placement
     }
@@ -189,24 +195,30 @@ public struct MaxRectsPacker<Scalar: RectScalar> {
         return true
     }
 
-    /// Remove any free rectangle fully contained by another.
-    private mutating func pruneFreeRects() {
-        var i = 0
-        while i < freeRects.count {
-            var j = i + 1
-            while j < freeRects.count {
-                if freeRects[j].contains(freeRects[i]) {
-                    freeRects.remove(at: i)
-                    i -= 1
-                    break
+    /// Remove any free rectangle contained by another; among equal rectangles the last survives.
+    ///
+    /// Rectangles untouched by the last split were already mutually non-contained, so only
+    /// pairs involving a new rectangle need checking (Jylänki's incremental pruning).
+    /// Survivors keep their order, so placements match the all-pairs version exactly.
+    private mutating func pruneFreeRects(isNew: [Bool]) {
+        let count = freeRects.count
+        var drop = [Bool](repeating: false, count: count)
+        for i in 0..<count where isNew[i] {
+            for j in 0..<count where j != i {
+                if freeRects[j].contains(freeRects[i]), freeRects[j] != freeRects[i] || j > i {
+                    drop[i] = true
                 }
-                if freeRects[i].contains(freeRects[j]) {
-                    freeRects.remove(at: j)
-                    continue
+                // Old rectangles can only be swallowed by new ones.
+                if !isNew[j], freeRects[i].contains(freeRects[j]), freeRects[j] != freeRects[i] || i > j {
+                    drop[j] = true
                 }
-                j += 1
             }
-            i += 1
         }
+        var kept: [Rect<Scalar>] = []
+        kept.reserveCapacity(count)
+        for index in 0..<count where !drop[index] {
+            kept.append(freeRects[index])
+        }
+        freeRects = kept
     }
 }
