@@ -62,6 +62,7 @@ them with diagnostics; then upload them with ``MetalMesh``.
 - ``ValidationIssue``
 - ``SurfaceComponent``
 - ``Mesh/withConsistentWinding()``
+- ``Mesh/windingNumbers(at:)``
 
 ### Texture Atlases
 

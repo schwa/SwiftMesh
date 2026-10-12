@@ -27,6 +27,19 @@ struct PrimitiveOrientationTests {
         }
     }
 
+    /// Closed primitives with a point known to be inside the solid (catches non-convex shapes).
+    static let closedSolids: [(String, Mesh, SIMD3<Float>)] = convexSolids.map { ($0.0, $0.1, SIMD3<Float>(0.0013, 0.0011, 0.0007)) } + [
+        ("torus", .torus(), [0.3011, 0.0013, 0.0007]),
+        ("hemisphere", .hemisphere(), [0.0013, 0.1011, 0.0007])
+    ]
+
+    @Test("Closed primitives wind +1 around an interior point", arguments: closedSolids.map(\.0))
+    func interiorWinding(name: String) throws {
+        let (_, mesh, inside) = Self.closedSolids.first { $0.0 == name }!
+        let winding = try #require(mesh.windingNumbers(at: [inside]))
+        #expect(winding == [1])
+    }
+
     @Test("Torus faces point away from the tube's centerline; hemisphere faces away from its center")
     func nonConvexOutward() {
         let torus = Mesh.torus(attributes: [])

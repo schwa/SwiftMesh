@@ -2676,11 +2676,13 @@ Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elal
 ## 125: Robust Boolean: winding numbers by flood fill
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:csg, effort:s
 created: 2026-10-12T01:22:19Z
+updated: 2026-10-12T02:02:22Z
+closed: 2026-10-12T02:02:22Z
 +++
 
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort Winding03: winding number of every vertex of P relative to Q (and vice versa) via Kernel02 on one vertex per connected component plus flood fill across edges not crossed by Q. Also expose a robust point-in-solid query (Manifold's PointWinding).\n\nTests: winding of points inside/outside primitives, nested shells, and points on the surface follow the perturbation rule.\n\nDepends on: #124.
