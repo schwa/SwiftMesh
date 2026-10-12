@@ -384,6 +384,12 @@ struct MeshDetailView: View {
                                 }
                                 .help("Select the boundary of a face using this edge. A full face boundary enables Extrude Face.")
                                 if let halfEdge = halfEdge(for: edge) {
+                                    Button("Select Loop") {
+                                        selectLoop(from: halfEdge)
+                                    }
+                                    .help("Extend to the edge loop through this edge: straight across 4-edge vertices, stopping at poles and boundaries.")
+                                }
+                                if let halfEdge = halfEdge(for: edge) {
                                     Button("Split Edge") {
                                         editSelection { $0.splitEdge(halfEdge) }
                                     }
@@ -556,6 +562,14 @@ struct MeshDetailView: View {
             }
             return MeshEdge(halfEdge.origin.raw, destination.raw) == edge
         }?.id
+    }
+
+    private func selectLoop(from halfEdge: HalfEdgeTopology.HalfEdgeID) {
+        let topology = currentMesh.topology
+        let edges = topology.edgeLoop(from: halfEdge).compactMap { id -> MeshEdge? in
+            topology.destViaNext(of: id).map { MeshEdge(topology.halfEdges[id.raw].origin.raw, $0.raw) }
+        }
+        selection = .edges(Set(edges))
     }
 
     private func canFlip(_ halfEdge: HalfEdgeTopology.HalfEdgeID) -> Bool {

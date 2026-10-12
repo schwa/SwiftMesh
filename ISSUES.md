@@ -831,12 +831,13 @@ New tab with a single mesh (cylinder) and a .inspector() sidebar showing vertex 
 ## 54: Add Select Loop to demo inspector
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: area:demo, effort:s
 created: 2026-04-15T06:39:36Z
-updated: 2026-10-12T00:10:06Z
+updated: 2026-10-12T00:32:46Z
+closed: 2026-10-12T00:32:46Z
 +++
 
 With one edge selected in the demo inspector, "Select Loop" extends the selection to the edge loop through it (Blender-style): at each vertex with exactly 4 edges, continue to the opposite edge; stop at vertices of other valence (poles) and at boundaries. Closed loops stop when they return to the start.
