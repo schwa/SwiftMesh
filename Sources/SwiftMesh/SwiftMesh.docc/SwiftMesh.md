@@ -31,7 +31,8 @@ them with diagnostics; then upload them with ``MetalMesh``.
 - ``Mesh/icoSphere(extents:subdivisions:attributes:)``
 - ``Mesh/convexHull(of:attributes:)``
 - ``Mesh/convexHull(ofSpheres:subdivisions:attributes:)``
-- ``Mesh/extrudedText(_:font:depth:curveSegments:attributes:)``
+- ``Mesh/extrudedText(_:font:depth:mode:curveSegments:attributes:)``
+- ``ExtrusionMode``
 - ``Mesh/merged(_:)``
 - ``TriangleSoup``
 

@@ -2,10 +2,23 @@ import CoreGraphics
 import simd
 import SwiftUI
 
+/// What ``Mesh/extruded(_:depth:mode:curveSegments:attributes:)-(CGPath,_,_,_,_)`` builds from each outline.
+public enum ExtrusionMode: Sendable, Equatable {
+    /// Front and back caps joined by side walls: a closed solid.
+    case solid
+    /// Side walls only, no caps: an open band per outline (fences, walls from a floor plan).
+    case wallsOnly
+    /// Each outline becomes a closed wall `thickness` thick, offset toward the shape's material.
+    ///
+    /// The offset uses miter joins and does not resolve self-intersections at sharp concave
+    /// corners or where `thickness` exceeds the local feature size.
+    case thinWalls(thickness: Float)
+}
+
 public extension Mesh {
-    /// Extrude a SwiftUI path into a closed solid. See ``extruded(_:depth:curveSegments:attributes:)-(CGPath,_,_,_)``.
-    static func extruded(_ path: Path, depth: Float, curveSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh {
-        extruded(path.cgPath, depth: depth, curveSegments: curveSegments, attributes: attributes)
+    /// Extrude a SwiftUI path. See ``extruded(_:depth:mode:curveSegments:attributes:)-(CGPath,_,_,_,_)``.
+    static func extruded(_ path: Path, depth: Float, mode: ExtrusionMode = .solid, curveSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh {
+        extruded(path.cgPath, depth: depth, mode: mode, curveSegments: curveSegments, attributes: attributes)
     }
 
     /// Extrude a path into a closed solid.
@@ -14,8 +27,9 @@ public extension Mesh {
     /// Subpaths nested inside an odd number of others become holes, as with the
     /// even-odd fill rule. The back cap lies at z = 0 and the front cap at z = `depth`,
     /// joined by quad side walls. Path y is flipped so the shape reads the same as on
-    /// screen when viewed from +z. Caps are n-gon faces with holes.
-    static func extruded(_ path: CGPath, depth: Float, curveSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh {
+    /// screen when viewed from +z. Caps are n-gon faces with holes. `mode` selects solid,
+    /// walls-only, or thin-wall output (see ``ExtrusionMode``).
+    static func extruded(_ path: CGPath, depth: Float, mode: ExtrusionMode = .solid, curveSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh {
         let loops = flattenedLoops(path, curveSegments: curveSegments)
         guard !loops.isEmpty else {
             return Mesh(positions: [], faces: [[Int]]())
@@ -41,7 +55,24 @@ public extension Mesh {
         }
 
         var faces: [HalfEdgeTopology.FaceDefinition] = []
-        for index in loops.indices where containers[index].count.isMultiple(of: 2) {
+        if case .thinWalls(let thickness) = mode {
+            // Material lies to the left of every oriented loop (outer CCW, holes CW).
+            for index in oriented.indices {
+                let inner = offsetLeft(oriented[index], by: thickness)
+                let innerBack = inner.indices.map { positions.count + $0 }
+                positions += inner.map { SIMD3($0.x, $0.y, 0) }
+                let innerFront = inner.indices.map { positions.count + $0 }
+                positions += inner.map { SIMD3($0.x, $0.y, depth) }
+                let count = inner.count
+                for corner in 0..<count {
+                    let next = (corner + 1) % count
+                    faces.append(.init(outer: [front[index][corner], front[index][next], innerFront[next], innerFront[corner]]))
+                    faces.append(.init(outer: [back[index][corner], innerBack[corner], innerBack[next], back[index][next]]))
+                    faces.append(.init(outer: [innerBack[next], innerBack[corner], innerFront[corner], innerFront[next]]))
+                }
+            }
+        }
+        for index in loops.indices where mode == .solid && containers[index].count.isMultiple(of: 2) {
             let holes = loops.indices.filter { containers[$0].count == containers[index].count + 1 && containers[$0].contains(index) }
             faces.append(.init(outer: front[index], holes: holes.map { front[$0] }))
             faces.append(.init(outer: back[index].reversed(), holes: holes.map { back[$0].reversed() }))
@@ -117,6 +148,23 @@ private extension Mesh {
         }
         finish()
         return loops
+    }
+
+    /// Offset a closed loop toward its left side with miter joins.
+    static func offsetLeft(_ loop: [SIMD2<Float>], by distance: Float) -> [SIMD2<Float>] {
+        func leftNormal(_ from: SIMD2<Float>, _ to: SIMD2<Float>) -> SIMD2<Float> {
+            let direction = simd_normalize(to - from)
+            return SIMD2(-direction.y, direction.x)
+        }
+        return loop.indices.map { index in
+            let previous = loop[(index + loop.count - 1) % loop.count]
+            let next = loop[(index + 1) % loop.count]
+            let incoming = leftNormal(previous, loop[index])
+            let outgoing = leftNormal(loop[index], next)
+            // Miter: the point distance from both offset edges; clamp near-reversals.
+            let denominator = max(1 + simd_dot(incoming, outgoing), 0.1)
+            return loop[index] + (incoming + outgoing) * (distance / denominator)
+        }
     }
 
     static func signedArea(_ loop: [SIMD2<Float>]) -> Float {

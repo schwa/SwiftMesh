@@ -1165,12 +1165,13 @@ Integrate debug shaders from MetalSprocketsAddons to visualize mesh topology in 
 ## 71: Support extrusion modes: solid, walls only, thin walls
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:extrude, effort:m
 created: 2026-04-15T14:20:40Z
-updated: 2026-10-12T00:10:22Z
+updated: 2026-10-12T00:23:45Z
+closed: 2026-10-12T00:23:45Z
 +++
 
 Add an extrusion mode parameter to Mesh.extruded(_: Path/CGPath, depth:) and Mesh.extrudedText:

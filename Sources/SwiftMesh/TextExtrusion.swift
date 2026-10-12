@@ -10,13 +10,13 @@ public extension Mesh {
     /// Glyph holes (e.g. in "o") become holes in the caps. Outlines are classified with
     /// the even-odd rule, so fonts that rely on overlapping contours may render overlaps
     /// as holes.
-    static func extrudedText(_ string: String, font: CTFont, depth: Float, curveSegments: Int = 6, attributes: MeshAttributes = .default) -> Mesh {
-        extruded(textPath(string, font: font), depth: depth, curveSegments: curveSegments, attributes: attributes)
+    static func extrudedText(_ string: String, font: CTFont, depth: Float, mode: ExtrusionMode = .solid, curveSegments: Int = 6, attributes: MeshAttributes = .default) -> Mesh {
+        extruded(textPath(string, font: font), depth: depth, mode: mode, curveSegments: curveSegments, attributes: attributes)
     }
 
-    /// Extrude a string using a font looked up by name and size. See ``extrudedText(_:font:depth:curveSegments:attributes:)``.
-    static func extrudedText(_ string: String, fontName: String = "Helvetica", size: CGFloat = 1, depth: Float, curveSegments: Int = 6, attributes: MeshAttributes = .default) -> Mesh {
-        extrudedText(string, font: CTFontCreateWithName(fontName as CFString, size, nil), depth: depth, curveSegments: curveSegments, attributes: attributes)
+    /// Extrude a string using a font looked up by name and size. See ``extrudedText(_:font:depth:mode:curveSegments:attributes:)``.
+    static func extrudedText(_ string: String, fontName: String = "Helvetica", size: CGFloat = 1, depth: Float, mode: ExtrusionMode = .solid, curveSegments: Int = 6, attributes: MeshAttributes = .default) -> Mesh {
+        extrudedText(string, font: CTFontCreateWithName(fontName as CFString, size, nil), depth: depth, mode: mode, curveSegments: curveSegments, attributes: attributes)
     }
 }
 
