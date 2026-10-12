@@ -106,6 +106,18 @@ struct CSGFuzzTests {
         #expect(abs(volume(result) - expected) < 1e-6)
     }
 
+    @Test("A pinched result (solids touching along an edge) feeds the next Boolean")
+    func pinchedResultChains() {
+        let a = Mesh.box(extents: [1, 1, 1], attributes: []).translated(by: [0.5, 0.5, 0.5])
+        let b = Mesh.box(extents: [1, 1, 1], attributes: []).translated(by: [1.5, 1.5, 0.5])
+        let pinched = a.union(b, mergeCoplanar: false)
+        #expect(pinched.positions.count > Set(pinched.positions).count) // distinct vertices share the edge
+        let clip = Mesh.box(extents: [3, 3, 0.5], attributes: []).translated(by: [1, 1, 0.25])
+        let result = pinched.intersection(clip)
+        #expect(result.faceCount > 0)
+        #expect(abs(volume(result) - 1) < 1e-5)
+    }
+
     @Test("Non-manifold input gives an empty result")
     func nonManifoldInput() {
         #expect(Mesh.quad().union(Mesh.cube()).faceCount == 0)

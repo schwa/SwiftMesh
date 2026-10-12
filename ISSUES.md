@@ -2608,12 +2608,13 @@ Add hover help outside the inspector:\n- Gallery items: a one-line explanation o
 ## 121: ExtrusionMode.thinWalls: robust polygon offset for sharp corners and thin features
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: area:extrude, effort:l
 created: 2026-10-12T01:11:02Z
-updated: 2026-10-12T01:11:04Z
+updated: 2026-10-12T14:14:49Z
+closed: 2026-10-12T14:14:49Z
 +++
 
 thinWalls (#71) offsets each outline with per-vertex miter joins (PathExtrusion.offsetLeft). It is topologically valid but geometrically wrong in three cases:

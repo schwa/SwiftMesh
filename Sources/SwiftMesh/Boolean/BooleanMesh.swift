@@ -194,13 +194,24 @@ func safeNormalize(_ vector: SIMD3<Double>) -> SIMD3<Double> {
 extension BooleanMesh {
     /// Converts a `Mesh`, triangulating n-gons and merging bit-identical positions so
     /// attribute seams (split vertices at the same place) don't break manifoldness.
+    ///
+    /// Only vertices on open edges are merged: a closed surface can hold distinct vertices at
+    /// one position (Boolean results pinched where solids touch), and welding those would make
+    /// it non-manifold.
     package init(mesh: Mesh) throws {
         let triangulated = mesh.triangulated()
+        var onOpenEdge = [Bool](repeating: false, count: triangulated.positions.count)
+        for halfEdge in triangulated.topology.halfEdges where halfEdge.twin == nil {
+            onOpenEdge[halfEdge.origin.raw] = true
+        }
         var mergedIndex: [SIMD3<Float>: Int] = [:]
         var vertexMap = [Int](repeating: -1, count: triangulated.positions.count)
         var positions: [SIMD3<Double>] = []
         for (index, position) in triangulated.positions.enumerated() {
-            if let existing = mergedIndex[position] {
+            if !onOpenEdge[index] {
+                vertexMap[index] = positions.count
+                positions.append(SIMD3<Double>(position))
+            } else if let existing = mergedIndex[position] {
                 vertexMap[index] = existing
             } else {
                 mergedIndex[position] = positions.count

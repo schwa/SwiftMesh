@@ -253,7 +253,7 @@ public extension Mesh {
             } else {
                 // Several outlines (a pinched region): give each hole to the outline containing it.
                 for outline in outlines {
-                    let mine = holes.filter { contains(outline, positions[$0[0]], normal: normal, positions) }
+                    let mine = holes.filter { loopContains(outline, positions[$0[0]], normal: normal, positions) }
                     newFaces.append(.init(outer: outline, holes: mine))
                 }
             }
@@ -289,7 +289,7 @@ private func loopArea(along normal: SIMD3<Float>, _ loop: [Int], _ positions: [S
 }
 
 /// Whether `point` lies inside `loop`, tested in the plane perpendicular to `normal`.
-private func contains(_ loop: [Int], _ point: SIMD3<Float>, normal: SIMD3<Float>, _ positions: [SIMD3<Float>]) -> Bool {
+private func loopContains(_ loop: [Int], _ point: SIMD3<Float>, normal: SIMD3<Float>, _ positions: [SIMD3<Float>]) -> Bool {
     let axis = abs(normal.x) > abs(normal.y) && abs(normal.x) > abs(normal.z) ? 0 : (abs(normal.y) > abs(normal.z) ? 1 : 2)
     func flat(_ p: SIMD3<Float>) -> SIMD2<Float> {
         axis == 0 ? SIMD2(p.y, p.z) : (axis == 1 ? SIMD2(p.z, p.x) : SIMD2(p.x, p.y))

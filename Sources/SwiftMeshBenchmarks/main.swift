@@ -4,6 +4,7 @@ import Metal
 import simd
 import SwiftMesh
 import SwiftMeshIO
+import SwiftUI
 
 // Usage: swift run -c release SwiftMeshBenchmarks [--json] [name-filter...]
 
@@ -148,6 +149,32 @@ benchmarks.append(Benchmark(name: "ply.roundTrip.binary.icoSphere4") {
 var arguments = Array(CommandLine.arguments.dropFirst())
 let json = arguments.contains("--json")
 arguments.removeAll { $0 == "--json" }
+
+// Thin-wall extrusion: a rectangle takes the miter path; the star and text need the CSG path.
+let starPath: Path = {
+    var path = Path()
+    path.addLines((0..<10).map { index in
+        let angle = Double(index) / 10 * 2 * .pi
+        let radius = index.isMultiple(of: 2) ? 2.0 : 0.5
+        return CGPoint(x: cos(angle) * radius, y: sin(angle) * radius)
+    })
+    path.closeSubpath()
+    return path
+}()
+benchmarks.append(Benchmark(name: "extrude.thinWalls.rectangle") {
+    { _ = Mesh.extruded(Path(CGRect(x: 0, y: 0, width: 4, height: 2)), depth: 1, mode: .thinWalls(thickness: 0.2), attributes: []) }
+})
+benchmarks.append(Benchmark(name: "extrude.thinWalls.star") {
+    { _ = Mesh.extruded(starPath, depth: 1, mode: .thinWalls(thickness: 0.25), attributes: []) }
+})
+for text in ["A", "Hello"] {
+    benchmarks.append(Benchmark(name: "extrude.thinWalls.text.\(text)") {
+        { _ = Mesh.extrudedText(text, depth: 0.2, mode: .thinWalls(thickness: 0.03), attributes: []) }
+    })
+    benchmarks.append(Benchmark(name: "extrude.solid.text.\(text)") {
+        { _ = Mesh.extrudedText(text, depth: 0.2, attributes: []) }
+    })
+}
 
 let selected = arguments.isEmpty ? benchmarks : benchmarks.filter { benchmark in arguments.contains { benchmark.name.contains($0) } }
 let runner = BenchmarkRunner()

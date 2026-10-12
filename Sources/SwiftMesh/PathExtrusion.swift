@@ -10,8 +10,10 @@ public enum ExtrusionMode: Sendable, Equatable {
     case wallsOnly
     /// Each outline becomes a closed wall `thickness` thick, offset toward the shape's material.
     ///
-    /// The offset uses miter joins and does not resolve self-intersections at sharp concave
-    /// corners or where `thickness` exceeds the local feature size.
+    /// Simple shapes get a direct miter offset. When that offset would fold or cross (sharp
+    /// corners, notches, features thinner than twice `thickness`), the wall is built with CSG
+    /// instead: the solid intersected with a band along every edge, with mitered joins limited
+    /// to twice `thickness` and rounded beyond. That path is slower and returns triangles.
     case thinWalls(thickness: Float)
 }
 
@@ -54,6 +56,13 @@ public extension Mesh {
             positions += loop.map { SIMD3($0.x, $0.y, depth) }
         }
 
+        if case .thinWalls(let thickness) = mode, !miterOffsetIsSafe(oriented, thickness: thickness) {
+            let solid = extruded(path, depth: depth, mode: .solid, curveSegments: curveSegments, attributes: [])
+            var mesh = robustThinWalls(oriented, solid: solid, depth: depth, thickness: thickness)
+            mesh.applyAttributes(attributes)
+            return mesh
+        }
+
         var faces: [HalfEdgeTopology.FaceDefinition] = []
         if case .thinWalls(let thickness) = mode {
             // Material lies to the left of every oriented loop (outer CCW, holes CW).
@@ -92,7 +101,7 @@ public extension Mesh {
     }
 }
 
-private extension Mesh {
+extension Mesh {
     static func flattenedLoops(_ path: CGPath, curveSegments: Int) -> [[SIMD2<Float>]] {
         var loops: [[SIMD2<Float>]] = []
         var current: [SIMD2<Float>] = []
@@ -150,13 +159,136 @@ private extension Mesh {
         return loops
     }
 
+    static func leftNormal(_ from: SIMD2<Float>, _ to: SIMD2<Float>) -> SIMD2<Float> {
+        let direction = simd_normalize(to - from)
+        return SIMD2(-direction.y, direction.x)
+    }
+
+    /// Whether the miter offset of every loop stays simple: no sharp corners, no crossing
+    /// edges (within or between loops, original or offset), and no inverted offset loop.
+    static func miterOffsetIsSafe(_ loops: [[SIMD2<Float>]], thickness: Float) -> Bool {
+        var segments: [(a: SIMD2<Float>, b: SIMD2<Float>, loop: Int, index: Int, count: Int)] = []
+        for (loopIndex, loop) in loops.enumerated() {
+            for index in loop.indices {
+                let incoming = leftNormal(loop[(index + loop.count - 1) % loop.count], loop[index])
+                let outgoing = leftNormal(loop[index], loop[(index + 1) % loop.count])
+                // Corners sharper than 60 degrees push the miter more than 2x thickness out.
+                if 1 + simd_dot(incoming, outgoing) < 0.5 {
+                    return false
+                }
+            }
+            let inner = offsetLeft(loop, by: thickness)
+            if (signedArea(inner) > 0) != (signedArea(loop) > 0) {
+                return false
+            }
+            for (offset, points) in [(0, loop), (loops.count, inner)] {
+                for index in points.indices {
+                    segments.append((points[index], points[(index + 1) % points.count], loopIndex + offset, index, points.count))
+                }
+            }
+        }
+        func orientation(_ p: SIMD2<Float>, _ q: SIMD2<Float>, _ r: SIMD2<Float>) -> Float {
+            (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
+        }
+        for first in segments.indices {
+            let s = segments[first]
+            for second in (first + 1)..<segments.count {
+                let t = segments[second]
+                if s.loop == t.loop {
+                    let gap = abs(s.index - t.index)
+                    if gap == 1 || gap == s.count - 1 {
+                        continue
+                    }
+                }
+                guard max(s.a.x, s.b.x) >= min(t.a.x, t.b.x), max(t.a.x, t.b.x) >= min(s.a.x, s.b.x),
+                      max(s.a.y, s.b.y) >= min(t.a.y, t.b.y), max(t.a.y, t.b.y) >= min(s.a.y, s.b.y) else {
+                    continue
+                }
+                // Touching counts as crossing: the fast path stays conservative.
+                if orientation(s.a, s.b, t.a) * orientation(s.a, s.b, t.b) <= 0,
+                   orientation(t.a, t.b, s.a) * orientation(t.a, t.b, s.b) <= 0 {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    /// Thin walls via CSG: the solid intersected with the union of a `thickness`-wide band
+    /// on the material side of every edge, plus a join wedge where consecutive bands diverge.
+    static func robustThinWalls(_ loops: [[SIMD2<Float>]], solid: Mesh, depth: Float, thickness: Float) -> Mesh {
+        // Bands overshoot the caps so the intersection cuts them cleanly.
+        let margin = max(depth, thickness)
+        var pieces: [Mesh] = []
+        for loop in loops {
+            let count = loop.count
+            for index in 0..<count {
+                let a = loop[index]
+                let b = loop[(index + 1) % count]
+                let c = loop[(index + 2) % count]
+                guard simd_distance(a, b) > 1e-7 else {
+                    continue
+                }
+                let normal = leftNormal(a, b)
+                pieces.append(prism([a, b, b + normal * thickness, a + normal * thickness], from: -margin, to: depth + margin))
+                guard simd_distance(b, c) > 1e-7 else {
+                    continue
+                }
+                // A right turn opens a gap between this band and the next on the material side.
+                let incoming = simd_normalize(b - a)
+                let outgoing = simd_normalize(c - b)
+                guard incoming.x * outgoing.y - incoming.y * outgoing.x < -1e-6 else {
+                    continue
+                }
+                let nextNormal = leftNormal(b, c)
+                let denominator = 1 + simd_dot(normal, nextNormal)
+                var wedge = [b, b + normal * thickness]
+                if denominator >= 0.5 {
+                    wedge.append(b + (normal + nextNormal) * (thickness / denominator))
+                } else {
+                    // Too sharp to miter: a round join, in steps of at most 22.5 degrees.
+                    let start = atan2(normal.y, normal.x)
+                    // Right turn: the normal rotates clockwise, so sweep negative.
+                    var sweep = atan2(nextNormal.y, nextNormal.x) - start
+                    sweep = sweep > 0 ? sweep - 2 * .pi : sweep
+                    let steps = Int((abs(sweep) / (.pi / 8)).rounded(.up))
+                    for step in 1..<max(steps, 1) {
+                        let angle = start + sweep * Float(step) / Float(steps)
+                        wedge.append(b + SIMD2(cos(angle), sin(angle)) * thickness)
+                    }
+                }
+                wedge.append(b + nextNormal * thickness)
+                pieces.append(prism(wedge, from: -margin, to: depth + margin))
+            }
+        }
+        // Balanced union keeps intermediate meshes small.
+        while pieces.count > 1 {
+            pieces = stride(from: 0, to: pieces.count, by: 2).map { index in
+                index + 1 < pieces.count ? pieces[index].union(pieces[index + 1], mergeCoplanar: false) : pieces[index]
+            }
+        }
+        guard let bands = pieces.first else {
+            return Mesh(positions: [], faces: [[Int]]())
+        }
+        return solid.intersection(bands)
+    }
+
+    /// A closed prism over a convex polygon, z from `bottom` to `top`.
+    static func prism(_ polygon: [SIMD2<Float>], from bottom: Float, to top: Float) -> Mesh {
+        let polygon = signedArea(polygon) < 0 ? Array(polygon.reversed()) : polygon
+        let count = polygon.count
+        let positions = polygon.map { SIMD3($0.x, $0.y, bottom) } + polygon.map { SIMD3($0.x, $0.y, top) }
+        var faces: [[Int]] = [Array((0..<count).reversed()), Array(count..<(2 * count))]
+        for index in 0..<count {
+            let next = (index + 1) % count
+            faces.append([index, next, count + next, count + index])
+        }
+        return Mesh(positions: positions, faces: faces)
+    }
+
     /// Offset a closed loop toward its left side with miter joins.
     static func offsetLeft(_ loop: [SIMD2<Float>], by distance: Float) -> [SIMD2<Float>] {
-        func leftNormal(_ from: SIMD2<Float>, _ to: SIMD2<Float>) -> SIMD2<Float> {
-            let direction = simd_normalize(to - from)
-            return SIMD2(-direction.y, direction.x)
-        }
-        return loop.indices.map { index in
+        loop.indices.map { index in
             let previous = loop[(index + loop.count - 1) % loop.count]
             let next = loop[(index + 1) % loop.count]
             let incoming = leftNormal(previous, loop[index])
