@@ -811,7 +811,7 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("Sphere Hull: Mixed", subtitle: "Four spheres, mixed radii", mesh: Mesh.convexHull(ofSpheres: mixedSpheres, subdivisions: 3) ?? .tetrahedron())
             ]
         }()),
-        Self("Editing", help: "Local edits: splitEdge(_:at:), flipEdge(_:), extrudingFace(_:distance:), chamfered(distance:edges:), and split(planeNormal:point:capped:). Try the same edits interactively from the inspector's Selection section.", items: {
+        Self("Editing", help: "Local edits: splitEdge(_:at:), flipEdge(_:), extrudingFace(_:distance:), chamfered(distance:segments:edges:) (segments > 1 rounds it into a fillet), and split(planeNormal:point:capped:). Try the same edits interactively from the inspector's Selection section.", items: {
             // Split every 7th edge of an icosphere once.
             var split = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 1, attributes: [])
             for halfEdge in split.topology.halfEdges.indices where halfEdge.isMultiple(of: 7) {
@@ -852,6 +852,8 @@ struct MeshGallerySection: Identifiable {
                 MeshGalleryItem("Chamfer All", subtitle: "Every box edge", mesh: box.chamfered(distance: 0.06, attributes: .default) ?? box),
                 MeshGalleryItem("Chamfer One", subtitle: "A single box edge", mesh: box.chamfered(distance: 0.1, edges: [box.topology.halfEdges.first { $0.twin != nil }!.id], attributes: .default) ?? box),
                 MeshGalleryItem("Chamfer Icosahedron", subtitle: "Every edge", mesh: Mesh.icosahedron(extents: [0.8, 0.8, 0.8], attributes: []).chamfered(distance: 0.05, attributes: .default) ?? box),
+                MeshGalleryItem("Fillet All", subtitle: "Every box edge, 6 segments", mesh: box.chamfered(distance: 0.08, segments: 6, attributes: [.smoothNormals]) ?? box),
+                MeshGalleryItem("Fillet One", subtitle: "A single box edge, 6 segments", mesh: box.chamfered(distance: 0.12, segments: 6, edges: [box.topology.halfEdges.first { $0.twin != nil }!.id], attributes: [.smoothNormals]) ?? box),
                 MeshGalleryItem("Plane Split (Capped)", subtitle: "Sphere, front half", mesh: sphere.split(planeNormal: cutNormal, point: .zero).front),
                 MeshGalleryItem("Plane Split (Open)", subtitle: "Sphere, front half, uncapped", mesh: sphere.split(planeNormal: cutNormal, point: .zero, capped: false).front),
                 MeshGalleryItem("Torus Cut", subtitle: "Annulus cap with a hole", mesh: Mesh.torus(attributes: []).split(planeNormal: [0, 1, 0], point: .zero).front)

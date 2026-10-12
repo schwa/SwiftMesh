@@ -761,12 +761,13 @@ Generate meshes by triangulating a SwiftUI Path and extruding to 3D. Should hand
 ## 50: Edge fillet (rounding)
 
 +++
-status: open
+status: closed
 priority: low
 kind: feature
 labels: effort:l
 created: 2026-04-15T05:57:13Z
-updated: 2026-10-12T00:13:39Z
+updated: 2026-10-12T00:37:58Z
+closed: 2026-10-12T00:37:58Z
 +++
 
 Round selected edges by replacing them with a smooth arc of faces. Requires edge split and vertex insertion along the edge neighborhood.

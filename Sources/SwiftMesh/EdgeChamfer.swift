@@ -11,15 +11,21 @@ public extension Mesh {
     /// corner with all three edges chamfered); with one chamfered edge the adjacent face
     /// absorbs the cut instead.
     ///
+    /// With `segments` > 1 each strip curves into a rounded fillet: N quads along a quadratic
+    /// Bezier from one side to the other, with the original edge as the control point, so the
+    /// round meets both faces tangentially. Vertex patches follow the arcs; they are simple
+    /// polygons, not true spherical blends.
+    ///
     /// - Parameters:
     ///   - distance: How far the cut reaches from each chamfered edge along the faces.
+    ///   - segments: Quads across each strip. 1 is a flat chamfer; more gives a fillet.
     ///   - edges: Half-edges to chamfer (either direction of an edge selects it). `nil`
     ///     chamfers every edge.
     ///   - attributes: Attributes to derive on the result. Input per-corner attributes
     ///     are not carried over.
     /// - Returns: The chamfered mesh, or `nil` if the mesh is not a closed manifold.
-    func chamfered(distance: Float, edges: Set<HalfEdgeTopology.HalfEdgeID>? = nil, attributes: MeshAttributes = []) -> Mesh? {
-        guard isManifold else {
+    func chamfered(distance: Float, segments: Int = 1, edges: Set<HalfEdgeTopology.HalfEdgeID>? = nil, attributes: MeshAttributes = []) -> Mesh? {
+        guard isManifold, segments >= 1 else {
             return nil
         }
         let topology = topology
@@ -84,6 +90,26 @@ public extension Mesh {
             }
         }
 
+        /// Points from `from` to `to` (inclusive) along a quadratic Bezier with control `corner`.
+        /// Keyed by the unordered endpoint pair so a strip and a vertex patch get the same points.
+        func arc(_ from: Int, _ to: Int, corner: HalfEdgeTopology.VertexID) -> [Int] {
+            guard segments > 1, from != to else {
+                return [from, to]
+            }
+            let (low, high) = (min(from, to), max(from, to))
+            let samples = (0...segments).map { step -> Int in
+                if step == 0 { return low }
+                if step == segments { return high }
+                return point("a\(low)-\(high)-\(step)") {
+                    let t = Float(step) / Float(segments)
+                    let start = newPositions[low]
+                    let end = newPositions[high]
+                    return (1 - t) * (1 - t) * start + 2 * t * (1 - t) * position(corner) + t * t * end
+                }
+            }
+            return from == low ? samples : samples.reversed()
+        }
+
         var faces: [[Int]] = []
         // Shrunk original faces.
         for face in topology.faces where face.edge != nil {
@@ -100,16 +126,26 @@ public extension Mesh {
             let fB = cornerPoints[next.raw]!.first!
             let gB = cornerPoints[twin.raw]!.last!
             let gA = cornerPoints[twinNext.raw]!.first!
-            faces.append([fB, fA, gA, gB])
+            let arcA = arc(fA, gA, corner: halfEdge.origin)
+            let arcB = arc(fB, gB, corner: topology.halfEdges[next.raw].origin)
+            for step in 0..<(arcA.count - 1) {
+                faces.append([arcB[step], arcA[step], arcA[step + 1], arcB[step + 1]])
+            }
         }
         // Vertex patches.
         for vertex in topology.vertices where topology.vertexRing(vertex.id).contains(where: isChamfered) {
             var loop: [Int] = []
             // Ring order crosses each face's incoming edge into the next face, so a face's
             // incoming-side point neighbors the next face's outgoing-side point: walk each reversed.
+            // Crossing a chamfered edge into the next face follows that strip's arc.
             for outgoing in topology.vertexRing(vertex.id) {
                 for index in cornerPoints[outgoing.raw]!.reversed() where loop.last != index {
                     loop.append(index)
+                }
+                let incoming = topology.halfEdges[outgoing.raw].prev!
+                if isChamfered(incoming), let nextFaceCorner = topology.halfEdges[incoming.raw].twin {
+                    let arcPoints = arc(loop.last!, cornerPoints[nextFaceCorner.raw]!.last!, corner: vertex.id)
+                    loop += arcPoints.dropFirst().dropLast()
                 }
             }
             if loop.count > 1, loop.first == loop.last {

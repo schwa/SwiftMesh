@@ -45,6 +45,37 @@ struct EdgeChamferTests {
         checkClosedOutward(mesh)
     }
 
+    @Test("Fillet: segmented strips on every cube edge stay closed and outward", arguments: [2, 4])
+    func filletAllEdges(segments: Int) throws {
+        let mesh = try #require(Mesh.box(attributes: []).chamfered(distance: 0.1, segments: segments))
+        #expect(mesh.faceCount == 6 + 12 * segments + 8)
+        checkClosedOutward(mesh)
+        // The round bulges past the flat chamfer: along the (1, 1, 0) diagonal of an edge,
+        // the furthest vertex is beyond the flat strip's midpoint but inside the original corner.
+        let flat = try #require(Mesh.box(attributes: []).chamfered(distance: 0.1))
+        let diagonal = simd_normalize(SIMD3<Float>(1, 1, 0))
+        let reach = { (mesh: Mesh) in mesh.positions.map { simd_dot($0, diagonal) }.max()! }
+        #expect(reach(mesh) > reach(flat) + 1e-4)
+        #expect(reach(mesh) < simd_dot(SIMD3<Float>(0.5, 0.5, 0), diagonal))
+    }
+
+    @Test("Fillet on one cube edge closes the curved gap at each end")
+    func filletOneEdge() throws {
+        let cube = Mesh.box(attributes: [])
+        let edge = cube.topology.halfEdges.first { $0.twin != nil }!.id
+        let mesh = try #require(cube.chamfered(distance: 0.15, segments: 4, edges: [edge]))
+        checkClosedOutward(mesh)
+        // 6 faces + 4 strip quads + one patch per end filling between the arc and the absorbing face.
+        #expect(mesh.faceCount == 6 + 4 + 2)
+    }
+
+    @Test("Fillet on an icosahedron stays closed and consistent")
+    func filletIcosahedron() throws {
+        let mesh = try #require(Mesh.icosahedron(attributes: []).chamfered(distance: 0.05, segments: 3))
+        #expect(mesh.faceCount == 20 + 30 * 3 + 12)
+        checkClosedOutward(mesh)
+    }
+
     @Test("Open meshes are refused")
     func openMesh() {
         #expect(Mesh.quad(attributes: []).chamfered(distance: 0.1) == nil)

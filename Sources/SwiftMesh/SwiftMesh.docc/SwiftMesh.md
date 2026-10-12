@@ -41,7 +41,7 @@ them with diagnostics; then upload them with ``MetalMesh``.
 - ``Mesh/splitEdge(_:at:)``
 - ``Mesh/flipEdge(_:)``
 - ``Mesh/extrudingFace(_:distance:)``
-- ``Mesh/chamfered(distance:edges:attributes:)``
+- ``Mesh/chamfered(distance:segments:edges:attributes:)``
 - ``Mesh/split(planeNormal:point:capped:weldTolerance:)``
 - ``Mesh/reversingWinding()``
 - ``Mesh/reversingWinding(of:)``
