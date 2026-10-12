@@ -636,6 +636,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
+        mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
         mesh.applyAttributes(attributes)
         return mesh
     }
@@ -837,6 +838,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
+        mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
         mesh.applyAttributes(attributes)
         return mesh
     }

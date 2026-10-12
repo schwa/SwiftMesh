@@ -2758,3 +2758,19 @@ created: 2026-10-12T01:22:19Z
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nRoute Mesh.union/intersection/difference and csg(_:_:options:) through the new Boolean, keep CSGOptions where meaningful, and remove the BSP implementation. Acceptance: all existing CSG tests pass, every result of a CSG fuzz test (random rotated primitives) is manifold and passes validate(), and benchmarks are recorded before/after. Close #65 when done.\n\nDepends on: #128, #129.
 
 ---
+
+## 131: Torus and hemisphere primitives are inside-out
+
++++
+status: closed
+priority: medium
+kind: bug
+labels: area:primitives, effort:xs
+created: 2026-10-12T02:01:42Z
+updated: 2026-10-12T02:01:50Z
+closed: 2026-10-12T02:01:50Z
++++
+
+Mesh.torus() and the capped Mesh.hemisphere() are wound clockwise: every face normal points into the solid, and robust winding numbers inside them are -1. Same class of bug as #83's six primitives; PrimitiveOrientationTests only checked outwardness for convex solids, so non-convex ones slipped through. Found while testing #125.
+
+---

@@ -27,6 +27,21 @@ struct PrimitiveOrientationTests {
         }
     }
 
+    @Test("Torus faces point away from the tube's centerline; hemisphere faces away from its center")
+    func nonConvexOutward() {
+        let torus = Mesh.torus(attributes: [])
+        for face in torus.topology.faces {
+            let centroid = torus.faceCentroid(face.id)
+            let ring = simd_normalize(SIMD3(centroid.x, 0, centroid.z)) * 0.3 // default major radius
+            #expect(simd_dot(torus.faceNormal(face.id), centroid - ring) > 0)
+        }
+        let hemisphere = Mesh.hemisphere(attributes: [])
+        let center = SIMD3<Float>(0, 0.25, 0) // inside the dome, above the cap
+        for face in hemisphere.topology.faces {
+            #expect(simd_dot(hemisphere.faceNormal(face.id), hemisphere.faceCentroid(face.id) - center) > 0)
+        }
+    }
+
     @Test("Corner normals agree with face winding", arguments: all.map(\.0))
     func normalsMatchWinding(name: String) throws {
         let mesh = Self.all.first { $0.0 == name }!.1
