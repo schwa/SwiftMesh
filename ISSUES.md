@@ -2702,11 +2702,13 @@ Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elal
 ## 127: Robust Boolean: robust polygon triangulation
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:csg, effort:l
 created: 2026-10-12T01:22:19Z
+updated: 2026-10-12T01:57:01Z
+closed: 2026-10-12T01:57:01Z
 +++
 
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort Manifold's polygon triangulation (polygon.cpp; see docs/Triangulation.pdf) that handles epsilon-valid polygons with holes and degenerate geometry without failing. SwiftEarcut is not robust enough for Boolean output.\n\nTests: Manifold's polygon test corpus where feasible; degenerate slivers, collinear runs, and touching holes triangulate without overlaps or missing area.\n\nDepends on: #122.
