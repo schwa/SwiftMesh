@@ -2841,3 +2841,306 @@ closed: 2026-10-12T02:35:21Z
 All face triangulation now uses the robust triangulator (#133). SwiftEarcut is only used by the unused public Mesh.triangulateFace(vertexIDs:) and its private helpers. Remove them, the SwiftEarcut package dependency, and stale 'earcut' doc comments (MetalMesh.swift, Mesh+RealityKit.swift). Measured: ours is faster on convex faces, 2-5x slower on large concave polygons; accepted.
 
 ---
+
+## 135: Catmull-Rom spline and tube sweep
+
++++
+status: open
+priority: medium
+kind: feature
+labels: effort:l, area:primitives
+created: 2026-10-12T16:25:33Z
+updated: 2026-10-13T00:25:40Z
++++
+
+Add a CatmullRomSpline type: control points in, interpolating curve out. Use the centripetal variant (alpha = 0.5) by default to avoid cusps and self-intersections. Support open and closed curves, and sample by segment count.
+
+Add a mesh builder that sweeps a circle (or any 2D profile) along the spline to make a tube. Use rotation-minimizing frames to avoid twist.
+
+Later: lathe/revolve profiles and smoothing 2D loops before extrusion.
+
+---
+
+## 136: Carry per-corner attributes through subdivision
+
++++
+status: open
+priority: medium
+kind: enhancement
+labels: effort:m, area:subdivision
+created: 2026-10-12T16:26:54Z
+updated: 2026-10-13T00:25:40Z
++++
+
+catmullClarkSubdivided and loopSubdivided drop normals, UVs, tangents, and colors. Interpolate them like Blender/OpenSubdiv: smooth UVs across faces but keep UV seams, and recompute or interpolate normals. Use the internal CornerAttributes helpers.
+
+---
+
+## 137: Edge creases for subdivision
+
++++
+status: open
+priority: low
+kind: feature
+labels: effort:m, area:subdivision
+created: 2026-10-12T16:26:54Z
+updated: 2026-10-13T00:25:40Z
++++
+
+Add per-edge crease weights (0 = smooth, 1 = sharp, fractional = semi-sharp) to Catmull-Clark and Loop subdivision, like Blender's edge crease. Sharp edges use the boundary rules; semi-sharp edges are sharp for the first N iterations.
+
+---
+
+## 138: Project subdivision to limit surface
+
++++
+status: open
+priority: low
+kind: feature
+labels: effort:m, area:subdivision
+created: 2026-10-12T16:26:54Z
+updated: 2026-10-13T00:25:41Z
++++
+
+Add an option to move vertices onto the Catmull-Clark/Loop limit surface after subdivision, like Blender's 'Use Limit Surface'. This stops the mesh shrinking at low iteration counts. Limit normals can be computed exactly at the same time.
+
+---
+
+## 139: Teapot from original Bezier patches
+
++++
+status: closed
+priority: low
+kind: feature
+created: 2026-10-12T16:26:54Z
+updated: 2026-10-13T00:14:20Z
+closed: 2026-10-13T00:14:20Z
++++
+
+Mesh.teapot() loads a fixed coarse OBJ. Build it from the original 32 bicubic Bezier patches instead, with a segments parameter, so it can be generated at any resolution with exact normals and UVs.
+
+---
+
+## 140: No flat indexed triangle mesh with vertex attributes and submeshes
+
++++
+status: closed
+priority: medium
+kind: feature
+labels: effort:l, area:triangle-mesh
+created: 2026-10-13T00:23:14Z
+updated: 2026-10-13T00:28:21Z
+closed: 2026-10-13T00:28:21Z
++++
+
+SwiftMesh has no CPU-side triangle mesh that keeps vertex attributes. The existing types do not fit:
+
+- Mesh is built on HalfEdgeTopology. Building it fails on non-manifold index buffers, which are common in imported data (glTF). It is also more work than a load path needs.
+- TriangleSoup has positions and triangles only. Converting a Mesh to it discards normals, UVs, tangents, colors and submeshes.
+- MetalMesh holds data in GPU buffers, not in Swift arrays, so CPU code cannot edit or inspect it easily.
+
+Use case: MetalSprocketsGLTF and MetalSprocketsPBR use their own format (PBRGeometryBuilder.PrimitiveData) for this. A shared SwiftMesh type would let glTF loading, SwiftMesh shape generators and the PBR renderer use one format.
+
+Needed: shared per-vertex attribute arrays, index lists, submeshes (each with label and material slot), and conversion to and from Mesh and MetalMesh.
+
+- `2026-10-13T00:28:21Z`: Wrong framing: MetalMesh (any VertexDescriptor, per-submesh primitive type, buffer offsets) already covers most of this. Refiled as MetalMesh gap issues.
+
+---
+
+## 141: Triangle mesh has no skinning attributes
+
++++
+status: closed
+priority: medium
+kind: feature
+labels: effort:m, area:triangle-mesh
+depends: 140
+created: 2026-10-13T00:23:21Z
+updated: 2026-10-13T00:28:20Z
+closed: 2026-10-13T00:28:20Z
++++
+
+For skinned models, each vertex needs joint indexes and weights (glTF JOINTS_n / WEIGHTS_n, 4 per set, maybe more than one set). Neither Mesh nor TriangleSoup has these. glTF loading for MetalSprocketsPBR needs them (PBRSkinVertex).
+
+- `2026-10-13T00:28:20Z`: Wrong framing: MetalMesh (any VertexDescriptor, per-submesh primitive type, buffer offsets) already covers most of this. Refiled as MetalMesh gap issues.
+
+---
+
+## 142: Triangle mesh has no morph targets
+
++++
+status: closed
+priority: medium
+kind: feature
+labels: effort:m, area:triangle-mesh
+depends: 140
+created: 2026-10-13T00:23:21Z
+updated: 2026-10-13T00:28:20Z
+closed: 2026-10-13T00:28:20Z
++++
+
+glTF primitives can have morph targets: per-vertex position, normal and tangent offsets for each target, plus default weights. SwiftMesh has nowhere to store them. MetalSprocketsPBR uses them (PBRMorphDelta, [target][vertex]).
+
+- `2026-10-13T00:28:20Z`: Wrong framing: MetalMesh (any VertexDescriptor, per-submesh primitive type, buffer offsets) already covers most of this. Refiled as MetalMesh gap issues.
+
+---
+
+## 143: Tangents have no handedness sign
+
++++
+status: closed
+priority: medium
+kind: feature
+labels: effort:s, area:triangle-mesh
+depends: 140
+created: 2026-10-13T00:23:21Z
+updated: 2026-10-13T00:28:20Z
+closed: 2026-10-13T00:28:20Z
++++
+
+Mesh stores tangents and bitangents as separate SIMD3 arrays. glTF and MikkTSpace use a SIMD4 tangent with w = bitangent sign (±1), and the PBR shaders expect that. Converting means rebuilding the sign each time. SwiftMeshMikkTSpace already outputs w, but the mesh types cannot hold it.
+
+- `2026-10-13T00:28:20Z`: Wrong framing: MetalMesh (any VertexDescriptor, per-submesh primitive type, buffer offsets) already covers most of this. Refiled as MetalMesh gap issues.
+
+---
+
+## 144: Only one texture coordinate set
+
++++
+status: closed
+priority: medium
+kind: feature
+labels: effort:s, area:triangle-mesh
+depends: 140
+created: 2026-10-13T00:23:21Z
+updated: 2026-10-13T00:28:20Z
+closed: 2026-10-13T00:28:20Z
++++
+
+Mesh has one textureCoordinates array. glTF materials can use TEXCOORD_1 or higher (for example occlusion or lightmap UVs), and MetalSprocketsPBR's vertex has two UV sets. There is no place for a second set.
+
+- `2026-10-13T00:28:20Z`: Wrong framing: MetalMesh (any VertexDescriptor, per-submesh primitive type, buffer offsets) already covers most of this. Refiled as MetalMesh gap issues.
+
+---
+
+## 145: No line or point primitives
+
++++
+status: closed
+priority: medium
+kind: feature
+labels: effort:s, area:triangle-mesh
+depends: 140
+created: 2026-10-13T00:23:22Z
+updated: 2026-10-13T00:28:21Z
+closed: 2026-10-13T00:28:21Z
++++
+
+SwiftMesh only has triangles outside MetalMesh. glTF primitives can also be lines, line strips, line loops or points, and MetalSprocketsPBR draws line and point lists. A submesh of the triangle mesh cannot be a line or point list.
+
+- `2026-10-13T00:28:21Z`: Wrong framing: MetalMesh (any VertexDescriptor, per-submesh primitive type, buffer offsets) already covers most of this. Refiled as MetalMesh gap issues.
+
+---
+
+## 146: MetalMesh array init supports only positions, normals and UVs
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-10-13T00:28:21Z
+updated: 2026-10-13T00:30:10Z
++++
+
+MetalMesh.init(device:positions:normals:textureCoordinates:indices:...) (MetalMesh+DirectInit.swift) has no tangents, colors, second UV set or extra attributes. The attributes it does take have fixed formats. Loaders with other per-vertex data (for example glTF: SIMD4 tangents, TEXCOORD_1, joints and weights) must pack buffers themselves and use the buffer init.
+
+Use case: MetalSprocketsGLTF / MetalSprocketsPBR would like to build MetalMesh values instead of their own PBRGeometryBuilder.PrimitiveData and PBRGeometryBuffers.
+
+---
+
+## 147: MetalMesh direct inits make exactly one submesh
+
++++
+status: new
+priority: medium
+kind: enhancement
+created: 2026-10-13T00:28:21Z
++++
+
+Both direct inits in MetalMesh+DirectInit.swift (from arrays and from buffers) make one submesh over all indices, with a single primitive type. A glTF mesh has several primitives with different materials and maybe different primitive types (triangles, lines, points) over shared vertex data. To get more than one submesh, the caller must change submeshes after init. The buffer init also has no vertexBufferOffsets parameter, so meshes in sub-allocated or shared buffers need a change after init too.
+
+---
+
+## 148: MetalMesh.Submesh has no material slot
+
++++
+status: closed
+priority: medium
+kind: feature
+created: 2026-10-13T00:28:22Z
+updated: 2026-10-13T00:30:07Z
+closed: 2026-10-13T00:30:07Z
++++
+
+MetalMesh.Submesh has label, index buffer data and primitiveType, but nothing that says which material it uses. Mesh.Submesh does not have one either. Each renderer that draws a MetalMesh with more than one material must keep a parallel array to map submeshes to materials. glTF primitives each reference a material index, and MetalSprocketsPBR's PrimitiveData has materialIndex.
+
+- `2026-10-13T00:30:08Z`: Material assignment belongs to the model above the mesh: the same mesh can be drawn with different materials (glTF KHR_materials_variants), and the model can map submesh index to material.
+
+---
+
+## 149: MetalMesh has no morph target data
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-10-13T00:28:22Z
+updated: 2026-10-13T00:32:05Z
++++
+
+MetalMesh has nowhere to store morph targets: per-target, per-vertex offsets for position, normal and tangent, plus the default weights (glTF stores these on the mesh). glTF primitives carry them, and MetalSprocketsPBR stores the offsets as [[PBRMorphDelta]] ([target][vertex]) and reads them by vertexID from a buffer, not as vertex attributes. The live weights for each frame are animation state for the model above, not mesh data.
+
+---
+
+## 150: MetalMesh has no bounds
+
++++
+status: new
+priority: medium
+kind: enhancement
+created: 2026-10-13T00:28:22Z
++++
+
+MetalMesh does not store or compute bounding boxes, for the mesh or for each submesh. Callers that cull, frame the camera or merge draws must read the vertex buffers back to compute them. MetalSprocketsPBR computes bounds for each primitive (PBRBounds) when it builds geometry.
+
+---
+
+## 151: MetalMesh has no skin binding data
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-10-13T00:32:05Z
++++
+
+A MetalMesh can carry joint indexes and weights as vertex attributes, but it has nowhere to store the data those attributes depend on: the joint count, the joint order (and maybe names), and one inverse bind matrix per joint. The joint indexes in the vertices only mean something with that joint order, and the inverse bind matrices describe the pose the mesh was bound in. So this data goes with the mesh, not the model.
+
+Not mesh data: which scene nodes act as the joints, and the joint matrices for each frame. Those are model and animation state.
+
+Use case: glTF skins (inverseBindMatrices, joints) for MetalSprocketsGLTF / MetalSprocketsPBR. glTF attaches the skin to the node only because the joints are scene nodes. Related: #149 (morph targets), MetalSupport #14 (joint and weight semantics).
+
+---
+
+## 152: MetalMesh.toMesh drops attributes, morph targets and skin
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-10-13T00:42:29Z
++++
+
+MetalMesh.toMesh() reads only position, normal, texcoord(0), tangent (as float3), bitangent and color(0). It ignores other attributes: texcoord and color sets above 0, float4 tangents, joint indices and weights, and custom attributes. It also drops morphTargets and skin, and it fails a precondition on non-triangle submeshes. Mesh has no place to store most of this data, so a MetalMesh -> Mesh -> MetalMesh round trip loses it.
+
+---
