@@ -1,0 +1,10 @@
+SwiftMesh
+
+This product includes code ported from Manifold
+(https://github.com/elalish/manifold), Copyright 2021 The Manifold Authors,
+licensed under the Apache License, Version 2.0. The ported code lives in
+Sources/SwiftMesh/Boolean/ and keeps the original algorithm structure; each
+file names the Manifold source it was ported from.
+
+You may obtain a copy of the Apache License, Version 2.0 at
+http://www.apache.org/licenses/LICENSE-2.0

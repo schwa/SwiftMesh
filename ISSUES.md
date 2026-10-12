@@ -2628,11 +2628,13 @@ Tests: star outline (sharp tips) and an L/V notch produce non-self-intersecting 
 ## 122: Robust Boolean: triangle-mesh core and Mesh conversion
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:csg, effort:m
 created: 2026-10-12T01:22:18Z
+updated: 2026-10-12T01:51:04Z
+closed: 2026-10-12T01:51:04Z
 +++
 
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort the data the Boolean works on (Manifold impl.h/impl.cpp subset): triangle halfedges with paired twins, per-face normals, per-vertex pseudo-normals (used by symbolic perturbation), bounding box, and precision epsilon tracking. Convert from Mesh (triangulating n-gons, requiring a manifold input; report non-manifold input as an error) and back to Mesh.\n\nTests: round-trips of primitives are lossless; non-manifold input is rejected; epsilon grows with transforms as in Manifold.
