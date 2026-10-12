@@ -764,14 +764,15 @@ Generate meshes by triangulating a SwiftUI Path and extruding to 3D. Should hand
 status: open
 priority: low
 kind: feature
-labels: effort:xl
+labels: effort:l
 created: 2026-04-15T05:57:13Z
-updated: 2026-04-15T17:03:10Z
+updated: 2026-10-12T00:13:39Z
 +++
 
 Round selected edges by replacing them with a smooth arc of faces. Requires edge split and vertex insertion along the edge neighborhood.
 
 - `2026-04-15T17:03:10Z`: Related: #51 (edge chamfer).
+- `2026-10-12T00:13:39Z`: Decision: build fillet as a segmented chamfer on top of #51: add a segments parameter (e.g. chamfered(distance:segments:edges:)) that replaces each chamfer strip with N quads following a circular arc between the two offset lines. Vertex corners get a simple patch (fan or grid between the arcs) rather than a true spherical blend. Re-sized from xl to l.
 
 ---
 
@@ -830,13 +831,17 @@ New tab with a single mesh (cylinder) and a .inspector() sidebar showing vertex 
 ## 54: Add Select Loop to demo inspector
 
 +++
-status: new
+status: open
 priority: low
 kind: feature
-labels: needs-info, area:demo
+labels: area:demo, effort:s
 created: 2026-04-15T06:39:36Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-12T00:10:06Z
 +++
+
+With one edge selected in the demo inspector, "Select Loop" extends the selection to the edge loop through it (Blender-style): at each vertex with exactly 4 edges, continue to the opposite edge; stop at vertices of other valence (poles) and at boundaries. Closed loops stop when they return to the start.
+
+Implementation: library helper HalfEdgeTopology.edgeLoop(from: HalfEdgeID) -> [HalfEdgeID] (unit-tested on cylinder, torus, and a pole-terminated case), plus a Select Loop button in the Selection section next to Select Face Edges. Edge ring and face loop are out of scope.
 
 - `2026-10-11T23:03:05Z`: Related: #117 (selection-based edit buttons).
 
@@ -881,14 +886,15 @@ BSP-based CSG splits cube faces even when the sphere is entirely interior and do
 status: open
 priority: medium
 kind: feature
-labels: effort:xl
+labels: effort:xl, deferred
 created: 2026-04-15T07:09:54Z
-updated: 2026-04-15T17:03:09Z
+updated: 2026-10-12T00:13:27Z
 +++
 
 Make Mesh generic over scalar type (Float vs Double). Positions, normals, UVs etc would use the generic scalar. Enables double-precision meshes for CSG and other operations that accumulate floating point error.
 
 - `2026-04-15T17:03:09Z`: Related: #58 (CSG in Double), #59 (Float/Double conversion). #58 and #59 depend on this.
+- `2026-10-12T00:13:27Z`: Decision: deferred — revisit later. (#59 stays blocked on this.)
 
 ---
 
@@ -1021,10 +1027,23 @@ priority: high
 kind: bug
 labels: effort:xl, area:csg
 created: 2026-04-15T07:54:19Z
-updated: 2026-10-11T23:03:12Z
+updated: 2026-10-12T00:18:58Z
 +++
 
 CSG union/intersection/difference of two manifold closed meshes should produce a manifold result. Currently the BSP-based algorithm produces meshes with boundary edges and standalone faces due to the TriangleSoup round-trip losing topology. Affected: all CSG operations between closed solids (e.g. cube∪cube, sphere∩cube, sphere−cube).
+
+\- `2026-10-12T00:12:52Z`: Decision: on hold. Before choosing between post-process repair and a new boolean algorithm, find better references (papers / robust mesh-boolean approaches) to base the design on.
+\- `2026-10-12T00:16:46Z`: Research notes (references verified via Crossref / project docs):
+
+A. Manifold-by-construction, floating point: Julian Smith's dissertation 'Robust Boolean' (docs/RobustBoolean.pdf in the Manifold repo), implemented in the Manifold library (github.com/elalish/manifold, Apache-2.0). Each geometric decision is derived from earlier ones so the same question is never asked twice; symbolic perturbation breaks ties for coplanar/coincident faces. Guarantees manifold output for manifold input, no exact arithmetic. Production-proven (OpenSCAD, Blender adopted it).
+
+B. Exact arrangements + winding numbers: Zhou, Grinspun, Zorin, Jacobson, 'Mesh arrangements for solid geometry', TOG 2016, doi:10.1145/2897824.2925901 (libigl). Cherchi, Livesu, Scateni, Attene, 'Fast and robust mesh arrangements using floating-point arithmetic', TOG 2020, doi:10.1145/3414685.3417818 (indirect predicates). Cherchi, Pellacini, Attene, Livesu, 'Interactive and Robust Mesh Booleans', TOG 2022, doi:10.1145/3550454.3555460. Handles self-intersecting/non-manifold input; needs exact or indirect predicates (Shewchuk 1997, doi:10.1007/pl00009321) and Jacobson et al. generalized winding numbers (TOG 2013, doi:10.1145/2461912.2461916).
+
+C. Plane-based exact Booleans (closest to our BSP): Bernstein & Fussell, 'Fast, Exact, Linear Booleans', CGF 2009, doi:10.1111/j.1467-8659.2009.01504.x. Campen & Kobbelt, 'Exact and Robust (Self-)Intersections for Polygonal Meshes', CGF 2010, doi:10.1111/j.1467-8659.2009.01609.x. Nehring-Wirxel, Trettner, Kobbelt, 'Fast Exact Booleans for Iterated CSG using Octree-Embedded BSPs', CAD 2021, doi:10.1016/j.cad.2021.103015. Trettner, Nehring-Wirxel, Kobbelt, 'EMBER: Exact Mesh Booleans via Efficient & Robust Local Arrangements', TOG 2022, doi:10.1145/3528223.3530181. Represent geometry as plane equations with integer coordinates, so BSP splits are exact and outputs are watertight.
+
+Also: Barki, Guennebaud, Foufou, 'Exact, robust, and efficient regularized Booleans on general 3D meshes', CAMWA 2015, doi:10.1016/j.camwa.2015.06.016.
+
+- `2026-10-12T00:18:58Z`: Decision: approach A — port the Smith 'Robust Boolean' algorithm (as implemented in Manifold, Apache-2.0) to pure Swift, replacing the BSP CSG. No C++ dependency. Too large for one issue: split into subtasks before starting (e.g. robust predicates/symbolic perturbation, intersection + broad phase, edge/face retention and winding, polygon assembly + triangulation, degenerate removal, attribute mapping, Mesh API switch-over with the existing CSG tests as the acceptance suite).
 
 ---
 
@@ -1146,26 +1165,47 @@ Integrate debug shaders from MetalSprocketsAddons to visualize mesh topology in 
 ## 71: Support extrusion modes: solid, walls only, thin walls
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
-labels: needs-info, area:extrude
+labels: area:extrude, effort:m
 created: 2026-04-15T14:20:40Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-12T00:10:22Z
 +++
+
+Add an extrusion mode parameter to Mesh.extruded(_: Path/CGPath, depth:) and Mesh.extrudedText:
+
+    enum ExtrusionMode { case solid, wallsOnly, thinWalls(thickness: Float) }
+
+- solid (default, current behavior): front/back caps plus side walls, closed.
+- wallsOnly: side walls only, no caps; an open band per outline (fences, room walls from a floor plan).
+- thinWalls(thickness:): each outline becomes a closed wall of the given thickness: offset the loop inward by thickness (miter joins), extrude the band between original and offset, cap top and bottom of the band. Holes offset the same way (toward the material).
+
+Known limitation, documented: the miter offset doesn't resolve self-intersections at sharp concave corners or when thickness exceeds local feature size.
+
+Tests: solid unchanged; wallsOnly has 2 boundary loops per outline and no caps; thinWalls on a rectangle is a closed genus-1 solid with the expected inner dimensions.
 
 ---
 
 ## 72: Heal holes
 
 +++
-status: new
+status: open
 priority: medium
 kind: feature
-labels: needs-info, area:topology
+labels: area:topology, effort:s
 created: 2026-04-15T14:20:52Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-12T00:10:48Z
 +++
+
+Add Mesh.fillingHoles(maxEdges: Int? = nil) -> Mesh that closes boundary loops with new faces.
+
+- Fill: one n-gon face per boundary loop, wound to twin the loop's boundary half-edges (so the result is consistently oriented). Callers triangulate later if needed; non-planar holes are handled by the triangulator's projection.
+- Scope: fills every boundary loop by default; maxEdges skips loops with more edges (keeps intentional openings, e.g. a hemisphere rim, open).
+- Per-corner attributes on the new face: regenerate or leave as for other topology changes (decide during implementation; document it).
+- Out of scope: smooth/faired patches, holes with islands.
+
+Tests: a cube with one face removed becomes closed and manifold again; maxEdges smaller than the hole leaves it open; a mesh with two holes fills both; the filled mesh has no inconsistent winding.
 
 ---
 
@@ -1428,12 +1468,13 @@ Mesh.border(attributes: .default) or .border(attributes: [.flatNormals, .texture
 ## 85: Performance umbrella
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: umbrella, area:performance, effort:xs
 created: 2026-04-16T03:22:42Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-12T00:13:49Z
+closed: 2026-10-12T00:13:49Z
 +++
 
 Umbrella issue tracking performance work across SwiftMesh.
@@ -1441,6 +1482,8 @@ Umbrella issue tracking performance work across SwiftMesh.
 Child issues will be filed for specific hotspots and investigations (CSG, decimation, topology build, I/O, Metal upload, allocations, benchmarking harness, etc.).
 
 Use this issue to coordinate priorities and link related sub-issues.
+
+- `2026-10-12T00:13:49Z`: Closing: children #87-#94 are done; remaining performance work (#86, #104) stands on its own.
 
 ---
 
@@ -1453,7 +1496,7 @@ kind: enhancement
 labels: area:performance, effort:l
 depends: SwiftMesh#85
 created: 2026-04-16T03:22:53Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-12T00:11:57Z
 +++
 
 Swift's `Array` shows up as a bottleneck in mesh hot paths (CSG, decimation, topology build, attribute interleaving). Bounds checks, COW traffic, and lack of contiguous typed access hurt throughput.
@@ -1477,6 +1520,7 @@ Tasks:
 Depends on a benchmarking harness (to be filed separately under the performance umbrella).
 
 - `2026-10-11T22:08:30Z`: Punting: open-ended investigation and it proposes a new dependency (swift-collections), which needs your decision. Since filing, the algorithmic hot spots were fixed (#87 decimation scans, #88 MetalMesh dedup, #89/#90 CSG allocations) and the harness (#93) exists. Current medians (release): topology.build.icoSphere5 3.4 ms, decimate.icoSphere5.25% 40.9 ms, csg.difference.sphere-cube 20.4 ms. Unblocker: OK to add swift-collections? And/or pick one concrete target (e.g. 'decimate 2x faster') so this can be scoped into a fixable issue.
+- `2026-10-12T00:11:57Z`: Decision: swift-collections is allowed as a dependency where it clearly helps (Deque, OrderedSet/OrderedDictionary, etc.), alongside stdlib Span/MutableSpan/ContiguousArray. Work is benchmark-driven using SwiftMeshBenchmarks: profile the slowest benchmarks, change one hot path at a time, keep changes only with a measured win (include before/after medians in the commit).
 
 ---
 
@@ -2106,12 +2150,13 @@ Improve documentation across the whole repo:
 ## 101: Consider dropping SwiftMeshIO / PLY support
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: area:io, effort:s
 created: 2026-05-13T19:05:18Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-12T00:12:09Z
+closed: 2026-10-12T00:12:09Z
 +++
 
 `SwiftMeshIO` is currently just ASCII PLY read/write (`Sources/SwiftMeshIO/PLY.swift`, ~230 lines).
@@ -2120,6 +2165,8 @@ updated: 2026-10-05T20:21:21Z
 - **Write:** ModelIO can't export PLY, so our writer is the only way out \u2014 but only if anyone is actually writing PLY.
 
 Action: check if anything in our projects writes PLY via SwiftMeshIO. If not, drop the target and the dependency; if yes, consider keeping just the writer (or switching reads to ModelIO and slimming the module).
+
+- `2026-10-12T00:12:08Z`: Decision: keep SwiftMeshIO as is. It now has ASCII + binary PLY read/write (#9) and RealityKit MeshResource export.
 
 ---
 
@@ -2234,7 +2281,7 @@ priority: low
 kind: enhancement
 labels: area:binpacking, effort:l
 created: 2026-05-13T20:45:31Z
-updated: 2026-10-05T20:21:21Z
+updated: 2026-10-12T00:12:25Z
 +++
 
 Real-world RoomPlan exports produce 700+ charts (1 chart per RoomPlan surface quad + 6 charts per box object). MaxRects packing takes ~1.2 s for 745 charts on a 4096x4096 atlas in release mode — most of the total bake time.
@@ -2259,6 +2306,8 @@ Approach:
 - Lean on issue #93 (benchmarks) to compare time and density on representative inputs (uniform-size, mixed-size, very-many-small-rects, a-few-huge-plus-many-tiny).
 
 Use case (RoomCaptureTestbed): interactive Mac viewer that bakes an atlas on bundle open. 1.2 s is OK with caching, but a 0.2-0.3 s alternative would let us skip the cache entirely. Currently see 745 charts on a 4096x4096 atlas getting 78% coverage with MaxRects + bestShortSideFit.
+
+- `2026-10-12T00:12:25Z`: Decision: optimize, target < 200 ms for a ~745-chart RoomPlan-like case in a 4096x4096 atlas (release). First add that case to SwiftMeshBenchmarks (synthetic chart sizes matching RoomPlan: ~1 chart per surface quad + 6 per box). Then speed up MaxRects (cheaper free-rect pruning, spatial index over free rects) and/or add a skyline packer if MaxRects can't get there; report atlas fill rate alongside time.
 
 ---
 
