@@ -2660,11 +2660,13 @@ Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elal
 ## 124: Robust Boolean: kernels and edge-face intersections with symbolic perturbation
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:csg, effort:l
 created: 2026-10-12T01:22:18Z
+updated: 2026-10-12T01:59:24Z
+closed: 2026-10-12T01:59:24Z
 +++
 
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort boolean3.cpp's kernel ladder: Shadow01 (vertex vs edge), Kernel11 (edge vs edge), Kernel02 (vertex vs face), Kernel12 (edge vs face), and Intersect12 in both directions (p1q2 and p2q1) producing intersection points and crossing directions (x12). Symbolic perturbation: expand P for union, contract for difference/intersection, as in Boolean3's constructor.\n\nTests: coplanar, coincident-edge, and touching cases give consistent answers (e.g. a mesh minus itself is empty, touching cubes union into one solid); intersection counts match a brute-force reference on generic inputs.\n\nDepends on: #122, #123.
