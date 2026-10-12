@@ -42,7 +42,7 @@ public extension MeshResource {
     /// corners that share a position have differing attributes (sharp edges,
     /// UV seams), vertices are duplicated so each corner gets its own slot.
     ///
-    /// N-gons are triangulated via SwiftMesh's earcut-based ``Mesh/triangulate()``.
+    /// N-gons and faces with holes are triangulated with ``Mesh/triangulatedCorners(of:)``.
     ///
     /// - Parameters:
     ///   - mesh: The SwiftMesh mesh to convert.

@@ -1,5 +1,5 @@
 {
-  "originHash" : "014157efb3081f09427244a9b963096545c255bcfdf81f31e11fa6741312c585",
+  "originHash" : "bf0109894ed4bc9903be99028f3fdd881e142ea2637ac57b31d7239c1d1b3d65",
   "pins" : [
     {
       "identity" : "geometrylite2d",
@@ -44,15 +44,6 @@
       "state" : {
         "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
         "version" : "1.1.1"
-      }
-    },
-    {
-      "identity" : "swiftearcut",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/schwa/SwiftEarcut",
-      "state" : {
-        "revision" : "216a6dea8c9804dd6157b7dc25cb4ed0adb525dd",
-        "version" : "0.0.2"
       }
     }
   ],

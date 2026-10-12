@@ -2824,3 +2824,19 @@ closed: 2026-10-12T02:30:15Z
 Mesh.triangulate(), Mesh.triangulated(), and MetalMesh.init(mesh:) triangulate only each face's outer loop (topology.vertexLoop) and ignore hole loops. Faces with holes are filled in, their hole edges are left unpaired, and the triangulated mesh is non-manifold; MetalMesh renders holes filled. Found via #132: a merged CSG result with window holes converts to a non-manifold triangle mesh, so the next Boolean rejects it. Fix: triangulate faces with the robust triangulator (#127), which handles holes, returning corner (half-edge) triples so attributes map exactly.
 
 ---
+
+## 134: Drop SwiftEarcut dependency
+
++++
+status: closed
+priority: low
+kind: task
+labels: effort:s
+created: 2026-10-12T02:33:53Z
+updated: 2026-10-12T02:35:21Z
+closed: 2026-10-12T02:35:21Z
++++
+
+All face triangulation now uses the robust triangulator (#133). SwiftEarcut is only used by the unused public Mesh.triangulateFace(vertexIDs:) and its private helpers. Remove them, the SwiftEarcut package dependency, and stale 'earcut' doc comments (MetalMesh.swift, Mesh+RealityKit.swift). Measured: ours is faster on convex faces, 2-5x slower on large concave polygons; accepted.
+
+---

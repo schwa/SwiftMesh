@@ -10,7 +10,7 @@ import simd
 /// the output buffer(s), so downstream consumers (e.g. wireframe edge extraction)
 /// can deduplicate edges by comparing index values.
 ///
-/// Faces are triangulated via earcut for n-gons, or passed through for triangles.
+/// N-gons and faces with holes are triangulated with ``Mesh/triangulatedCorners(of:)``; triangles pass through.
 public struct MetalMesh {
     /// A group of triangles within a ``MetalMesh`` sharing the same material.
     public struct Submesh {

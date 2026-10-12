@@ -215,7 +215,7 @@ let (uvMesh, layout) = try mesh.bakingPlanarAtlas(
 
 **Mesh → MetalMesh** is O(total triangles) with constant work per corner. Vertex dedup hashes the corner's bytes in a reusable scratch buffer, with no per-corner allocation.
 
-**Triangulation** adds overhead for n-gon faces: each non-triangle face requires a 3D→2D projection and earcut pass. Triangle faces pass through with no extra work.
+**Triangulation** adds overhead for n-gon faces: each non-triangle face is projected to 2D and triangulated with the robust ε-aware triangulator ported from Manifold. Convex faces take a fast path; large concave faces cost more. Triangle faces pass through with no extra work.
 
 **Benchmarks** live in the `SwiftMeshBenchmarks` executable. They cover primitives, topology, CSG, decimation, subdivision, convex hull, marching cubes, MetalMesh, and PLY. Run `swift run -c release SwiftMeshBenchmarks [--json] [name-filter...]`. Attach before/after numbers to performance changes.
 
@@ -224,5 +224,4 @@ let (uvMesh, layout) = try mesh.bakingPlanarAtlas(
 - [GeometryLite2D](https://github.com/schwa/GeometryLite2D) — `LineSegment`, `Polygon`, `Identified` (used by `Mesh2D`)
 - [GeometryLite3D](https://github.com/schwa/GeometryLite3D)
 - [MetalSupport](https://github.com/schwa/MetalSupport)
-- [SwiftEarcut](https://github.com/schwa/SwiftEarcut)
 - [MikkTSpace](https://github.com/mmikk/MikkTSpace) (vendored) — see [mikktspace.com](http://www.mikktspace.com/)
