@@ -1190,12 +1190,13 @@ Tests: solid unchanged; wallsOnly has 2 boundary loops per outline and no caps; 
 ## 72: Heal holes
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:topology, effort:s
 created: 2026-04-15T14:20:52Z
-updated: 2026-10-12T00:10:48Z
+updated: 2026-10-12T00:22:06Z
+closed: 2026-10-12T00:22:06Z
 +++
 
 Add Mesh.fillingHoles(maxEdges: Int? = nil) -> Mesh that closes boundary loops with new faces.
