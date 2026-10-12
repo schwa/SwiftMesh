@@ -221,17 +221,12 @@ public extension Mesh {
 
         // 4. Build initial heap
         var heap = CollapseHeap()
-        var seenEdges = Set<Int>()
         for he in topology.halfEdges where he.next != nil {
-            // Deduplicate: only insert one direction per undirected edge
+            // One direction per undirected edge: the lower-id half of a twin pair, or a boundary edge.
+            if let twin = he.twin, twin.raw < he.id.raw {
+                continue
+            }
             let o = he.origin.raw
-            guard let d = topology.destViaNext(of: he.id)?.raw else {
-                continue
-            }
-            let key = min(o, d) * vertexCount + max(o, d)
-            guard seenEdges.insert(key).inserted else {
-                continue
-            }
             if let (cost, _) = collapseCost(heID: he.id) {
                 heap.insert(.init(cost: cost, halfEdge: he.id, generation: generation[o]))
             }
@@ -265,25 +260,27 @@ public extension Mesh {
 
             // Link condition: the endpoints may only share the opposite vertices of the edge's faces,
             // otherwise the collapse creates a non-manifold edge.
-            func neighbors(of vertex: HalfEdgeTopology.VertexID) -> Set<Int> {
-                var result = Set<Int>()
+            // Vertex degree is small, so plain arrays beat Set hashing here.
+            func neighbors(of vertex: HalfEdgeTopology.VertexID) -> [Int] {
+                var result: [Int] = []
                 for outgoingEdge in outgoing[vertex.raw] where topology.halfEdges[outgoingEdge.raw].next != nil {
                     if let next = topology.destViaNext(of: outgoingEdge) {
-                        result.insert(next.raw)
+                        result.append(next.raw)
                     }
                     if let previous = topology.halfEdges[outgoingEdge.raw].prev {
-                        result.insert(topology.halfEdges[previous.raw].origin.raw)
+                        result.append(topology.halfEdges[previous.raw].origin.raw)
                     }
                 }
                 return result
             }
-            var opposite = Set<Int>()
+            var opposite: [Int] = []
             for edge in [entry.halfEdge, he.twin].compactMap({ $0 }) where topology.halfEdges[edge.raw].face != nil {
                 if let previous = topology.halfEdges[edge.raw].prev {
-                    opposite.insert(topology.halfEdges[previous.raw].origin.raw)
+                    opposite.append(topology.halfEdges[previous.raw].origin.raw)
                 }
             }
-            if !neighbors(of: origin).intersection(neighbors(of: dest)).isSubset(of: opposite) {
+            let destinationNeighbors = neighbors(of: dest)
+            if neighbors(of: origin).contains(where: { destinationNeighbors.contains($0) && !opposite.contains($0) }) {
                 continue
             }
 

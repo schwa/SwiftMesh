@@ -1492,13 +1492,14 @@ Use this issue to coordinate priorities and link related sub-issues.
 ## 86: Swift Array is slow in hot paths — explore Spans and swift-collections
 
 +++
-status: open
+status: closed
 priority: medium
 kind: enhancement
 labels: area:performance, effort:l
 depends: SwiftMesh#85
 created: 2026-04-16T03:22:53Z
-updated: 2026-10-12T00:11:57Z
+updated: 2026-10-12T00:31:16Z
+closed: 2026-10-12T00:31:16Z
 +++
 
 Swift's `Array` shows up as a bottleneck in mesh hot paths (CSG, decimation, topology build, attribute interleaving). Bounds checks, COW traffic, and lack of contiguous typed access hurt throughput.
@@ -1523,6 +1524,7 @@ Depends on a benchmarking harness (to be filed separately under the performance 
 
 - `2026-10-11T22:08:30Z`: Punting: open-ended investigation and it proposes a new dependency (swift-collections), which needs your decision. Since filing, the algorithmic hot spots were fixed (#87 decimation scans, #88 MetalMesh dedup, #89/#90 CSG allocations) and the harness (#93) exists. Current medians (release): topology.build.icoSphere5 3.4 ms, decimate.icoSphere5.25% 40.9 ms, csg.difference.sphere-cube 20.4 ms. Unblocker: OK to add swift-collections? And/or pick one concrete target (e.g. 'decimate 2x faster') so this can be scoped into a fixable issue.
 - `2026-10-12T00:11:57Z`: Decision: swift-collections is allowed as a dependency where it clearly helps (Deque, OrderedSet/OrderedDictionary, etc.), alongside stdlib Span/MutableSpan/ContiguousArray. Work is benchmark-driven using SwiftMeshBenchmarks: profile the slowest benchmarks, change one hot path at a time, keep changes only with a measured win (include before/after medians in the commit).
+- `2026-10-12T00:31:16Z`: Done via profiling (sample) + SwiftMeshBenchmarks. Wins came from removing per-call Set/Dictionary hashing and redundant math, not from new collection types: swift-collections was allowed but no profiled hot spot needed Deque/OrderedSet, so no dependency was added. Medians before -> after are in the commit.
 
 ---
 

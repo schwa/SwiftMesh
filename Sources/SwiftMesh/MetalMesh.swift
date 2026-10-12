@@ -205,14 +205,11 @@ public struct MetalMesh {
                 }
 
                 let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
-                var vertexToHE: [Int: HalfEdgeTopology.HalfEdgeID] = [:]
-                for heID in heLoop {
-                    vertexToHE[mesh.topology.halfEdges[heID.raw].origin.raw] = heID
-                }
 
                 for (vid0, vid1, vid2) in faceTriangles {
                     for vertexID in [vid0, vid1, vid2] {
-                        let heID = vertexToHE[vertexID.raw]
+                        // Faces are small: a linear search beats building a dictionary per face.
+                        let heID = heLoop.last { mesh.topology.halfEdges[$0.raw].origin == vertexID }
 
                         let hash = scratch.withUnsafeMutableBytes { buffer -> Int in
                             let base = buffer.baseAddress!

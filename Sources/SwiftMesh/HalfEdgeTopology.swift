@@ -80,9 +80,9 @@ public struct HalfEdgeTopology: Sendable, Equatable {
         // 1. Create vertices, preserving index order
         vertices = (0..<vertexCount).map { Vertex(id: VertexID(raw: $0), edge: nil) }
 
-        // Map (origin, dest) -> halfEdgeID for twin linking
-        // Encode directed edge as origin * vertexCount + dest
-        var edgeMap: [Int: HalfEdgeID] = [:]
+        // Directed edges leaving each vertex, for twin lookup. Per-vertex lists are short, so
+        // searching them beats hashing every edge into a dictionary.
+        var outgoingByVertex = [[(destination: Int, edge: HalfEdgeID)]](repeating: [], count: vertexCount)
 
         // Helper: create half-edges for a loop, assign them to fID, return first HE index
         func buildLoop(_ loop: [Int], faceID fID: FaceID) -> HalfEdgeID? {
@@ -96,15 +96,13 @@ public struct HalfEdgeTopology: Sendable, Equatable {
                 let destIdx = loop[(idx + 1) % loop.count]
                 let heID = HalfEdgeID(raw: halfEdges.count)
 
-                let forwardKey = originIdx * vertexCount + destIdx
-                let reverseKey = destIdx * vertexCount + originIdx
-
                 // Pair as twins only if the candidate hasn't already been paired.
                 // For non-manifold edges (≥3 half-edges sharing an undirected edge),
                 // the first two are paired and any extras are left as boundary edges.
                 // This preserves twin symmetry instead of silently corrupting it.
                 var twin: HalfEdgeID?
-                if let twinID = edgeMap[reverseKey], halfEdges[twinID.raw].twin == nil {
+                // The most recent dest -> origin half-edge (matching the old dictionary overwrite).
+                if let twinID = outgoingByVertex[destIdx].last(where: { $0.destination == originIdx })?.edge, halfEdges[twinID.raw].twin == nil {
                     twin = twinID
                     halfEdges[twinID.raw].twin = heID
                 }
@@ -118,7 +116,7 @@ public struct HalfEdgeTopology: Sendable, Equatable {
                     face: fID
                 ))
 
-                edgeMap[forwardKey] = heID
+                outgoingByVertex[originIdx].append((destIdx, heID))
 
                 if vertices[originIdx].edge == nil {
                     vertices[originIdx].edge = heID
@@ -760,38 +758,23 @@ extension HalfEdgeTopology {
     // MARK: - Internals
 
     func collectVertexLoop(startEdge: HalfEdgeID) -> [VertexID] {
-        var ids: [VertexID] = []
-        var current = startEdge
-        var visited = Set<HalfEdgeID>()
-        while !visited.contains(current) {
-            visited.insert(current)
-            ids.append(halfEdges[current.raw].origin)
-            guard let next = halfEdges[current.raw].next else {
-                break
-            }
-            current = next
-        }
-        if current != startEdge || ids.count < 3 {
-            return []
-        }
-        return ids
+        collectHalfEdgeLoop(startEdge: startEdge).map { halfEdges[$0.raw].origin }
     }
 
+    /// The closed loop through `startEdge`, or `[]` if it doesn't return to the start (broken
+    /// wiring or a walk that cycles elsewhere) or has fewer than 3 edges.
     func collectHalfEdgeLoop(startEdge: HalfEdgeID) -> [HalfEdgeID] {
+        // Walk until back at the start. A walk longer than the half-edge count can't be a
+        // simple loop through the start, so it is broken; no visited set needed.
         var ids: [HalfEdgeID] = []
         var current = startEdge
-        var visited = Set<HalfEdgeID>()
-        while !visited.contains(current) {
-            visited.insert(current)
+        repeat {
             ids.append(current)
-            guard let next = halfEdges[current.raw].next else {
-                break
+            guard ids.count <= halfEdges.count, let next = halfEdges[current.raw].next else {
+                return []
             }
             current = next
-        }
-        if current != startEdge || ids.count < 3 {
-            return []
-        }
-        return ids
+        } while current != startEdge
+        return ids.count >= 3 ? ids : []
     }
 }

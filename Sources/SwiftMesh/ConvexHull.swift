@@ -62,6 +62,8 @@ private struct ConvexHullBuilder {
     var edgeToFace: [Int64: Int] = [:]
     /// Unprocessed points that see each face.
     var faceConflicts: [[Int]] = []
+    /// Unnormalized normal and anchor vertex per face, cached for visibility tests.
+    var facePlanes: [(normal: SIMD3<Float>, anchor: SIMD3<Float>)] = []
     /// One face each unprocessed point sees, or -1 if it is inside the hull.
     var pointConflict: [Int] = []
 
@@ -157,9 +159,8 @@ private struct ConvexHullBuilder {
     }
 
     private func sees(_ pointIndex: Int, face faceIndex: Int) -> Bool {
-        let (a, b, c) = faces[faceIndex]
-        let normal = simd_cross(positions[b] - positions[a], positions[c] - positions[a])
-        return simd_dot(normal, positions[pointIndex] - positions[a]) > 1e-7
+        let plane = facePlanes[faceIndex]
+        return simd_dot(plane.normal, positions[pointIndex] - plane.anchor) > 1e-7
     }
 
     private mutating func assign(_ pointIndex: Int, to faceIndex: Int) {
@@ -171,6 +172,8 @@ private struct ConvexHullBuilder {
     private mutating func appendFace(_ face: (Int, Int, Int)) -> Int {
         let index = faces.count
         faces.append(face)
+        let anchor = positions[face.0]
+        facePlanes.append((simd_cross(positions[face.1] - anchor, positions[face.2] - anchor), anchor))
         alive.append(true)
         faceConflicts.append([])
         edgeToFace[Self.edgeKey(face.0, face.1)] = index
