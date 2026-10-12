@@ -38,6 +38,9 @@ package struct BooleanMesh: Sendable {
     /// Per triangle: which input (0 = P, 1 = Q) and which of its faces it came from (Manifold's
     /// `triRef`). Empty for meshes that weren't produced by a Boolean.
     var triRef: [SIMD2<Int>] = []
+    /// Per-corner attributes of the (triangulated) `Mesh` this was built from, indexed by
+    /// `Halfedge.sourceCorner`. Empty for meshes produced by a Boolean.
+    var sourceAttributes = CornerAttributes()
 
     var numVert: Int { vertPos.count }
     package var numTri: Int { halfedges.count / 3 }
@@ -222,6 +225,7 @@ extension BooleanMesh {
             corners.append(SIMD3(loop[0].raw, loop[1].raw, loop[2].raw))
         }
         try self.init(positions: positions, triangles: triangles, sourceCorners: corners)
+        sourceAttributes = CornerAttributes(of: triangulated)
         removeUnreferencedVertices()
     }
 

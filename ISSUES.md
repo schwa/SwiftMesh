@@ -2742,11 +2742,13 @@ Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elal
 ## 129: Robust Boolean: carry vertex attributes
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: area:csg, effort:m
 created: 2026-10-12T01:22:19Z
+updated: 2026-10-12T02:10:31Z
+closed: 2026-10-12T02:10:31Z
 +++
 
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort the property mapping (properties.cpp / triRef): interpolate per-corner attributes (normals, UVs, colors, tangents) onto new vertices and keep them on retained faces, so CSG stops dropping attributes.\n\nTests: UVs on retained faces are unchanged; new vertices on a cut get barycentric-interpolated values.\n\nDepends on: #126.
