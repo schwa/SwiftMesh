@@ -169,7 +169,11 @@ meshA.intersection(meshB)   // A ∩ B
 meshA.difference(meshB)     // A − B
 ```
 
-BSP-tree CSG. Internals run in `Double` to limit drift; inputs and outputs stay `Float`. Per-corner attributes are not preserved, and results are not yet guaranteed watertight (see issue #65).
+Robust Boolean ported from [Manifold](https://github.com/elalish/manifold) (Apache-2.0; see `NOTICE`). Inputs must be closed manifolds (vertices at the same position, such as UV seams, are merged first); the result is then always a closed manifold. Exact ties such as touching or coplanar faces are resolved by symbolic perturbation, so touching solids union into one and a mesh minus itself is empty. Per-corner attributes are interpolated onto the result. Non-manifold inputs give an empty result.
+
+```swift
+mesh.windingNumbers(at: points)  // robust point-in-solid query (1 inside, 0 outside)
+```
 
 ### Merging
 

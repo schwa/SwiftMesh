@@ -670,7 +670,7 @@ struct MeshGallerySection: Identifiable {
             MeshGalleryItem("IcoSphere", mesh: .icoSphere()),
             MeshGalleryItem("CubeSphere", mesh: .cubeSphere())
         ]),
-        Self("CSG", help: "Boolean solids: mesh.union(_:), .intersection(_:), .difference(_:) (or csg(_:_:options:)). Inputs should be closed; results drop attributes and may not be watertight (#65).", items: {
+        Self("CSG", help: "Boolean solids: mesh.union(_:), .intersection(_:), .difference(_:) (or csg(_:_:options:)). Robust Boolean ported from Manifold: closed manifold inputs always give a closed manifold result, with attributes interpolated.", items: {
             let cubeA = Mesh.box(extents: [0.6, 0.6, 0.6], attributes: [])
             let cubeB = Mesh.box(extents: [0.6, 0.6, 0.6], attributes: []).translated(by: [0.3, 0.3, 0.3])
             let sphere = Mesh.icoSphere(extents: [0.8, 0.8, 0.8], subdivisions: 2, attributes: [])

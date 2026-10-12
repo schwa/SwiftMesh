@@ -1024,12 +1024,13 @@ TriangleSoup.welded(tolerance:) merges positions but doesn't rebuild half-edge t
 ## 65: CSG results should be manifold
 
 +++
-status: open
+status: closed
 priority: high
 kind: bug
 labels: area:csg, umbrella
 created: 2026-04-15T07:54:19Z
-updated: 2026-10-12T01:22:20Z
+updated: 2026-10-12T02:14:26Z
+closed: 2026-10-12T02:14:26Z
 +++
 
 CSG union/intersection/difference of two manifold closed meshes should produce a manifold result. Currently the BSP-based algorithm produces meshes with boundary edges and standalone faces due to the TriangleSoup round-trip losing topology. Affected: all CSG operations between closed solids (e.g. cube∪cube, sphere∩cube, sphere−cube).
@@ -1047,6 +1048,7 @@ Also: Barki, Guennebaud, Foufou, 'Exact, robust, and efficient regularized Boole
 
 - `2026-10-12T00:18:58Z`: Decision: approach A — port the Smith 'Robust Boolean' algorithm (as implemented in Manifold, Apache-2.0) to pure Swift, replacing the BSP CSG. No C++ dependency. Too large for one issue: split into subtasks before starting (e.g. robust predicates/symbolic perturbation, intersection + broad phase, edge/face retention and winding, polygon assembly + triangulation, degenerate removal, attribute mapping, Mesh API switch-over with the existing CSG tests as the acceptance suite).
 - `2026-10-12T01:22:20Z`: Split into subtasks (in dependency order): #122, #123, #124, #125, #126, #127, #128, #129, #130. #65 is now the umbrella; it closes with the last subtask.
+- `2026-10-12T02:14:25Z`: Done: the robust Boolean (port of Manifold) replaced the BSP in #130. Subtasks #122-#130 closed; #131 (inside-out torus/hemisphere) was found and fixed along the way.
 
 ---
 
@@ -2758,11 +2760,13 @@ Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elal
 ## 130: Robust Boolean: switch Mesh CSG to the new algorithm
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:csg, effort:m
 created: 2026-10-12T01:22:19Z
+updated: 2026-10-12T02:14:25Z
+closed: 2026-10-12T02:14:25Z
 +++
 
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nRoute Mesh.union/intersection/difference and csg(_:_:options:) through the new Boolean, keep CSGOptions where meaningful, and remove the BSP implementation. Acceptance: all existing CSG tests pass, every result of a CSG fuzz test (random rotated primitives) is manifold and passes validate(), and benchmarks are recorded before/after. Close #65 when done.\n\nDepends on: #128, #129.
