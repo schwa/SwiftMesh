@@ -443,6 +443,8 @@ public extension TriangleSoup {
             done.signal()
         }
         thread.stackSize = 64 * 1_024 * 1_024 // 64 MB
+        // The caller blocks on this thread, so match its QoS to avoid a priority inversion.
+        thread.qualityOfService = Thread.current.qualityOfService
         thread.start()
         done.wait()
         return result ?? Self()
