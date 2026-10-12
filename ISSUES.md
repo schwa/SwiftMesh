@@ -1027,9 +1027,9 @@ TriangleSoup.welded(tolerance:) merges positions but doesn't rebuild half-edge t
 status: open
 priority: high
 kind: bug
-labels: effort:xl, area:csg
+labels: area:csg, umbrella
 created: 2026-04-15T07:54:19Z
-updated: 2026-10-12T00:18:58Z
+updated: 2026-10-12T01:22:20Z
 +++
 
 CSG union/intersection/difference of two manifold closed meshes should produce a manifold result. Currently the BSP-based algorithm produces meshes with boundary edges and standalone faces due to the TriangleSoup round-trip losing topology. Affected: all CSG operations between closed solids (e.g. cube∪cube, sphere∩cube, sphere−cube).
@@ -1046,6 +1046,7 @@ C. Plane-based exact Booleans (closest to our BSP): Bernstein & Fussell, 'Fast, 
 Also: Barki, Guennebaud, Foufou, 'Exact, robust, and efficient regularized Booleans on general 3D meshes', CAMWA 2015, doi:10.1016/j.camwa.2015.06.016.
 
 - `2026-10-12T00:18:58Z`: Decision: approach A — port the Smith 'Robust Boolean' algorithm (as implemented in Manifold, Apache-2.0) to pure Swift, replacing the BSP CSG. No C++ dependency. Too large for one issue: split into subtasks before starting (e.g. robust predicates/symbolic perturbation, intersection + broad phase, edge/face retention and winding, polygon assembly + triangulation, degenerate removal, attribute mapping, Mesh API switch-over with the existing CSG tests as the acceptance suite).
+- `2026-10-12T01:22:20Z`: Split into subtasks (in dependency order): #122, #123, #124, #125, #126, #127, #128, #129, #130. #65 is now the umbrella; it closes with the last subtask.
 
 ---
 
@@ -1187,6 +1188,8 @@ Add an extrusion mode parameter to Mesh.extruded(_: Path/CGPath, depth:) and Mes
 Known limitation, documented: the miter offset doesn't resolve self-intersections at sharp concave corners or when thickness exceeds local feature size.
 
 Tests: solid unchanged; wallsOnly has 2 boundary loops per outline and no caps; thinWalls on a rectangle is a closed genus-1 solid with the expected inner dimensions.
+
+- `2026-10-12T01:11:04Z`: Follow-up for the miter-offset limitation: #121.
 
 ---
 
@@ -1431,12 +1434,13 @@ The decimation algorithm (QEM edge collapse) tombstones faces and vertices but n
 ## 83: Visually validate all mesh primitives in demo app
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: area:qa, area:demo, effort:m
 created: 2026-04-15T18:06:36Z
-updated: 2026-10-05T20:21:20Z
+updated: 2026-10-12T01:11:16Z
+closed: 2026-10-12T01:11:16Z
 +++
 
 Go through every mesh in the demo gallery and verify they render correctly in both wireframe and Metal (Blinn-Phong) modes. Check for:
@@ -1449,6 +1453,7 @@ Go through every mesh in the demo gallery and verify they render correctly in bo
 - Decimated meshes degrade gracefully
 
 - `2026-10-11T22:19:56Z`: Automated part done: PrimitiveOrientationTests checks every primitive's corner normals against face winding and that convex solids face outward. It found tetrahedron, sphere, cylinder, capsule, conicalFrustum, rectangularFrustum fully inside-out (winding and normals); fixed via Mesh.reversingWinding(). Still needs a human pass in the demo: UV/checkerboard look, CSG cleanliness, subdivision smoothness, decimation degradation.
+- `2026-10-12T01:11:16Z`: Closing per user: visual review called good for now. Automated coverage stays in PrimitiveOrientationTests.
 
 ---
 
@@ -2595,5 +2600,153 @@ closed: 2026-10-11T23:18:37Z
 +++
 
 Add hover help outside the inspector:\n- Gallery items: a one-line explanation of what the item demonstrates and which API it uses (e.g. 'Mesh.chamfered(distance:edges:) on one box edge'). Consider adding a help string to MeshGalleryItem so each section supplies it.\n- Section headers: what the section covers.\n- Render mode picker: what each debug mode visualizes (Normals, Tex Coords, Checkerboard, UV Grid, Front Facing, Valence Heatmap, Boundary Edges, ...) and when to use it (e.g. UV Grid for the Atlas Baking items).\n- Toolbar: Export PLY (ASCII vs binary), Inspector toggle, Metal renderer and Animate toggles, import by drag and drop.
+
+---
+
+## 121: ExtrusionMode.thinWalls: robust polygon offset for sharp corners and thin features
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: area:extrude, effort:l
+created: 2026-10-12T01:11:02Z
+updated: 2026-10-12T01:11:04Z
++++
+
+thinWalls (#71) offsets each outline with per-vertex miter joins (PathExtrusion.offsetLeft). It is topologically valid but geometrically wrong in three cases:
+1. Sharp convex tips: the miter point shoots far past the corner (capped at ~10x thickness via max(1 + dot, 0.1)) and can cross the opposite side.
+2. Sharp concave notches: offset edges cross, so the inner outline folds into a small reversed loop and wall faces self-intersect.
+3. Thickness larger than half the local feature width (thin text strokes): inner offsets from opposite sides cross; the correct result splits or removes parts of the inner outline.
+
+Fix: replace the per-vertex miter with a real polygon offset that clips the result against itself (Clipper2-style offset + union, or a straight skeleton). Use miter limit / bevel joins at sharp convex corners.
+
+Tests: star outline (sharp tips) and an L/V notch produce non-self-intersecting inner outlines (check offset edges pairwise for crossings); a thin stroke with large thickness splits or drops the inner loop instead of folding; rectangles and rounded shapes are unchanged.
+
+---
+
+## 122: Robust Boolean: triangle-mesh core and Mesh conversion
+
++++
+status: open
+priority: high
+kind: task
+labels: area:csg, effort:m
+created: 2026-10-12T01:22:18Z
++++
+
+Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort the data the Boolean works on (Manifold impl.h/impl.cpp subset): triangle halfedges with paired twins, per-face normals, per-vertex pseudo-normals (used by symbolic perturbation), bounding box, and precision epsilon tracking. Convert from Mesh (triangulating n-gons, requiring a manifold input; report non-manifold input as an error) and back to Mesh.\n\nTests: round-trips of primitives are lossless; non-manifold input is rejected; epsilon grows with transforms as in Manifold.
+
+---
+
+## 123: Robust Boolean: BVH broad phase (collider)
+
++++
+status: open
+priority: high
+kind: task
+labels: area:csg, effort:m
+created: 2026-10-12T01:22:18Z
++++
+
+Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort Manifold's collider (collider.h; see docs/ParallelBVH.pdf): a BVH over triangle bounds that answers 'which faces of Q overlap this edge/vertex of P', including the XY-projected queries the kernels need. Serial is fine first.\n\nTests: results match brute force on random meshes; benchmark in SwiftMeshBenchmarks.\n\nDepends on: #122.
+
+---
+
+## 124: Robust Boolean: kernels and edge-face intersections with symbolic perturbation
+
++++
+status: open
+priority: high
+kind: task
+labels: area:csg, effort:l
+created: 2026-10-12T01:22:18Z
++++
+
+Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort boolean3.cpp's kernel ladder: Shadow01 (vertex vs edge), Kernel11 (edge vs edge), Kernel02 (vertex vs face), Kernel12 (edge vs face), and Intersect12 in both directions (p1q2 and p2q1) producing intersection points and crossing directions (x12). Symbolic perturbation: expand P for union, contract for difference/intersection, as in Boolean3's constructor.\n\nTests: coplanar, coincident-edge, and touching cases give consistent answers (e.g. a mesh minus itself is empty, touching cubes union into one solid); intersection counts match a brute-force reference on generic inputs.\n\nDepends on: #122, #123.
+
+---
+
+## 125: Robust Boolean: winding numbers by flood fill
+
++++
+status: open
+priority: high
+kind: task
+labels: area:csg, effort:s
+created: 2026-10-12T01:22:19Z
++++
+
+Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort Winding03: winding number of every vertex of P relative to Q (and vice versa) via Kernel02 on one vertex per connected component plus flood fill across edges not crossed by Q. Also expose a robust point-in-solid query (Manifold's PointWinding).\n\nTests: winding of points inside/outside primitives, nested shells, and points on the surface follow the perturbation rule.\n\nDepends on: #124.
+
+---
+
+## 126: Robust Boolean: result assembly
+
++++
+status: open
+priority: high
+kind: task
+labels: area:csg, effort:l
+created: 2026-10-12T01:22:19Z
++++
+
+Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort boolean_result.cpp: convert winding numbers to inclusion values per operation, keep retained vertices, add intersection vertices, split intersected halfedges and pair new edge endpoints (PairUp), and assemble the polygonal faces of the result before triangulation.\n\nTests: union/intersection/difference of overlapping cubes and spheres produce closed, consistently wound polygon sets (validated before triangulation).\n\nDepends on: #125.
+
+---
+
+## 127: Robust Boolean: robust polygon triangulation
+
++++
+status: open
+priority: high
+kind: task
+labels: area:csg, effort:l
+created: 2026-10-12T01:22:19Z
++++
+
+Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort Manifold's polygon triangulation (polygon.cpp; see docs/Triangulation.pdf) that handles epsilon-valid polygons with holes and degenerate geometry without failing. SwiftEarcut is not robust enough for Boolean output.\n\nTests: Manifold's polygon test corpus where feasible; degenerate slivers, collinear runs, and touching holes triangulate without overlaps or missing area.\n\nDepends on: #122.
+
+---
+
+## 128: Robust Boolean: degenerate removal and topology cleanup
+
++++
+status: open
+priority: high
+kind: task
+labels: area:csg, effort:l
+created: 2026-10-12T01:22:19Z
++++
+
+Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort edge_op.cpp: collapse short edges, swap degenerate triangles, split pinched verts, and other cleanup Manifold runs after a Boolean, preserving manifoldness.\n\nTests: Boolean results contain no zero-area triangles or edges shorter than epsilon; outputs stay manifold.\n\nDepends on: #126, #127.
+
+---
+
+## 129: Robust Boolean: carry vertex attributes
+
++++
+status: open
+priority: medium
+kind: task
+labels: area:csg, effort:m
+created: 2026-10-12T01:22:19Z
++++
+
+Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort the property mapping (properties.cpp / triRef): interpolate per-corner attributes (normals, UVs, colors, tangents) onto new vertices and keep them on retained faces, so CSG stops dropping attributes.\n\nTests: UVs on retained faces are unchanged; new vertices on a cut get barycentric-interpolated values.\n\nDepends on: #126.
+
+---
+
+## 130: Robust Boolean: switch Mesh CSG to the new algorithm
+
++++
+status: open
+priority: high
+kind: task
+labels: area:csg, effort:m
+created: 2026-10-12T01:22:19Z
++++
+
+Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nRoute Mesh.union/intersection/difference and csg(_:_:options:) through the new Boolean, keep CSGOptions where meaningful, and remove the BSP implementation. Acceptance: all existing CSG tests pass, every result of a CSG fuzz test (random rotated primitives) is manifold and passes validate(), and benchmarks are recorded before/after. Close #65 when done.\n\nDepends on: #128, #129.
 
 ---
