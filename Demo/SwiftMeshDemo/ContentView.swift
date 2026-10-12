@@ -441,71 +441,17 @@ struct MeshDetailView: View {
                     LabeledContent("Colors", value: currentMesh.colors != nil ? "✓" : "—")
                         .help("Per-corner RGBA vertex colors.")
                 }
-                Section("Operations") {
-                    Button("Weld") {
-                        applyOperation { $0.welded(tolerance: 1e-4) }
-                    }
-                    .help("Merge vertices closer than 0.0001 and rebuild the topology. Joins seams so neighboring faces share edges.")
-                    Button("Triangulate") {
-                        applyOperation { $0.triangulated() }
-                    }
-                    .help("Split every polygon (including faces with holes) into triangles. Attributes are kept.")
-                    Button("Subdivide (Loop)") {
-                        applyOperation { $0.loopSubdivided(iterations: 1) }
-                    }
-                    .help("Loop subdivision: each triangle becomes four and the surface smooths. Best on triangle meshes.")
-                    Button("Subdivide (CC)") {
-                        applyOperation { $0.catmullClarkSubdivided(iterations: 1) }
-                    }
-                    .help("Catmull-Clark subdivision: every face becomes quads and the surface smooths. Works on any polygons.")
-                    Button("Decimate 50%") {
-                        applyOperation { $0.decimated(ratio: 0.5) }
-                    }
-                    .help("Halve the triangle count with quadric edge collapse, keeping the shape as close as possible. Polygons are triangulated first.")
-                    Button("Wireframe") {
-                        applyOperation { $0.wireframe(radius: 0.015, sides: 8) }
-                    }
-                    .help("Replace the mesh with thin solid prisms along every edge.")
-                    Button("Border (Inside)") {
-                        applyOperation { $0.border(thickness: 0.02, direction: .inside) }
-                    }
-                    .help("Replace each face with a thin frame inset from its edges.")
-                    Button("Border (Outside)") {
-                        applyOperation { $0.border(thickness: 0.02, direction: .outside) }
-                    }
-                    .help("Replace each face with a thin frame grown outward from its edges.")
-                    Button("Fix Winding") {
-                        // Non-orientable meshes can't be fixed; leave them unchanged.
-                        applyOperation { $0.withConsistentWinding() ?? $0 }
-                    }
-                    .help("Flip faces so every shared edge is used in opposite directions. Does nothing on non-orientable surfaces. Picks the majority orientation, not necessarily outward.")
-                    Button("Reverse Winding") {
-                        applyOperation { $0.reversingWinding() }
-                    }
-                    .help("Flip every face, turning the mesh inside out.")
-                    Button("Merge Coplanar Faces") {
-                        applyOperation { $0.mergingCoplanarFaces() }
-                    }
-                    .help("Join neighboring faces that lie in the same plane into single polygons.")
-
+                Section("Display") {
                     Toggle("Highlight Standalone", isOn: $showStandalone)
                         .help("Highlight faces that share no edge with another face.")
                     Toggle("Vertex Dots", isOn: $showVertexDots)
                         .help("Draw a dot at every vertex.")
-
-                    if isModified {
-                        Button("Reset") {
-                            currentMesh = item.mesh
-                            isModified = false
-                            recomputeStandalone()
-                        }
-                        .help("Undo all operations and edits, returning to the gallery mesh.")
-                    }
                 }
             }
             .inspectorColumnWidth(min: 220, ideal: 260, max: 320)
         }
         .toolbar {
+            operationsMenu
             Menu {
                 Button("PLY (ASCII)") {
                     exportFormat = .ascii
@@ -531,6 +477,43 @@ struct MeshDetailView: View {
             defaultFilename: "\(item.name).ply"
         ) { _ in }
         .onAppear { recomputeStandalone() }
+    }
+
+    /// Whole-mesh operations, grouped by purpose. Menu items can't show tooltips on macOS,
+    /// so labels carry the key detail and the menu itself has the help.
+    private var operationsMenu: some View {
+        Menu {
+            Section("Topology") {
+                Button("Weld Close Vertices") { applyOperation { $0.welded(tolerance: 1e-4) } }
+                Button("Triangulate") { applyOperation { $0.triangulated() } }
+                Button("Merge Coplanar Faces") { applyOperation { $0.mergingCoplanarFaces() } }
+            }
+            Section("Refine") {
+                Button("Subdivide (Loop, triangles)") { applyOperation { $0.loopSubdivided(iterations: 1) } }
+                Button("Subdivide (Catmull-Clark, any polygons)") { applyOperation { $0.catmullClarkSubdivided(iterations: 1) } }
+                Button("Decimate to 50%") { applyOperation { $0.decimated(ratio: 0.5) } }
+            }
+            Section("Orientation") {
+                // Non-orientable meshes can't be fixed; leave them unchanged.
+                Button("Fix Winding") { applyOperation { $0.withConsistentWinding() ?? $0 } }
+                Button("Reverse Winding (Inside Out)") { applyOperation { $0.reversingWinding() } }
+            }
+            Section("Generate") {
+                Button("Wireframe Prisms") { applyOperation { $0.wireframe(radius: 0.015, sides: 8) } }
+                Button("Face Borders (Inside)") { applyOperation { $0.border(thickness: 0.02, direction: .inside) } }
+                Button("Face Borders (Outside)") { applyOperation { $0.border(thickness: 0.02, direction: .outside) } }
+            }
+            Divider()
+            Button("Reset to Original") {
+                currentMesh = item.mesh
+                isModified = false
+                recomputeStandalone()
+            }
+            .disabled(!isModified)
+        } label: {
+            Label("Operations", systemImage: "wand.and.stars")
+        }
+        .help("Whole-mesh operations: weld, triangulate, merge coplanar faces, subdivide, decimate, fix or reverse winding, and generate wireframes or face borders. Reset returns to the gallery mesh.")
     }
 
     private func applyOperation(_ operation: (Mesh) -> Mesh) {
