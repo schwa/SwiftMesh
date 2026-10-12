@@ -2692,14 +2692,18 @@ Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elal
 ## 126: Robust Boolean: result assembly
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:csg, effort:l
 created: 2026-10-12T01:22:19Z
+updated: 2026-10-12T02:05:41Z
+closed: 2026-10-12T02:05:41Z
 +++
 
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort boolean_result.cpp: convert winding numbers to inclusion values per operation, keep retained vertices, add intersection vertices, split intersected halfedges and pair new edge endpoints (PairUp), and assemble the polygonal faces of the result before triangulation.\n\nTests: union/intersection/difference of overlapping cubes and spheres produce closed, consistently wound polygon sets (validated before triangulation).\n\nDepends on: #125.
+
+- `2026-10-12T02:05:41Z`: Also ported Face2Tri (face_op.cpp: AssembleHalfedges, ProjectPolygons via GetAxisAlignedProjection, the quad diagonal rule, and the #127 triangulator for larger faces), since no subtask covered turning the polygon faces into triangles. Contour triangle edges inherit the polygon pairing; interior diagonals pair within each face. Degenerate cleanup and attributes remain for #128/#129.
 
 ---
 
