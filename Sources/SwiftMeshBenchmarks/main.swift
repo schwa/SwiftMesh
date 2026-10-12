@@ -117,6 +117,24 @@ benchmarks.append(Benchmark(name: "binPacking.maxRects.roomPlan745") {
     }
 })
 
+// Robust Boolean broad phase: edges of a rotated icoSphere4 against a face BVH of icoSphere5.
+benchmarks.append(Benchmark(name: "collider.build.icoSphere5") {
+    let mesh = try! BooleanMesh(mesh: .icoSphere(subdivisions: 5, attributes: []))
+    return { _ = mesh.makeFaceCollider() }
+})
+benchmarks.append(Benchmark(name: "collider.edgeQueries.icoSphere4vs5") {
+    let rotation = simd_float4x4(simd_quatf(angle: 0.4, axis: simd_normalize([1, 2, 3])))
+    let p = try! BooleanMesh(mesh: Mesh.icoSphere(subdivisions: 4, attributes: []).transformed(by: rotation))
+    let collider = try! BooleanMesh(mesh: .icoSphere(subdivisions: 5, attributes: [])).makeFaceCollider()
+    return {
+        var hits = 0
+        for edge in p.halfedges where edge.startVert < edge.endVert {
+            collider.forEachOverlap(BooleanBox(p.vertPos[edge.startVert], p.vertPos[edge.endVert])) { _ in hits += 1 }
+        }
+        precondition(hits > 0)
+    }
+})
+
 // IO
 benchmarks.append(Benchmark(name: "ply.roundTrip.icoSphere4") {
     let mesh = Mesh.icoSphere(subdivisions: 4, attributes: [.smoothNormals])

@@ -9,10 +9,10 @@ import simd
 /// Positions are `Double`. Every triangle has three consecutive half-edges, and every
 /// half-edge is paired with exactly one opposite half-edge, so the mesh is a closed,
 /// oriented 2-manifold.
-struct BooleanMesh: Sendable {
-    struct Halfedge: Sendable, Equatable {
-        var startVert: Int
-        var endVert: Int
+package struct BooleanMesh: Sendable {
+    package struct Halfedge: Sendable, Equatable {
+        package var startVert: Int
+        package var endVert: Int
         var pairedHalfedge: Int
         /// The `Mesh` corner (half-edge raw index) this corner came from, or -1 for new corners.
         /// Plays the role of Manifold's `propVert` for carrying attributes.
@@ -26,8 +26,8 @@ struct BooleanMesh: Sendable {
         case nonFinite
     }
 
-    var vertPos: [SIMD3<Double>] = []
-    var halfedges: [Halfedge] = []
+    package var vertPos: [SIMD3<Double>] = []
+    package var halfedges: [Halfedge] = []
     var faceNormal: [SIMD3<Double>] = []
     /// Angle-weighted pseudo-normals; used for symbolic perturbation.
     var vertNormal: [SIMD3<Double>] = []
@@ -37,7 +37,7 @@ struct BooleanMesh: Sendable {
     var epsilon: Double = 0
 
     var numVert: Int { vertPos.count }
-    var numTri: Int { halfedges.count / 3 }
+    package var numTri: Int { halfedges.count / 3 }
     var numEdge: Int { halfedges.count / 2 }
 
     /// Manifold's `kPrecision`: the smallest relative precision tracked.
@@ -188,7 +188,7 @@ func safeNormalize(_ vector: SIMD3<Double>) -> SIMD3<Double> {
 extension BooleanMesh {
     /// Converts a `Mesh`, triangulating n-gons and merging bit-identical positions so
     /// attribute seams (split vertices at the same place) don't break manifoldness.
-    init(mesh: Mesh) throws {
+    package init(mesh: Mesh) throws {
         let triangulated = mesh.triangulated()
         var mergedIndex: [SIMD3<Float>: Int] = [:]
         var vertexMap = [Int](repeating: -1, count: triangulated.positions.count)

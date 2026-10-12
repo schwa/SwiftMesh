@@ -2644,11 +2644,13 @@ Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elal
 ## 123: Robust Boolean: BVH broad phase (collider)
 
 +++
-status: open
+status: closed
 priority: high
 kind: task
 labels: area:csg, effort:m
 created: 2026-10-12T01:22:18Z
+updated: 2026-10-12T01:53:52Z
+closed: 2026-10-12T01:53:52Z
 +++
 
 Part of #65 (port Manifold's robust Boolean to Swift; reference: github.com/elalish/manifold src/, docs/RobustBoolean.pdf). Manifold is Apache-2.0: ported code needs attribution and a NOTICE entry.\n\nPort Manifold's collider (collider.h; see docs/ParallelBVH.pdf): a BVH over triangle bounds that answers 'which faces of Q overlap this edge/vertex of P', including the XY-projected queries the kernels need. Serial is fine first.\n\nTests: results match brute force on random meshes; benchmark in SwiftMeshBenchmarks.\n\nDepends on: #122.
