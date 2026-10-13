@@ -3152,3 +3152,80 @@ created: 2026-10-13T00:42:29Z
 MetalMesh.toMesh() reads only position, normal, texcoord(0), tangent (as float3), bitangent and color(0). It ignores other attributes: texcoord and color sets above 0, float4 tangents, joint indices and weights, and custom attributes. It also drops morphTargets and skin, and it fails a precondition on non-triangle submeshes. Mesh has no place to store most of this data, so a MetalMesh -> Mesh -> MetalMesh round trip loses it.
 
 ---
+
+## 153: Shape generators use different texture coordinate conventions
+
++++
+status: new
+priority: medium
+kind: bug
+created: 2026-10-13T16:27:56Z
++++
+
+The UVs from the shape generators do not follow one convention, so the same texture looks different on different shapes (mirrored or upside down). Measured with a throwaway program (/tmp/shape-compare) that counts UV winding per triangle: for a front-facing (counter-clockwise) triangle, positive UV area means unmirrored if v runs up, and negative means unmirrored if v runs down.
+
+| Shape | v at top | v at bottom | UV winding (+ / -) |
+|---|---|---|---|
+| sphere | 0 | 1 | 3968 / 0 |
+| cone | 0 | 0.7 | 126 / 0 |
+| box | 0.83 (mean) | 0.17 | 12 / 0 |
+| quad | 1 | 0 | 2 / 0 |
+| cylinder | 0.25 | 0.75 | 190 / 62 |
+| torus | - | - | 0 / 4096 |
+
+- box and quad: v runs up and are not mirrored.
+- sphere and cone: v runs down (top = 0) but the winding is positive, so the texture is mirrored for either convention. On the sphere, u runs clockwise when seen from outside (x = cos phi, z = sin phi).
+- cylinder: the winding differs between parts of the same mesh.
+- torus: the winding is opposite to box and quad.
+
+The intended convention (v up or v down) is not documented. glTF and Metal texture space have v down; MetalSprocketsGLTF's viewer shapes use v down, with u running counter-clockwise seen from above.
+
+---
+
+## 154: smoothNormals smooths across hard edges
+
++++
+status: new
+priority: medium
+kind: bug
+created: 2026-10-13T16:27:56Z
++++
+
+With attributes [.smoothNormals, .textureCoordinates], every corner of Mesh.cylinder gets a normal that differs from its face normal (756 of 756 corners), and the same for Mesh.cone (378 of 378). The cylinder caps are not flat: the rim normals are averaged with the side. The cone apex is one vertex, so all side faces share one averaged apex normal. There is no crease angle or other way to keep hard edges, so shapes with both curved and flat parts cannot be shaded correctly with .smoothNormals. .flatNormals gives faceted curved surfaces instead.
+
+Seen while comparing SwiftMesh generators with MetalSprocketsGLTF's viewer shapes, which keep caps flat and repeat the cone apex per segment.
+
+---
+
+## 155: No CPU path from Mesh to per-vertex attribute arrays
+
++++
+status: new
+priority: medium
+kind: feature
+created: 2026-10-13T16:27:56Z
++++
+
+MetalMesh(mesh:device:) turns a Mesh into an indexed, per-vertex form (corners with the same attributes are shared), but only into MTLBuffers. There is no way to get the same per-vertex result as Swift arrays (for example [MetalMesh.VertexAttributeData] plus indices for each submesh) without making GPU buffers and reading them back.
+
+Use case: MetalSprocketsPBR's PBRGeometryBuilder.add(attributes:indices:...) takes VertexAttributeData arrays and packs them into its own shared buffers. Drawing a SwiftMesh shape with the PBR renderer now needs a GPU round trip or code that repeats the corner deduplication in MetalMesh(mesh:). Mesh tangents are SIMD3 plus separate bitangents, so a caller that needs SIMD4 tangents with a handedness sign must also compute the sign.
+
+---
+
+## 156: MetalMesh shares one index buffer between submeshes without being asked
+
++++
+status: new
+priority: medium
+kind: enhancement
+created: 2026-10-13T17:08:15Z
++++
+
+MetalMesh(device:attributes:submeshes:...) (MetalMesh+DirectInit.swift) always puts every submesh's indices in one shared index buffer and sets Submesh.indexBufferOffset. The uncommitted #155 change (MetalMesh(mesh:) built on Mesh.vertexArrays() plus that init) makes MetalMesh(mesh:) do the same, where it used to make one index buffer per submesh.
+
+Code that assumes each submesh's indices start at offset 0 draws the wrong indices for every submesh after the first, with no error. Known cases: MetalSprocketsAddOns #96 (RayTracedShadows) and MetalSprocketsExamples #451 (MetalMesh+Metal4 draw). Sharing is useful (fewer allocations, less residency bookkeeping), but the caller cannot choose it.
+
+## Proposed fix (per schwa)
+Do not merge automatically: inits make one index buffer per submesh. Add a manual, merge-style operation on MetalMesh that combines the submeshes' index buffers into one and sets the offsets.
+
+---
