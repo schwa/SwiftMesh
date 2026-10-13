@@ -11,6 +11,12 @@ public extension Mesh {
         public var sourceVertices: [HalfEdgeTopology.VertexID]
 
         public var vertexCount: Int { sourceVertices.count }
+
+        public init(attributes: [MetalMesh.VertexAttributeData], submeshes: [MetalMesh.SubmeshIndices], sourceVertices: [HalfEdgeTopology.VertexID]) {
+            self.attributes = attributes
+            self.submeshes = submeshes
+            self.sourceVertices = sourceVertices
+        }
     }
 
     /// Per-corner glTF / MikkTSpace tangents: xyz is the tangent, w is the bitangent sign (±1).

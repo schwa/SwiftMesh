@@ -3334,11 +3334,13 @@ Goal: treat submesh membership as a per-face attribute handled by the same machi
 ## 161: Split Mesh <-> MetalMesh conversion into a CPU-testable encode/decode layer
 
 +++
-status: new
+status: closed
 priority: low
 kind: task
 labels: architecture
 created: 2026-10-13T18:11:14Z
+updated: 2026-10-13T19:18:48Z
+closed: 2026-10-13T19:18:48Z
 +++
 
 The attribute list (semantic, MTLVertexFormat, Swift type) is restated in Mesh+VertexArrays, MetalMesh+DirectInit (VertexAttributeData), MetalMesh+VertexBuffers, MetalMesh+Merging, ModelIO+Mesh, and MetalMesh.toMesh() (~200 lines with hand-written readFloat2/3/4). Much of MetalMeshTests needs an MTLDevice.
