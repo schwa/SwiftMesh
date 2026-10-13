@@ -1,3 +1,4 @@
+// swiftlint:disable force_try
 import BinPacking
 import Foundation
 import Metal

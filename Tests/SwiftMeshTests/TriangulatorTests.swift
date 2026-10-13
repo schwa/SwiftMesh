@@ -87,7 +87,7 @@ struct TriangulatorTests {
         let outer: [SIMD2<Double>] = [[0, 0], [4, 0], [4, 2], [2, 2], [2, 4], [0, 4]]
         let hole: [SIMD2<Double>] = [[0.5, 0.5], [0.5, 1.5], [1.5, 1.5], [1.5, 0.5]]
         let polys = indexed([outer, hole])
-        let positions = polys.flatMap { $0 }.map(\.pos)
+        let positions = polys.flatMap(\.self).map(\.pos)
         let triangles = triangulate(polys, epsilon: -1)
         #expect(triangles.count == outer.count + hole.count) // V + 2H - 2 with one hole
         var area = 0.0

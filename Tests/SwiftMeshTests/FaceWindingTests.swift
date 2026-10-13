@@ -18,7 +18,7 @@ struct FaceWindingTests {
     func consistent() {
         let mesh = Mesh.icoSphere(subdivisions: 1, attributes: [])
         #expect(!mesh.topology.hasInconsistentFaceWinding)
-        #expect(mesh.topology.facesToFlipForConsistentWinding() == [])
+        #expect(mesh.topology.facesToFlipForConsistentWinding()?.isEmpty == true)
     }
 
     @Test("Reversed faces are found and repaired to a closed manifold")

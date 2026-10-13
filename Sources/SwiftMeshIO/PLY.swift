@@ -279,11 +279,13 @@ private func parseHeader(_ bytes: [UInt8]) throws -> (Header, Int) {
             case "binary_big_endian": format = .binaryBigEndian
             default: throw PLYError.unsupportedFormat(String(parts[1]))
             }
+
         case "element":
             guard parts.count >= 3, let count = Int(parts[2]) else {
                 throw PLYError.invalidHeader("Bad element: \(parts.joined(separator: " "))")
             }
             elements.append(Element(name: String(parts[1]), count: count))
+
         case "property":
             guard !elements.isEmpty else {
                 throw PLYError.invalidHeader("Property before element")
@@ -295,6 +297,7 @@ private func parseHeader(_ bytes: [UInt8]) throws -> (Header, Int) {
             } else {
                 throw PLYError.invalidHeader("Bad property: \(parts.joined(separator: " "))")
             }
+
         default:
             continue // comment, obj_info
         }
@@ -333,11 +336,11 @@ private struct ASCIIReader: ValueReader {
     var tokens: [Substring]
     var position = 0
 
-    init(bytes: ArraySlice<UInt8>) throws {
+    init(bytes: ArraySlice<UInt8>) {
         tokens = String(decoding: bytes, as: UTF8.self).split(whereSeparator: \.isWhitespace)
     }
 
-    mutating func read(_ type: ScalarType, context: @autoclosure () -> String) throws -> Double {
+    mutating func read(_: ScalarType, context: @autoclosure () -> String) throws -> Double {
         guard position < tokens.count else {
             throw PLYError.parseError("Unexpected end of file at \(context())")
         }

@@ -41,7 +41,7 @@ public extension MetalMesh {
     ///
     /// Maps MTKMesh's vertex buffers, vertex descriptor, and submeshes
     /// into MetalMesh's representation.
-    init(mtkMesh: MTKMesh) throws {
+    init(mtkMesh: MTKMesh) {
         self.label = mtkMesh.name.isEmpty ? nil : mtkMesh.name
 
         // Map the MDL vertex descriptor to our VertexDescriptor

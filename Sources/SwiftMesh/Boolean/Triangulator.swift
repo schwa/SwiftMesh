@@ -337,10 +337,12 @@ private struct EarClip {
         let right = polygon[polygon[v].right].pos
         if abs(pos.y - start.y) <= epsilon {
             return right.y <= start.y + epsilon || onTop == 1 ? .nan : pos.x
-        } else if pos.y < start.y - epsilon {
+        }
+        if pos.y < start.y - epsilon {
             if right.y > start.y + epsilon {
                 return pos.x + (start.y - pos.y) * (right.x - pos.x) / (right.y - pos.y)
-            } else if right.y < start.y - epsilon || onTop == -1 {
+            }
+            if right.y < start.y - epsilon || onTop == -1 {
                 return .nan
             }
             return right.x

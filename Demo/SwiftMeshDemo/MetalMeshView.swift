@@ -70,6 +70,7 @@ enum TopologyOverlay: CaseIterable, Identifiable {
                 let heat = simd_clamp(Float(valences[halfEdge.origin.raw] - 3) / 5, 0, 1)
                 return SIMD2(heat, 1 - heat)
             }
+
         case .boundaryEdges:
             var onBoundary = [Bool](repeating: false, count: topology.vertices.count)
             for halfEdge in topology.halfEdges where halfEdge.twin == nil && halfEdge.next != nil {

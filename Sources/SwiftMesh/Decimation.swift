@@ -274,7 +274,7 @@ public extension Mesh {
                 return result
             }
             var opposite: [Int] = []
-            for edge in [entry.halfEdge, he.twin].compactMap({ $0 }) where topology.halfEdges[edge.raw].face != nil {
+            for edge in [entry.halfEdge, he.twin].compactMap(\.self) where topology.halfEdges[edge.raw].face != nil {
                 if let previous = topology.halfEdges[edge.raw].prev {
                     opposite.append(topology.halfEdges[previous.raw].origin.raw)
                 }
@@ -365,7 +365,7 @@ public extension Mesh {
         positions = newPositions
         corners.apply(to: &self)
         submeshes = submeshes.map { submesh in
-            Mesh.Submesh(label: submesh.label, faces: submesh.faces.compactMap { faceMap[$0] })
+            Self.Submesh(label: submesh.label, faces: submesh.faces.compactMap { faceMap[$0] })
         }
     }
 

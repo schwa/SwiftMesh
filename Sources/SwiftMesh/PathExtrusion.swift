@@ -128,8 +128,10 @@ extension Mesh {
             case .moveToPoint:
                 finish()
                 current = [point(points[0])]
+
             case .addLineToPoint:
                 current.append(point(points[0]))
+
             case .addQuadCurveToPoint:
                 let start = current.last ?? point(points[0])
                 let control = point(points[0])
@@ -139,6 +141,7 @@ extension Mesh {
                     let u = 1 - t
                     current.append(u * u * start + 2 * u * t * control + t * t * end)
                 }
+
             case .addCurveToPoint:
                 let start = current.last ?? point(points[0])
                 let control1 = point(points[0])
@@ -149,8 +152,10 @@ extension Mesh {
                     let u = 1 - t
                     current.append(u * u * u * start + 3 * u * u * t * control1 + 3 * u * t * t * control2 + t * t * t * end)
                 }
+
             case .closeSubpath:
                 finish()
+
             @unknown default:
                 break
             }

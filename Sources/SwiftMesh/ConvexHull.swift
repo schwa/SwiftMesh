@@ -32,7 +32,7 @@ public extension Mesh {
     /// - Returns: The hull mesh, or `nil` if the samples are degenerate (for example all
     ///   zero radii on a plane).
     static func convexHull(ofSpheres spheres: [(center: SIMD3<Float>, radius: Float)], subdivisions: Int = 2, attributes: MeshAttributes = .default) -> Mesh? {
-        let unitDirections = Mesh.icoSphere(extents: [2, 2, 2], subdivisions: subdivisions, attributes: []).positions.map { simd_normalize($0) }
+        let unitDirections = Self.icoSphere(extents: [2, 2, 2], subdivisions: subdivisions, attributes: []).positions.map { simd_normalize($0) }
         var points: [SIMD3<Float>] = []
         for sphere in spheres {
             if sphere.radius > 0 {

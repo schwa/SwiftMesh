@@ -104,12 +104,14 @@ struct PathExtrusionTests {
         // wall, points beyond 2x thickness (the miter limit) are not.
         let outline = Mesh.flattenedLoops(path.cgPath, curveSegments: 8)
         let triangles = mesh.triangulated()
-        let allPoints = outline.flatMap { $0 }
+        let allPoints = outline.flatMap(\.self)
         let bounds = (min: allPoints.reduce(SIMD2<Float>(repeating: .infinity)) { simd_min($0, $1) }, max: allPoints.reduce(SIMD2<Float>(repeating: -.infinity)) { simd_max($0, $1) })
         var wrong = 0
         for row in 0..<60 {
             for column in 0..<60 {
                 let point = bounds.min + (bounds.max - bounds.min) * SIMD2(Float(column) + 0.37, Float(row) + 0.61) / 60
+                // Even-odd parity across loops, not `contains`.
+                // swiftlint:disable:next reduce_boolean
                 guard outline.reduce(false, { $0 != Mesh.contains($1, point) }) else {
                     continue
                 }

@@ -297,7 +297,8 @@ func axisAlignedProjection(_ normal: SIMD3<Double>) -> (SIMD3<Double>) -> SIMD2<
     if absNormal.z > absNormal.x, absNormal.z > absNormal.y {
         let sign: Double = normal.z < 0 ? -1 : 1
         return { SIMD2(sign * $0.x, $0.y) }
-    } else if absNormal.y > absNormal.x {
+    }
+    if absNormal.y > absNormal.x {
         let sign: Double = normal.y < 0 ? -1 : 1
         return { SIMD2(sign * $0.z, $0.x) }
     }

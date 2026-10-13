@@ -40,7 +40,7 @@ struct EdgeSplitTests {
     }
 
     @Test("Splitting a quad's edge inserts the vertex without splitting the face")
-    func quadEdge() throws {
+    func quadEdge() {
         var mesh = Mesh(positions: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], faces: [[0, 1, 2, 3]])
         #expect(mesh.splitEdge(mesh.topology.halfEdges[0].id) != nil)
         #expect(mesh.faceCount == 1)

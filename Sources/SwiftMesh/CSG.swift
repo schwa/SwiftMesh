@@ -140,8 +140,10 @@ public extension TriangleSoup {
             switch operation {
             case .union:
                 return triangles.isEmpty ? other : self
+
             case .intersection:
                 return Self()
+
             case .difference:
                 return self
             }

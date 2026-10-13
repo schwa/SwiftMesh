@@ -51,6 +51,7 @@ public struct MetalMesh {
             case .uint16:
                 let pointer = (indexBuffer.contents() + indexBufferOffset).assumingMemoryBound(to: UInt16.self)
                 return (0..<indexCount).map { UInt32(pointer[$0]) }
+
             default:
                 let pointer = (indexBuffer.contents() + indexBufferOffset).assumingMemoryBound(to: UInt32.self)
                 return Array(UnsafeBufferPointer(start: pointer, count: indexCount))

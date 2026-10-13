@@ -643,7 +643,7 @@ struct MeshGallerySection: Identifiable {
 
     /// Hover help for an item: its subtitle, then the section's API note.
     func help(for item: MeshGalleryItem) -> String {
-        [item.subtitle, help.isEmpty ? nil : help].compactMap { $0 }.joined(separator: "\n\n")
+        [item.subtitle, help.isEmpty ? nil : help].compactMap(\.self).joined(separator: "\n\n")
     }
 
     static let all: [Self] = [

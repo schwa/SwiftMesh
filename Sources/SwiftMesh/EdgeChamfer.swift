@@ -78,10 +78,13 @@ public extension Mesh {
                     cornerPoints[outgoing.raw] = [point("q\(face.id.raw)-\(vertex.raw)") {
                         offsetCorner(at: position(vertex), from: position(u), to: position(w), normal: normal, distance: distance)
                     }]
+
                 case (true, false):
                     cornerPoints[outgoing.raw] = [slid(outgoing, from: vertex)]
+
                 case (false, true):
                     cornerPoints[outgoing.raw] = [slid(incoming, from: vertex)]
+
                 case (false, false):
                     cornerPoints[outgoing.raw] = anyAtVertex
                         ? [slid(incoming, from: vertex), slid(outgoing, from: vertex)]

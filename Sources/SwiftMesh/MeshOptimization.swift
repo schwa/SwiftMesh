@@ -235,7 +235,7 @@ public extension Mesh {
         // With a third group it stays, or dropping it would leave a T-junction.
         var groupsPerVertex = [Int](repeating: 0, count: positions.count)
         for (_, loops) in groupLoops {
-            for vertex in Set(loops.flatMap { $0 }) {
+            for vertex in Set(loops.flatMap(\.self)) {
                 groupsPerVertex[vertex] += 1
             }
         }
