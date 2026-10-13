@@ -3233,3 +3233,16 @@ Code that assumes each submesh's indices start at offset 0 draws the wrong indic
 Do not merge automatically: inits make one index buffer per submesh. Add a manual, merge-style operation on MetalMesh that combines the submeshes' index buffers into one and sets the offsets.
 
 ---
+
+## 157: Mesh tangents have no handedness sign
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-10-13T17:09:52Z
++++
+
+Mesh stores tangents and bitangents as separate SIMD3 arrays, and Mesh.vertexArrays() / MetalMesh(mesh:) output them as .float3 tangent and bitangent attributes. glTF, MikkTSpace and MetalSprocketsPBR use one SIMD4 tangent with w = bitangent sign (±1). A caller that needs that form must compute the sign from normal, tangent and bitangent for each vertex. SwiftMesh has MetalMesh.VertexAttributeData.tangents([SIMD4<Float>]), but nothing makes those values from a Mesh.
+
+---
