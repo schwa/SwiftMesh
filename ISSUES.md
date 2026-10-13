@@ -3143,10 +3143,12 @@ Use case: glTF skins (inverseBindMatrices, joints) for MetalSprocketsGLTF / Meta
 ## 152: MetalMesh.toMesh drops attributes, morph targets and skin
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
+labels: effort:l, area:metal
 created: 2026-10-13T00:42:29Z
+updated: 2026-10-13T17:31:15Z
 +++
 
 MetalMesh.toMesh() reads only position, normal, texcoord(0), tangent (as float3), bitangent and color(0). It ignores other attributes: texcoord and color sets above 0, float4 tangents, joint indices and weights, and custom attributes. It also drops morphTargets and skin, and it fails a precondition on non-triangle submeshes. Mesh has no place to store most of this data, so a MetalMesh -> Mesh -> MetalMesh round trip loses it.
@@ -3249,10 +3251,12 @@ Do not merge automatically: inits make one index buffer per submesh. Add a manua
 ## 157: Mesh tangents have no handedness sign
 
 +++
-status: new
+status: open
 priority: low
 kind: enhancement
+labels: effort:s, area:metal
 created: 2026-10-13T17:09:52Z
+updated: 2026-10-13T17:31:15Z
 +++
 
 Mesh stores tangents and bitangents as separate SIMD3 arrays, and Mesh.vertexArrays() / MetalMesh(mesh:) output them as .float3 tangent and bitangent attributes. glTF, MikkTSpace and MetalSprocketsPBR use one SIMD4 tangent with w = bitangent sign (±1). A caller that needs that form must compute the sign from normal, tangent and bitangent for each vertex. SwiftMesh has MetalMesh.VertexAttributeData.tangents([SIMD4<Float>]), but nothing makes those values from a Mesh.
@@ -3262,10 +3266,12 @@ Mesh stores tangents and bitangents as separate SIMD3 arrays, and Mesh.vertexArr
 ## 158: UV projection helpers do not follow the texture coordinate convention
 
 +++
-status: new
+status: open
 priority: low
 kind: bug
+labels: effort:m, area:primitives
 created: 2026-10-13T17:22:49Z
+updated: 2026-10-13T17:31:15Z
 +++
 
 After #153, the shape generators and Mesh.withSphericalUVs() make v-down, unmirrored UVs (glTF / Metal convention, enforced by TextureCoordinateConventionTests). The other projection helpers in MeshAttributes.swift do not:
