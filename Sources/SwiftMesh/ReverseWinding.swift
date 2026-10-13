@@ -14,7 +14,7 @@ public extension Mesh {
     private func reversingWinding(of selected: Set<HalfEdgeTopology.FaceID>?) -> Mesh {
         var definitions: [HalfEdgeTopology.FaceDefinition] = []
         var corners: [Int] = []
-        var faceMap: [HalfEdgeTopology.FaceID: HalfEdgeTopology.FaceID] = [:]
+        var faceSources: [HalfEdgeTopology.FaceID?] = []
 
         // Reversed loop keeps its first corner: [h0, h(n-1), ..., h1].
         func reversed(_ loop: [HalfEdgeTopology.HalfEdgeID]) -> [HalfEdgeTopology.HalfEdgeID] {
@@ -28,7 +28,7 @@ public extension Mesh {
             }
             let holes = face.holeEdges.map { topology.collectHalfEdgeLoop(startEdge: $0) }.filter { $0.count >= 3 }
             let loops = selected.map { $0.contains(face.id) } ?? true ? ([outer] + holes).map(reversed) : [outer] + holes
-            faceMap[face.id] = .init(raw: definitions.count)
+            faceSources.append(face.id)
             definitions.append(.init(
                 outer: loops[0].map { topology.halfEdges[$0.raw].origin.raw },
                 holes: loops.dropFirst().map { $0.map { topology.halfEdges[$0.raw].origin.raw } }
@@ -39,7 +39,7 @@ public extension Mesh {
         var result = Mesh(
             topology: HalfEdgeTopology(vertexCount: positions.count, faces: definitions),
             positions: positions,
-            submeshes: submeshes.map { Submesh(label: $0.label, faces: $0.faces.compactMap { faceMap[$0] }) }
+            submeshes: submeshes(rebuiltFrom: faceSources)
         )
         CornerAttributes(of: self).gathered(corners).apply(to: &result)
         return result

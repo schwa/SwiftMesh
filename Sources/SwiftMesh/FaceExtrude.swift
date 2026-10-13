@@ -28,13 +28,13 @@ public extension Mesh {
 
         var definitions: [HalfEdgeTopology.FaceDefinition] = []
         var corners: [Int] = []
-        var faceMap: [HalfEdgeTopology.FaceID: HalfEdgeTopology.FaceID] = [:]
+        var faceSources: [HalfEdgeTopology.FaceID?] = []
         for oldFace in topology.faces {
             let order = topology.rebuildCornerOrder(for: oldFace.id)
             guard !order.isEmpty else {
                 continue
             }
-            faceMap[oldFace.id] = .init(raw: definitions.count)
+            faceSources.append(oldFace.id)
             let outer = topology.vertexLoop(for: oldFace.id).map(\.raw)
             let holes = topology.holeVertexLoops(for: oldFace.id).map { $0.map(\.raw) }.filter { $0.count >= 3 }
             if oldFace.id == face {
@@ -46,14 +46,13 @@ public extension Mesh {
         }
 
         // Walls: for boundary edge a → b, quad (a, b, b', a'). Its a → b twins the neighbor's b → a; its b' → a' twins the top face's a' → b'.
-        var wallFaces: [HalfEdgeTopology.FaceID] = []
         var wallNormals: [(range: Range<Int>, normal: SIMD3<Float>)] = []
         for loop in loops {
             for halfEdge in loop {
                 let next = topology.halfEdges[halfEdge.raw].next!
                 let a = topology.halfEdges[halfEdge.raw].origin.raw
                 let b = topology.halfEdges[next.raw].origin.raw
-                wallFaces.append(.init(raw: definitions.count))
+                faceSources.append(face)
                 definitions.append(.init(outer: [a, b, lifted[b]!, lifted[a]!]))
                 let start = corners.count
                 corners += [halfEdge.raw, next.raw, next.raw, halfEdge.raw]
@@ -65,13 +64,7 @@ public extension Mesh {
         var result = Mesh(
             topology: HalfEdgeTopology(vertexCount: newPositions.count, faces: definitions),
             positions: newPositions,
-            submeshes: submeshes.map { submesh in
-                var faces = submesh.faces.compactMap { faceMap[$0] }
-                if submesh.faces.contains(face) {
-                    faces += wallFaces
-                }
-                return Submesh(label: submesh.label, faces: faces)
-            }
+            submeshes: submeshes(rebuiltFrom: faceSources)
         )
         var attributes = CornerAttributes(of: self).gathered(corners)
         if attributes.normals != nil {

@@ -16,20 +16,38 @@ public struct Mesh: Sendable, Equatable {
 
     // MARK: - Per-corner attributes (indexed by HalfEdgeID.raw)
 
+    /// Storage for every per-corner attribute. Operations edit this as one unit.
+    var cornerAttributes: CornerAttributes
+
     /// Per-corner normals. When nil, normals are not assigned.
-    public var normals: [SIMD3<Float>]?
+    public var normals: [SIMD3<Float>]? {
+        get { cornerAttributes.normals }
+        set { cornerAttributes.normals = newValue }
+    }
 
     /// Per-corner texture coordinates. When nil, UVs are not assigned.
-    public var textureCoordinates: [SIMD2<Float>]?
+    public var textureCoordinates: [SIMD2<Float>]? {
+        get { cornerAttributes.textureCoordinates }
+        set { cornerAttributes.textureCoordinates = newValue }
+    }
 
     /// Per-corner tangents. When nil, tangents are not assigned.
-    public var tangents: [SIMD3<Float>]?
+    public var tangents: [SIMD3<Float>]? {
+        get { cornerAttributes.tangents }
+        set { cornerAttributes.tangents = newValue }
+    }
 
     /// Per-corner bitangents. When nil, bitangents are not assigned.
-    public var bitangents: [SIMD3<Float>]?
+    public var bitangents: [SIMD3<Float>]? {
+        get { cornerAttributes.bitangents }
+        set { cornerAttributes.bitangents = newValue }
+    }
 
     /// Per-corner colors. When nil, colors are not assigned.
-    public var colors: [SIMD4<Float>]?
+    public var colors: [SIMD4<Float>]? {
+        get { cornerAttributes.colors }
+        set { cornerAttributes.colors = newValue }
+    }
 
     // MARK: - Submeshes
 
@@ -77,11 +95,7 @@ public struct Mesh: Sendable, Equatable {
     ) {
         self.topology = topology
         self.positions = positions
-        self.normals = normals
-        self.textureCoordinates = textureCoordinates
-        self.tangents = tangents
-        self.bitangents = bitangents
-        self.colors = colors
+        self.cornerAttributes = CornerAttributes(normals: normals, textureCoordinates: textureCoordinates, tangents: tangents, bitangents: bitangents, colors: colors)
         self.submeshes = submeshes ?? [Submesh(faces: topology.faces.map(\.id))]
     }
 

@@ -333,7 +333,7 @@ public extension Mesh {
         var newPositions: [SIMD3<Float>] = []
         var faceDefinitions: [HalfEdgeTopology.FaceDefinition] = []
         var cornerOrder: [Int] = []
-        var faceMap: [HalfEdgeTopology.FaceID: HalfEdgeTopology.FaceID] = [:]
+        var faceSources: [HalfEdgeTopology.FaceID?] = []
 
         func remap(_ vertex: HalfEdgeTopology.VertexID) -> Int {
             if vertexMap[vertex.raw] < 0 {
@@ -353,7 +353,7 @@ public extension Mesh {
             }
             let holes = face.holeEdges.map { topology.collectHalfEdgeLoop(startEdge: $0) }.filter { $0.count >= 3 }
             cornerOrder += topology.rebuildCornerOrder(for: face.id).map(\.raw)
-            faceMap[face.id] = HalfEdgeTopology.FaceID(raw: faceDefinitions.count)
+            faceSources.append(face.id)
             faceDefinitions.append(.init(
                 outer: outer.map { remap(topology.halfEdges[$0.raw].origin) },
                 holes: holes.map { $0.map { remap(topology.halfEdges[$0.raw].origin) } }
@@ -361,12 +361,10 @@ public extension Mesh {
         }
 
         let corners = CornerAttributes(of: self).gathered(cornerOrder)
+        submeshes = submeshes(rebuiltFrom: faceSources)
         topology = HalfEdgeTopology(vertexCount: newPositions.count, faces: faceDefinitions)
         positions = newPositions
         corners.apply(to: &self)
-        submeshes = submeshes.map { submesh in
-            Self.Submesh(label: submesh.label, faces: submesh.faces.compactMap { faceMap[$0] })
-        }
     }
 
     /// Simplify the mesh by removing a ratio of faces.

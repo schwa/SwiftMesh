@@ -3291,12 +3291,13 @@ After #153, the shape generators and Mesh.withSphericalUVs() make v-down, unmirr
 ## 159: Unify per-corner attribute handling across Mesh operations
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: architecture, effort:l, area:topology
 created: 2026-10-13T18:11:13Z
-updated: 2026-10-13T18:31:00Z
+updated: 2026-10-13T19:13:22Z
+closed: 2026-10-13T19:13:22Z
 +++
 
 Mesh stores 5 optional per-corner arrays (normals, textureCoordinates, tangents, bitangents, colors). The internal CornerAttributes type groups them, but only some operations use it.
@@ -3314,13 +3315,14 @@ Goal: one deep module that owns corner attributes and their rules for new corner
 ## 160: Centralize submesh face remapping across Mesh operations
 
 +++
-status: open
+status: closed
 priority: medium
 kind: task
 labels: architecture, effort:m, area:topology
 depends: 159
 created: 2026-10-13T18:11:14Z
-updated: 2026-10-13T18:31:00Z
+updated: 2026-10-13T19:13:22Z
+closed: 2026-10-13T19:13:22Z
 +++
 
 Submesh.faces holds FaceIDs outside the topology, so every rebuild remaps them by hand: 17 faceMap / Submesh(label:) sites across 7 files. New faces pick a submesh ad hoc (HoleFilling uses a neighbor; EdgeSplit uses an O(n) firstIndex(where: contains)). PlaneSplit, CSG, and TriangleSoup merge all submeshes into one.

@@ -51,9 +51,11 @@ extension Mesh {
 
         // Old corner index for each new corner, in new half-edge order
         var corners: [Int] = []
+        var faceSources: [HalfEdgeTopology.FaceID?] = []
 
         for face in topology.faces where face.edge != nil {
             for triangle in triangulatedCorners(of: face.id) {
+                faceSources.append(face.id)
                 let triangleCorners = [triangle.0, triangle.1, triangle.2]
                 newFaces.append(triangleCorners.map { topology.halfEdges[$0.raw].origin.raw })
                 corners += triangleCorners.map(\.raw)
@@ -64,7 +66,7 @@ extension Mesh {
         let faceDefs = newFaces.map { HalfEdgeTopology.FaceDefinition(outer: $0) }
         let topo = HalfEdgeTopology(vertexCount: newPositions.count, faces: faceDefs)
 
-        var result = Mesh(topology: topo, positions: newPositions)
+        var result = Mesh(topology: topo, positions: newPositions, submeshes: submeshes(rebuiltFrom: faceSources))
         CornerAttributes(of: self).gathered(corners).apply(to: &result)
         return result
     }

@@ -79,19 +79,9 @@ public extension Mesh {
         guard topology.flipEdge(halfEdge) else {
             return false
         }
-        func copy<T>(_ values: inout [T]?) {
-            guard values != nil else {
-                return
-            }
-            for (target, source) in sources {
-                values![target] = values![source]
-            }
+        for (target, source) in sources {
+            cornerAttributes.copyCorner(from: source, to: target)
         }
-        copy(&normals)
-        copy(&textureCoordinates)
-        copy(&tangents)
-        copy(&bitangents)
-        copy(&colors)
         return true
     }
 }

@@ -51,7 +51,7 @@ private extension Mesh {
         topology.halfEdges[half.raw].next = newID
         topology.halfEdges[half.raw].twin = nil
         // Corner at `middle` interpolates the corners at this half's origin and at the following corner (old end).
-        appendCorner(interpolating: half.raw, old.next!.raw, t: t)
+        cornerAttributes.append(blending: [(half.raw, 1 - t), (old.next!.raw, t)])
         return newID
     }
 
@@ -81,10 +81,10 @@ private extension Mesh {
 
         // Face `face`: X → middle → Z → X
         topology.halfEdges.append(.init(id: middleToZ, origin: middle, twin: zToMiddle, next: zToX, prev: toMiddle, face: face))
-        appendCorner(copying: fromMiddle.raw)
+        cornerAttributes.append(copying: fromMiddle.raw)
         // Face `newFace`: middle → Y → Z → middle
         topology.halfEdges.append(.init(id: zToMiddle, origin: z, twin: middleToZ, next: fromMiddle, prev: yToZ, face: newFace))
-        appendCorner(copying: zToX.raw)
+        cornerAttributes.append(copying: zToX.raw)
 
         topology.halfEdges[toMiddle.raw].next = middleToZ
         topology.halfEdges[zToX.raw].prev = middleToZ
@@ -95,40 +95,6 @@ private extension Mesh {
 
         topology.faces[face.raw].edge = toMiddle
         topology.faces.append(.init(id: newFace, edge: fromMiddle))
-        if let submeshIndex = submeshes.firstIndex(where: { $0.faces.contains(face) }) {
-            submeshes[submeshIndex].faces.append(newFace)
-        }
-    }
-
-    mutating func appendCorner(interpolating a: Int, _ b: Int, t: Float) {
-        func mix<T: SIMD>(_ values: inout [T]?) where T.Scalar == Float {
-            guard values != nil else {
-                return
-            }
-            let from = values![a]
-            let to = values![b]
-            values!.append(from + (to - from) * t)
-        }
-        mix(&normals)
-        mix(&textureCoordinates)
-        mix(&tangents)
-        mix(&bitangents)
-        mix(&colors)
-        if let last = normals?.last, simd_length(last) > 0 {
-            normals![normals!.count - 1] = simd_normalize(last)
-        }
-    }
-
-    mutating func appendCorner(copying corner: Int) {
-        func copy<T>(_ values: inout [T]?) {
-            if values != nil {
-                values!.append(values![corner])
-            }
-        }
-        copy(&normals)
-        copy(&textureCoordinates)
-        copy(&tangents)
-        copy(&bitangents)
-        copy(&colors)
+        addFace(newFace, toSubmeshOf: face)
     }
 }

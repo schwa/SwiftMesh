@@ -25,13 +25,13 @@ public extension Mesh {
 
         var definitions: [HalfEdgeTopology.FaceDefinition] = []
         var corners: [Int] = []
-        var faceMap: [HalfEdgeTopology.FaceID: HalfEdgeTopology.FaceID] = [:]
+        var faceSources: [HalfEdgeTopology.FaceID?] = []
         for face in topology.faces {
             let order = topology.rebuildCornerOrder(for: face.id)
             guard !order.isEmpty else {
                 continue
             }
-            faceMap[face.id] = .init(raw: definitions.count)
+            faceSources.append(face.id)
             definitions.append(.init(
                 outer: topology.vertexLoop(for: face.id).map(\.raw),
                 holes: topology.holeVertexLoops(for: face.id).map { $0.map(\.raw) }.filter { $0.count >= 3 }
@@ -39,7 +39,7 @@ public extension Mesh {
             corners += order.map(\.raw)
         }
 
-        var newFaceRanges: [(range: Range<Int>, normal: SIMD3<Float>, neighbor: HalfEdgeTopology.FaceID?)] = []
+        var newFaceRanges: [(range: Range<Int>, normal: SIMD3<Float>)] = []
         for loop in loops {
             // Boundary loops run opposite to the face that would close them.
             let fill = Array(loop.reversed())
@@ -51,23 +51,15 @@ public extension Mesh {
                 newell += simd_cross(positions[fill[index].raw], positions[fill[(index + 1) % fill.count].raw])
             }
             let normal = simd_length(newell) > 0 ? simd_normalize(newell) : .zero
-            let neighbor = topology.halfEdges[boundaryCorner[loop[0].raw]!.raw].face.flatMap { faceMap[$0] }
-            newFaceRanges.append((start..<corners.count, normal, neighbor))
+            faceSources.append(topology.halfEdges[boundaryCorner[loop[0].raw]!.raw].face)
+            newFaceRanges.append((start..<corners.count, normal))
         }
 
-        let firstNewFace = definitions.count - loops.count
         var result = Mesh(
             topology: HalfEdgeTopology(vertexCount: positions.count, faces: definitions),
             positions: positions,
-            submeshes: submeshes.map { Submesh(label: $0.label, faces: $0.faces.compactMap { faceMap[$0] }) }
+            submeshes: submeshes(rebuiltFrom: faceSources)
         )
-        for (offset, fill) in newFaceRanges.enumerated() {
-            let newFace = HalfEdgeTopology.FaceID(raw: firstNewFace + offset)
-            let index = result.submeshes.firstIndex { fill.neighbor.map($0.faces.contains) ?? false } ?? 0
-            if result.submeshes.indices.contains(index) {
-                result.submeshes[index].faces.append(newFace)
-            }
-        }
 
         var attributes = CornerAttributes(of: self).gathered(corners)
         if attributes.normals != nil {

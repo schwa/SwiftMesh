@@ -63,10 +63,15 @@ extension BooleanMesh {
             return mesh
         }
         let sources = [p, q]
-        let sourceAttributes = sources.map(\.sourceAttributes)
-        // For each output corner: which input, and weights over that input's three source corners.
-        var weights: [(input: Int, corners: SIMD3<Int>, uvw: SIMD3<Double>)] = []
-        weights.reserveCapacity(halfedges.count)
+        // Blend over P's corners followed by Q's; Q's normals flip when Q is inverted.
+        var attributesQ = q.sourceAttributes
+        if invertQ {
+            attributesQ.normals = attributesQ.normals?.map { -$0 }
+        }
+        let combined = CornerAttributes.concatenated([p.sourceAttributes, attributesQ])
+        let offsets = [0, p.sourceAttributes.cornerCount]
+        var blends: [[CornerAttributes.Weight]] = []
+        blends.reserveCapacity(halfedges.count)
         for tri in 0..<numTri {
             let ref = triRef[tri]
             let input = sources[ref.x]
@@ -74,41 +79,11 @@ extension BooleanMesh {
             let corners = SIMD3(input.halfedges[3 * ref.y].sourceCorner, input.halfedges[3 * ref.y + 1].sourceCorner, input.halfedges[3 * ref.y + 2].sourceCorner)
             for corner in 0..<3 {
                 let position = vertPos[halfedges[3 * tri + corner].startVert]
-                weights.append((ref.x, corners, barycentric(position, sourceTriangle, tolerance: epsilon)))
+                let uvw = barycentric(position, sourceTriangle, tolerance: epsilon)
+                blends.append((0..<3).filter { corners[$0] >= 0 }.map { (offsets[ref.x] + corners[$0], Float(uvw[$0])) })
             }
         }
-
-        func blend<T: SIMD>(_ path: KeyPath<CornerAttributes, [T]?>, normalize: Bool = false, negateQ: Bool = false) -> [T]? where T.Scalar == Float {
-            guard let valuesP = sourceAttributes[0][keyPath: path], let valuesQ = sourceAttributes[1][keyPath: path] else {
-                return nil
-            }
-            let values = [valuesP, valuesQ]
-            return weights.map { weight in
-                var result = T()
-                for j in 0..<3 where weight.corners[j] >= 0 {
-                    result += values[weight.input][weight.corners[j]] * Float(weight.uvw[j])
-                }
-                if negateQ, weight.input == 1 {
-                    result = -result
-                }
-                if normalize {
-                    var length: Float = 0
-                    for lane in result.indices {
-                        length += result[lane] * result[lane]
-                    }
-                    if length > 0 {
-                        result /= length.squareRoot()
-                    }
-                }
-                return result
-            }
-        }
-
-        mesh.normals = blend(\.normals, normalize: true, negateQ: invertQ)
-        mesh.textureCoordinates = blend(\.textureCoordinates)
-        mesh.tangents = blend(\.tangents, normalize: true)
-        mesh.bitangents = blend(\.bitangents, normalize: true)
-        mesh.colors = blend(\.colors)
+        mesh.cornerAttributes = combined.blended(blends)
         return mesh
     }
 }

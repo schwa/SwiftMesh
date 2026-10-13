@@ -83,8 +83,7 @@ public extension Mesh {
             .triangulated()
             .removingDegenerates()
             .toMesh(attributesFrom: p, q, invertQ: operation == .difference)
-        let hasAttributes = result.normals != nil || result.textureCoordinates != nil || result.tangents != nil || result.bitangents != nil || result.colors != nil
-        if options.mergeCoplanar, !hasAttributes {
+        if options.mergeCoplanar, result.cornerAttributes.cornerCount == 0 {
             result = result.mergingCoplanarFaces(angleTolerance: options.coplanarAngleTolerance, distanceTolerance: options.coplanarDistanceTolerance)
         }
         if !options.attributes.isEmpty {
