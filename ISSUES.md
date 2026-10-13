@@ -3452,3 +3452,25 @@ README.md, Sources/SwiftMesh/SwiftMesh.docc/SwiftMesh.md and Documentation/ have
 - Refresh Documentation/screenshot.png if the demo changed.
 
 ---
+
+## 167: Make BinPacking internal (drop library product)
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: api, effort:s
+created: 2026-10-13T20:19:26Z
++++
+
+BinPacking is a public library product, but it is only an implementation detail of atlas baking.
+
+Blocker: AtlasLayout.ChartPlacement.atlasRect is public and has type BinPacking.Rect<Int>, so Rect leaks into the SwiftMesh API.
+
+Plan:
+- Change atlasRect to a SwiftMesh-owned type (e.g. origin/size as SIMD2<Int>).
+- Remove the BinPacking library product from Package.swift.
+- Keep the BinPacking target and use package access (keeps BinPackingTests separate), or move the sources into SwiftMesh as internal.
+- Update PlanarChartsTests, SwiftMeshBenchmarks, and the README line about BinPacking.
+
+---
