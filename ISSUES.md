@@ -3367,3 +3367,61 @@ The demo wireframe views draw with SwiftUI Canvas + the CPU SoftwareRenderer (De
 Replace them with GraphicsContext3D from MetalSprocketsAddOns (the demo already imports MetalSprocketsAddOns for debug shaders). Keep the interactive view features: camera controls, vertex/edge hit-testing, and selection highlighting. Remove SoftwareRenderer if nothing else uses it.
 
 ---
+
+## 163: Replace MetalMesh.toMesh() with Mesh(metalMesh:) initializer
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: area:metal, effort:xs
+created: 2026-10-13T19:36:15Z
++++
+
+Conversions in the library use initializers (MetalMesh(mesh:device:), Mesh(vertexArrays:opposites:), Mesh(mdlMesh:device:)). MetalMesh.toMesh() is the odd one out.
+
+Add Mesh.init(metalMesh: MetalMesh) and remove toMesh() (or deprecate it first). Update callers in Sources and Tests (MetalMeshTests uses toMesh() ~17 times).
+
+Note: BooleanMesh.toMesh() and TriangleSoup.toMesh() exist too; consider them separately.
+
+---
+
+## 164: Make TriangleSoup internal
+
++++
+status: new
+priority: low
+kind: task
+labels: area:triangle-mesh, effort:s
+created: 2026-10-13T19:37:39Z
++++
+
+TriangleSoup is only an internal staging format: marching cubes, plane split, convex hull, and ModelIO import collect unwelded triangles, weld, then convert to Mesh.
+
+- Make TriangleSoup internal (package if another module needs it).
+- Remove the public CSG-on-soup API (TriangleSoup.csg/union/intersection/difference); callers can convert to Mesh and use Mesh CSG.
+- Remove it from SwiftMesh.docc and drop CSGOptions.weldTolerance if only the soup path used it.
+- Keep public entry points that return Mesh (e.g. Mesh.marchingCubes); check whether TriangleSoup.marchingCubes is used outside the module before hiding it.
+- Update TriangleSoupTests to @testable.
+
+---
+
+## 165: Load MetalMesh directly from ModelIO (MDLMesh and MDLAsset)
+
++++
+status: new
+priority: medium
+kind: feature
+labels: area:io, effort:s
+created: 2026-10-13T19:41:52Z
++++
+
+Today the only ModelIO path to a MetalMesh is manual: MTKMesh(mesh:device:) then MetalMesh(mtkMesh:). The asset loader returns [Mesh] only, so loading for rendering round-trips through half-edge topology and drops anything Mesh cannot store (extra UV/color sets, skinning, morph targets).
+
+Add:
+- MetalMesh(mdlMesh:device:) that wraps the MTKMesh step (including the packed-layout fix Mesh(mdlMesh:) already does).
+- Array<MetalMesh>(mdlAsset:device:applyingTransforms:) mirroring the [Mesh] asset loader. When applying transforms, positions/normals/tangents must be transformed in the vertex data.
+
+Related: #163 (initializer naming), #152 (toMesh drops attributes).
+
+---
