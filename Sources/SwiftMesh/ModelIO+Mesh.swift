@@ -17,7 +17,7 @@ public extension Mesh {
     /// Internally converts via MTKMesh → MetalMesh → Mesh.
     /// The resulting mesh is triangle-only with per-corner attributes preserved.
     init(mdlMesh: MDLMesh, device: MTLDevice) throws {
-        self = try MetalMesh(mdlMesh: mdlMesh, device: device).toMesh()
+        self = Mesh(metalMesh: try MetalMesh(mdlMesh: mdlMesh, device: device))
     }
 
     /// Ensure all MDL vertex attributes have packed offsets and strides.

@@ -49,7 +49,7 @@ let data = PLY.write(mesh, format: .ascii)
 // Between types
 let metalMesh = MetalMesh(mesh: mesh, device: device) // Mesh → MetalMesh (lossy)
 let metalMesh = MetalMesh(mesh: mesh, device: device, preserveTopology: true) // lossless
-let mesh = metalMesh.toMesh()              // MetalMesh → Mesh
+let mesh = Mesh(metalMesh: metalMesh)      // MetalMesh → Mesh
 ```
 
 ## Shape primitives
@@ -219,7 +219,7 @@ let (uvMesh, layout) = try mesh.bakingPlanarAtlas(
   - The index buffer gives the vertex of each half-edge.
   - `opposites[h]` gives the twin of half-edge `h`. Boundary half-edges have the value `UInt32.max`.
   - `vertToHalfedge[v]` gives one outgoing half-edge of vertex `v`.
-- With the corner table, `Mesh` to `MetalMesh` to `Mesh` keeps the triangle topology exactly. Without it, `toMesh()` matches vertices by position. Twins at attribute seams can then be different.
+- With the corner table, `Mesh` to `MetalMesh` to `Mesh` keeps the triangle topology exactly. Without it, `Mesh(metalMesh:)` matches vertices by position. Twins at attribute seams can then be different.
 
 ## Performance notes
 

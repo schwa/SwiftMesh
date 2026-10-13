@@ -3371,11 +3371,13 @@ Replace them with GraphicsContext3D from MetalSprocketsAddOns (the demo already 
 ## 163: Replace MetalMesh.toMesh() with Mesh(metalMesh:) initializer
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 labels: area:metal, effort:xs
 created: 2026-10-13T19:36:15Z
+updated: 2026-10-13T20:13:37Z
+closed: 2026-10-13T20:13:37Z
 +++
 
 Conversions in the library use initializers (MetalMesh(mesh:device:), Mesh(vertexArrays:opposites:), Mesh(mdlMesh:device:)). MetalMesh.toMesh() is the odd one out.

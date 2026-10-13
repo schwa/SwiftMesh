@@ -170,7 +170,7 @@ struct MetalMeshTests {
         let device = try requireDevice()
         let original = Mesh.octahedron(attributes: []).withFlatNormals()
         let metalMesh = MetalMesh(mesh: original, device: device, bufferLayout: .separateBuffers)
-        let restored = metalMesh.toMesh()
+        let restored = Mesh(metalMesh: metalMesh)
 
         #expect(restored.normals != nil)
         #expect(restored.vertexCount == original.vertexCount)
@@ -185,7 +185,7 @@ struct MetalMeshTests {
         let device = try requireDevice()
         let original = Mesh.tetrahedron(attributes: [])
         let metalMesh = MetalMesh(mesh: original, device: device)
-        let restored = metalMesh.toMesh()
+        let restored = Mesh(metalMesh: metalMesh)
 
         #expect(restored.vertexCount == original.vertexCount)
         #expect(restored.faceCount == original.faceCount)
@@ -197,7 +197,7 @@ struct MetalMeshTests {
         let device = try requireDevice()
         let original = Mesh.cube(attributes: []).withFlatNormals()
         let metalMesh = MetalMesh(mesh: original, device: device)
-        let restored = metalMesh.toMesh()
+        let restored = Mesh(metalMesh: metalMesh)
 
         #expect(restored.normals != nil)
         #expect(restored.validate().isEmpty)
@@ -213,7 +213,7 @@ struct MetalMeshTests {
         let device = try requireDevice()
         let original = Mesh.sphere(latitudeSegments: 4, longitudeSegments: 8, attributes: .textureCoordinates)
         let metalMesh = MetalMesh(mesh: original, device: device)
-        let restored = metalMesh.toMesh()
+        let restored = Mesh(metalMesh: metalMesh)
 
         #expect(restored.textureCoordinates != nil)
         #expect(restored.validate().isEmpty)
@@ -243,7 +243,7 @@ struct MetalMeshTests {
             ]
         )
         let metalMesh = MetalMesh(mesh: original, device: device)
-        let restored = metalMesh.toMesh()
+        let restored = Mesh(metalMesh: metalMesh)
 
         #expect(restored.submeshes.count == 2)
         #expect(restored.submeshes[0].faces.count == 1)
@@ -407,7 +407,7 @@ struct MetalMeshTests {
         #expect(metalMesh.vertexDescriptor.attributes.count == 3)
 
         // Round-trip back to a Mesh — should produce a single triangle.
-        let restored = metalMesh.toMesh()
+        let restored = Mesh(metalMesh: metalMesh)
         #expect(restored.vertexCount == 3)
         #expect(restored.faceCount == 1)
         #expect(restored.normals != nil)
@@ -493,7 +493,7 @@ struct MetalMeshTests {
 
         #expect(metalMesh.submeshes[0].indices == [0, 1, 2])
         #expect(metalMesh.submeshes[1].indices == [1, 3, 2])
-        let mesh = metalMesh.toMesh()
+        let mesh = Mesh(metalMesh: metalMesh)
         #expect(Set(mesh.topology.faces.map { Set(mesh.facePositions($0.id).map { [$0.x, $0.y] }) }) == [[[0, 0], [1, 0], [0, 1]], [[1, 0], [1, 1], [0, 1]]])
     }
 
@@ -514,7 +514,7 @@ struct MetalMeshTests {
         )
         var metalMesh = MetalMesh(vertexBuffers: [0: vBuf], vertexCount: 3, vertexDescriptor: descriptor, indexBuffer: iBuf, indexCount: 3)
         metalMesh.vertexBufferOffsets = [0: 16]
-        let mesh = metalMesh.toMesh()
+        let mesh = Mesh(metalMesh: metalMesh)
         #expect(Set(mesh.positions.map { [$0.x, $0.y, $0.z] }) == [[0, 0, 0], [1, 0, 0], [0, 1, 0]])
     }
 
@@ -532,7 +532,7 @@ struct MetalMeshTests {
         let metalMesh = MetalMesh(vertexBuffers: [0: vBuf], vertexCount: 3, vertexDescriptor: descriptor, indexBuffer: iBuf, indexCount: 3, indexType: .uint16)
         #expect(metalMesh.submeshes[0].indexType == .uint16)
         #expect(metalMesh.submeshes[0].indices == [0, 1, 2])
-        let mesh = metalMesh.toMesh()
+        let mesh = Mesh(metalMesh: metalMesh)
         #expect(mesh.faceCount == 1)
         #expect(mesh.vertexCount == 3)
     }
@@ -588,7 +588,7 @@ struct MetalMeshTests {
         let device = try requireDevice()
         let original = Mesh.icosahedron(attributes: []).withFlatNormals()
         let metalMesh = MetalMesh(mesh: original, device: device, preserveTopology: true)
-        let restored = metalMesh.toMesh()
+        let restored = Mesh(metalMesh: metalMesh)
 
         #expect(restored.validate().isEmpty)
         #expect(restored.faceCount == original.faceCount)
@@ -651,7 +651,7 @@ struct MetalMeshTests {
         // Icosahedron: closed manifold, position-only, no vertex splitting.
         let original = Mesh.icosahedron(attributes: [])
         let metalMesh = MetalMesh(mesh: original, device: device, preserveTopology: true)
-        let restored = metalMesh.toMesh()
+        let restored = Mesh(metalMesh: metalMesh)
 
         #expect(restored.validate().isEmpty)
         #expect(restored.topology.halfEdges.count == original.topology.halfEdges.count)
@@ -686,7 +686,7 @@ struct MetalMeshTests {
         // Confirm vertices were split
         #expect(metalMesh.vertexCount == 12)
 
-        let restored = metalMesh.toMesh()
+        let restored = Mesh(metalMesh: metalMesh)
         #expect(restored.validate().isEmpty)
         #expect(restored.faceCount == 4)
 
@@ -716,8 +716,8 @@ struct MetalMeshTests {
         let metalMeshLossy = MetalMesh(mesh: original, device: device, preserveTopology: false)
         let metalMeshLossless = MetalMesh(mesh: original, device: device, preserveTopology: true)
 
-        let restoredLossy = metalMeshLossy.toMesh()
-        let restoredLossless = metalMeshLossless.toMesh()
+        let restoredLossy = Mesh(metalMesh: metalMeshLossy)
+        let restoredLossless = Mesh(metalMesh: metalMeshLossless)
 
         // Both should be valid
         #expect(restoredLossy.validate().isEmpty)
@@ -743,13 +743,13 @@ struct MetalMeshTests {
 
         // Lossy path
         let metalMeshLossy = MetalMesh(mesh: mesh, device: device, preserveTopology: false)
-        let restoredLossy = metalMeshLossy.toMesh()
+        let restoredLossy = Mesh(metalMesh: metalMeshLossy)
         #expect(restoredLossy.validate().isEmpty)
         #expect(restoredLossy.faceCount == 2)
 
         // Lossless path
         let metalMeshLossless = MetalMesh(mesh: mesh, device: device, preserveTopology: true)
-        let restoredLossless = metalMeshLossless.toMesh()
+        let restoredLossless = Mesh(metalMesh: metalMeshLossless)
         #expect(restoredLossless.validate().isEmpty)
         #expect(restoredLossless.faceCount == 2)
 

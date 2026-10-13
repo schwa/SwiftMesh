@@ -138,7 +138,7 @@ public struct MetalMesh {
 
 // MARK: - Conversion to Mesh
 
-public extension MetalMesh {
+public extension Mesh {
     /// Convert a MetalMesh back to a Mesh.
     ///
     /// When ``opposites`` and ``vertToHalfedge`` are present (i.e. the mesh was
@@ -148,12 +148,12 @@ public extension MetalMesh {
     /// Otherwise, produces a triangle-only mesh with topology rebuilt via
     /// position deduplication (lossy: original twin wiring at seams with
     /// different per-corner attributes may not round-trip exactly).
-    func toMesh() -> Mesh {
-        let opposites = opposites.map { buffer in
-            let count = submeshes.reduce(0) { $0 + $1.indexCount }
+    init(metalMesh: MetalMesh) {
+        let opposites = metalMesh.opposites.map { buffer in
+            let count = metalMesh.submeshes.reduce(0) { $0 + $1.indexCount }
             return Array(UnsafeBufferPointer(start: buffer.contents().assumingMemoryBound(to: UInt32.self), count: count))
         }
-        return Mesh(vertexArrays: vertexArrays(), opposites: opposites)
+        self.init(vertexArrays: metalMesh.vertexArrays(), opposites: opposites)
     }
 }
 
