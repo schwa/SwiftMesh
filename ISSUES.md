@@ -3189,15 +3189,19 @@ The intended convention (v up or v down) is not documented. glTF and Metal textu
 ## 154: smoothNormals smooths across hard edges
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 created: 2026-10-13T16:27:56Z
+updated: 2026-10-13T17:30:11Z
+closed: 2026-10-13T17:30:11Z
 +++
 
 With attributes [.smoothNormals, .textureCoordinates], every corner of Mesh.cylinder gets a normal that differs from its face normal (756 of 756 corners), and the same for Mesh.cone (378 of 378). The cylinder caps are not flat: the rim normals are averaged with the side. The cone apex is one vertex, so all side faces share one averaged apex normal. There is no crease angle or other way to keep hard edges, so shapes with both curved and flat parts cannot be shaded correctly with .smoothNormals. .flatNormals gives faceted curved surfaces instead.
 
 Seen while comparing SwiftMesh generators with MetalSprocketsGLTF's viewer shapes, which keep caps flat and repeat the cone apex per segment.
+
+- `2026-10-13T17:30:11Z`: Added Mesh.withSmoothNormals(creaseAngle:) and applyAttributes(_:creaseAngle:); shape generators use Mesh.defaultCreaseAngle (60 degrees). Plain .smoothNormals elsewhere is unchanged.
 
 ---
 

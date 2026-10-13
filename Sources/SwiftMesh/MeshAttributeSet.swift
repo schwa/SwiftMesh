@@ -52,13 +52,14 @@ public struct MeshAttributes: OptionSet, Sendable {
 internal extension Mesh {
     /// Apply derived attributes (normals, tangents, bitangents) based on the requested set.
     /// Texture coordinates must already be assigned by the primitive before calling this.
-    mutating func applyAttributes(_ attributes: MeshAttributes) {
+    /// With `creaseAngle`, `.smoothNormals` keeps edges sharper than that angle hard (``withSmoothNormals(creaseAngle:)``).
+    mutating func applyAttributes(_ attributes: MeshAttributes, creaseAngle: Float? = nil) {
         attributes.validate()
 
         if attributes.contains(.flatNormals) {
             self = withFlatNormals()
         } else if attributes.contains(.smoothNormals) {
-            self = withSmoothNormals()
+            self = creaseAngle.map { withSmoothNormals(creaseAngle: $0) } ?? withSmoothNormals()
         }
 
         if attributes.contains(.invertedNormals), var existingNormals = normals {

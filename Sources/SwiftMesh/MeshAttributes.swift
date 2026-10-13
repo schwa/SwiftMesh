@@ -52,6 +52,40 @@ public extension Mesh {
         result.normals = normals
         return result
     }
+
+    /// The crease angle the shape generators use with `.smoothNormals`: 60 degrees.
+    static let defaultCreaseAngle: Float = .pi / 3
+
+    /// Returns a new mesh with smooth normals that keep hard edges.
+    ///
+    /// Each corner averages the normals of the faces around its vertex that are within `creaseAngle` (radians) of its
+    /// own face, so faces that meet at a sharper angle keep separate normals.
+    func withSmoothNormals(creaseAngle: Float) -> Mesh {
+        let faceNormals = topology.faces.map { faceNormal($0.id) }
+        var vertexFaces = [[Int]](repeating: [], count: topology.vertices.count)
+        for halfEdge in topology.halfEdges {
+            if let face = halfEdge.face {
+                vertexFaces[halfEdge.origin.raw].append(face.raw)
+            }
+        }
+        let threshold = cos(creaseAngle)
+        var normals = [SIMD3<Float>](repeating: .zero, count: topology.halfEdges.count)
+        for halfEdge in topology.halfEdges {
+            guard let face = halfEdge.face else {
+                continue
+            }
+            let ownNormal = faceNormals[face.raw]
+            var sum = SIMD3<Float>.zero
+            for other in vertexFaces[halfEdge.origin.raw] where simd_dot(ownNormal, faceNormals[other]) >= threshold {
+                sum += faceNormals[other]
+            }
+            normals[halfEdge.id.raw] = simd_length(sum) > 0 ? simd_normalize(sum) : ownNormal
+        }
+
+        var result = self
+        result.normals = normals
+        return result
+    }
 }
 
 // MARK: - UV Generation

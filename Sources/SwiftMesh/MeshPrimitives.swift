@@ -31,7 +31,7 @@ public extension Mesh {
         }
 
         mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -68,7 +68,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -98,7 +98,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -132,7 +132,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -176,7 +176,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 }
@@ -201,7 +201,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -224,7 +224,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -260,7 +260,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
     /// A circle (flat disc) in the XY plane, centered at the origin.
@@ -306,7 +306,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 }
@@ -454,7 +454,7 @@ public extension Mesh {
         } // end .textureCoordinates
 
         mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -524,7 +524,7 @@ public extension Mesh {
             mesh = mesh.withSphericalUVs()
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -583,7 +583,7 @@ public extension Mesh {
             mesh = mesh.withSphericalUVs()
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -643,7 +643,7 @@ public extension Mesh {
         }
 
         mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -724,7 +724,7 @@ public extension Mesh {
         }
 
         mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -849,7 +849,7 @@ public extension Mesh {
         }
 
         mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -1073,7 +1073,7 @@ public extension Mesh {
         }
 
         mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -1137,7 +1137,7 @@ public extension Mesh {
             mesh.textureCoordinates = uvs
         }
 
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -1219,7 +1219,7 @@ public extension Mesh {
         }
 
         mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 
@@ -1271,7 +1271,7 @@ public extension Mesh {
         }
 
         mesh = mesh.reversingWinding() // faces above are built clockwise; make them outward-facing
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 }
@@ -1310,7 +1310,7 @@ public extension Mesh {
         if attributes.contains(.textureCoordinates) {
             mesh = mesh.withSphericalUVs()
         }
-        mesh.applyAttributes(attributes)
+        mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh
     }
 }
