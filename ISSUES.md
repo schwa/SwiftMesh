@@ -3142,7 +3142,7 @@ Use case: glTF skins (inverseBindMatrices, joints) for MetalSprocketsGLTF / Meta
 
 ---
 
-## 152: MetalMesh.toMesh drops attributes, morph targets and skin
+## 152: Mesh(metalMesh:) drops attributes, morph targets and skin
 
 +++
 status: open
@@ -3150,10 +3150,10 @@ priority: low
 kind: enhancement
 labels: effort:l, area:metal
 created: 2026-10-13T00:42:29Z
-updated: 2026-10-13T17:31:15Z
+updated: 2026-10-13T20:53:15Z
 +++
 
-MetalMesh.toMesh() reads only position, normal, texcoord(0), tangent (as float3), bitangent and color(0). It ignores other attributes: texcoord and color sets above 0, float4 tangents, joint indices and weights, and custom attributes. It also drops morphTargets and skin, and it fails a precondition on non-triangle submeshes. Mesh has no place to store most of this data, so a MetalMesh -> Mesh -> MetalMesh round trip loses it.
+Mesh(metalMesh:) (formerly MetalMesh.toMesh(), renamed in #163) reads only position, normal, texcoord(0), tangent (as float3), bitangent and color(0). It ignores other attributes: texcoord and color sets above 0, float4 tangents, joint indices and weights, and custom attributes. It also drops morphTargets and skin, and it fails a precondition on non-triangle submeshes. Mesh has no place to store most of this data, so a MetalMesh -> Mesh -> MetalMesh round trip loses it.
 
 ---
 
