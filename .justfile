@@ -33,7 +33,6 @@ convert-docs:
         generate-documentation \
         --target SwiftMesh \
         --target SwiftMeshIO \
-        --target BinPacking \
         --enable-experimental-combined-documentation \
         --source-service github \
         --source-service-base-url https://github.com/schwa/SwiftMesh/blob/main \
@@ -53,7 +52,6 @@ generate-doccarchive:
         generate-documentation \
         --target SwiftMesh \
         --target SwiftMeshIO \
-        --target BinPacking \
         --enable-experimental-combined-documentation \
         --source-service github \
         --source-service-base-url https://github.com/schwa/SwiftMesh/blob/main \
@@ -80,7 +78,7 @@ update-api:
 
 check-docs-diagnostics:
     #!/usr/bin/env bash
-    for target in SwiftMesh SwiftMeshIO BinPacking; do
+    for target in SwiftMesh SwiftMeshIO; do
         swift package --disable-sandbox generate-documentation \
             --target "$target" \
             --diagnostics-file /tmp/docc-diagnostics.json \

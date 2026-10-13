@@ -11,7 +11,6 @@ let package = Package(
     products: [
         .library(name: "SwiftMesh", targets: ["SwiftMesh"]),
         .library(name: "SwiftMeshIO", targets: ["SwiftMeshIO"]),
-        .library(name: "BinPacking", targets: ["BinPacking"]),
         .library(name: "SwiftMeshMikkTSpace", targets: ["SwiftMeshMikkTSpace"])
     ],
     dependencies: [
@@ -43,7 +42,7 @@ let package = Package(
         ),
         .target(name: "BinPacking"),
         .executableTarget(name: "SwiftMeshBenchmarks", dependencies: ["SwiftMesh", "SwiftMeshIO", "BinPacking"]),
-        .testTarget(name: "SwiftMeshTests", dependencies: ["SwiftMesh"], resources: [.copy("Resources/ManifoldPolygons")]),
+        .testTarget(name: "SwiftMeshTests", dependencies: ["SwiftMesh", "BinPacking"], resources: [.copy("Resources/ManifoldPolygons")]),
         .testTarget(name: "SwiftMeshIOTests", dependencies: ["SwiftMeshIO"]),
         .testTarget(name: "BinPackingTests", dependencies: ["BinPacking"])
     ]

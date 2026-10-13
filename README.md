@@ -29,8 +29,6 @@ encoder.draw(metalMesh)
 
 **`SwiftMeshIO`** reads and writes PLY files in ASCII and binary format.
 
-**`BinPacking`** is a MaxRects 2D bin packer. SwiftMesh uses it to bake atlases. It is also a separate library product.
-
 ## Loading & conversion
 
 ```swift

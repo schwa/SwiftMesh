@@ -1,4 +1,4 @@
-import BinPacking
+internal import BinPacking
 import simd
 
 /// Layout produced by ``Mesh/bakingPlanarAtlas(texelsPerMeter:atlasSize:padding:normalAngleTolerance:planeOffsetTolerance:)``.
@@ -11,8 +11,10 @@ public struct AtlasLayout: Sendable {
     public struct ChartPlacement: Sendable {
         /// Faces that compose this chart.
         public var faces: [HalfEdgeTopology.FaceID]
-        /// Chart rectangle in atlas pixels (origin at minX/minY corner).
-        public var atlasRect: Rect<Int>
+        /// Minimum corner of the chart's rectangle in atlas pixels.
+        public var atlasOrigin: SIMD2<Int>
+        /// Size of the chart's rectangle in atlas pixels. When ``rotated`` is true, this size is already rotated.
+        public var atlasExtent: SIMD2<Int>
         /// World-space origin of the chart's plane.
         public var planeOrigin: SIMD3<Float>
         /// Chart-local U axis (unit vector lying in the chart's plane).
@@ -31,7 +33,8 @@ public struct AtlasLayout: Sendable {
 
         public init(
             faces: [HalfEdgeTopology.FaceID],
-            atlasRect: Rect<Int>,
+            atlasOrigin: SIMD2<Int>,
+            atlasExtent: SIMD2<Int>,
             planeOrigin: SIMD3<Float>,
             planeU: SIMD3<Float>,
             planeV: SIMD3<Float>,
@@ -40,7 +43,8 @@ public struct AtlasLayout: Sendable {
             rotated: Bool
         ) {
             self.faces = faces
-            self.atlasRect = atlasRect
+            self.atlasOrigin = atlasOrigin
+            self.atlasExtent = atlasExtent
             self.planeOrigin = planeOrigin
             self.planeU = planeU
             self.planeV = planeV
@@ -178,7 +182,8 @@ public extension Mesh {
 
             placements.append(AtlasLayout.ChartPlacement(
                 faces: chart.faces,
-                atlasRect: rect,
+                atlasOrigin: rect.origin,
+                atlasExtent: rect.size,
                 planeOrigin: chart.planeOrigin,
                 planeU: chart.tangent,
                 planeV: chart.bitangent,

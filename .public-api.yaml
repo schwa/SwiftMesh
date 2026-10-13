@@ -1,388 +1,1885 @@
 package: SwiftMesh
 access_level: public
 modules:
-- name: BinPacking
-  symbols:
-  - decl: 'public protocol RectScalar : Comparable, Decodable, Encodable, Hashable, Numeric, SIMDScalar, Sendable where Self.SIMD16Storage : Sendable, Self.SIMD2Storage : Sendable, Self.SIMD32Storage : Sendable, Self.SIMD4Storage : Sendable, Self.SIMD64Storage : Sendable, Self.SIMD8Storage : Sendable'
-  - decl: 'public struct MaxRectsPacker<Scalar> where Scalar : RectScalar'
-    members:
-    - decl: public enum Heuristic
-      members:
-      - decl: public case bestAreaFit
-      - decl: public case bestLongSideFit
-      - decl: public case bestShortSideFit
-      - decl: public case bottomLeft
-    - decl: 'public init(binSize: SIMD2<Scalar>, allowRotation: Bool = true, padding: Scalar = .zero, heuristic: MaxRectsPacker<Scalar>.Heuristic = .bestShortSideFit)'
-    - decl: 'public let allowRotation: Bool'
-    - decl: 'public let binSize: SIMD2<Scalar>'
-    - decl: 'public var heuristic: MaxRectsPacker<Scalar>.Heuristic'
-    - decl: 'public let padding: Scalar'
-    - decl: 'public mutating func pack(_ sizes: [SIMD2<Scalar>]) -> PackingResult<Int, Scalar>'
-    - decl: 'public mutating func pack<ID>(_ items: [PackingItem<ID, Scalar>]) -> PackingResult<ID, Scalar> where ID : Hashable, ID : Sendable'
-    - decl: public mutating func reset()
-  - decl: 'public struct PackedRect<ID, Scalar> where ID : Hashable, ID : Sendable, Scalar : RectScalar'
-    members:
-    - decl: 'public init(id: ID, rect: Rect<Scalar>, rotated: Bool)'
-    - decl: 'public var id: ID'
-    - decl: 'public var rect: Rect<Scalar>'
-    - decl: 'public var rotated: Bool'
-  - decl: 'public struct PackingItem<ID, Scalar> where ID : Hashable, ID : Sendable, Scalar : RectScalar'
-    members:
-    - decl: 'public init(id: ID, size: SIMD2<Scalar>)'
-    - decl: 'public var id: ID'
-    - decl: 'public var size: SIMD2<Scalar>'
-  - decl: 'public struct PackingResult<ID, Scalar> where ID : Hashable, ID : Sendable, Scalar : RectScalar'
-    members:
-    - decl: 'public init(placements: [PackedRect<ID, Scalar>], unplaced: [ID], binSize: SIMD2<Scalar>)'
-    - decl: 'public var allPlaced: Bool { get }'
-    - decl: 'public var binSize: SIMD2<Scalar>'
-    - decl: 'public var placements: [PackedRect<ID, Scalar>]'
-    - decl: 'public var unplaced: [ID]'
-    - decl: 'public subscript(id: ID) -> PackedRect<ID, Scalar>? { get }'
-  - decl: 'public struct Rect<Scalar> where Scalar : RectScalar'
-    members:
-    - decl: 'public init(origin: SIMD2<Scalar>, size: SIMD2<Scalar>)'
-    - decl: 'public init(size: SIMD2<Scalar>)'
-    - decl: 'public init(x: Scalar, y: Scalar, width: Scalar, height: Scalar)'
-    - decl: 'public var area: Scalar { get }'
-    - decl: 'public var height: Scalar { get }'
-    - decl: 'public var max: SIMD2<Scalar> { get }'
-    - decl: 'public var maxX: Scalar { get }'
-    - decl: 'public var maxY: Scalar { get }'
-    - decl: 'public var minX: Scalar { get }'
-    - decl: 'public var minY: Scalar { get }'
-    - decl: 'public var origin: SIMD2<Scalar>'
-    - decl: 'public var size: SIMD2<Scalar>'
-    - decl: 'public var width: Scalar { get }'
-    - decl: 'public func contains(_ other: Rect<Scalar>) -> Bool'
-    - decl: 'public func intersects(_ other: Rect<Scalar>) -> Bool'
-  - decl: public enum BinPackingError
-    members:
-    - decl: public case outOfSpace
-  extensions:
-  - extended_module: Swift
 - name: SwiftMesh
   symbols:
   - decl: public struct AtlasLayout
+    doc: |-
+      Layout produced by ``Mesh/bakingPlanarAtlas(texelsPerMeter:atlasSize:padding:normalAngleTolerance:planeOffsetTolerance:)``.
+
+      Describes the final atlas dimensions and, for each chart, the pixel rectangle it
+      occupies plus the chart-local plane basis needed to splat 3D positions back into
+      atlas pixels (e.g. from a ray-traced visibility pass).
+    source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:9
     members:
     - decl: public struct ChartPlacement
+      doc: Where one planar chart landed in the atlas, and the plane basis to map world points to its pixels.
+      source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:11
       members:
-      - decl: 'public init(faces: [HalfEdgeTopology.FaceID], atlasRect: Rect<Int>, planeOrigin: SIMD3<Float>, planeU: SIMD3<Float>, planeV: SIMD3<Float>, worldExtent: SIMD2<Float>, planeMin: SIMD2<Float>, rotated: Bool)'
-      - decl: 'public var atlasRect: Rect<Int>'
+      - decl: 'public init(faces: [HalfEdgeTopology.FaceID], atlasOrigin: SIMD2<Int>, atlasExtent: SIMD2<Int>, planeOrigin: SIMD3<Float>, planeU: SIMD3<Float>, planeV: SIMD3<Float>, worldExtent: SIMD2<Float>, planeMin: SIMD2<Float>, rotated: Bool)'
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:34
+      - decl: 'public var atlasExtent: SIMD2<Int>'
+        doc: Size of the chart's rectangle in atlas pixels. When ``rotated`` is true, this size is already rotated.
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:17
+      - decl: 'public var atlasOrigin: SIMD2<Int>'
+        doc: Minimum corner of the chart's rectangle in atlas pixels.
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:15
       - decl: 'public var faces: [HalfEdgeTopology.FaceID]'
+        doc: Faces that compose this chart.
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:13
       - decl: 'public var planeMin: SIMD2<Float>'
+        doc: |-
+          Chart-local UV offset that maps a vertex into [0, worldExtent].
+
+          Given a vertex `p`, its chart-local 2D coord is
+          `SIMD2(dot(p - planeOrigin, planeU), dot(p - planeOrigin, planeV)) - planeMin`.
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:30
       - decl: 'public var planeOrigin: SIMD3<Float>'
+        doc: World-space origin of the chart's plane.
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:19
       - decl: 'public var planeU: SIMD3<Float>'
+        doc: Chart-local U axis (unit vector lying in the chart's plane).
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:21
       - decl: 'public var planeV: SIMD3<Float>'
+        doc: Chart-local V axis (unit vector lying in the chart's plane).
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:23
       - decl: 'public var rotated: Bool'
+        doc: Whether the chart was rotated 90° during packing (swap U/V when sampling).
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:32
       - decl: 'public var worldExtent: SIMD2<Float>'
-    - decl: 'public init(atlasSize: SIMD2<Int>, charts: [AtlasLayout.ChartPlacement])'
+        doc: World-space extent of the chart's 2D bounding rect (width along U, height along V).
+        source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:25
+    - decl: 'public init(atlasSize: SIMD2<Int>, charts: [ChartPlacement])'
+      doc: Creates a layout. `Mesh.bakingPlanarAtlas` produces these; callers rarely need to.
+      source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:63
     - decl: 'public var atlasSize: SIMD2<Int>'
-    - decl: 'public var charts: [AtlasLayout.ChartPlacement]'
+      doc: Atlas dimensions in pixels.
+      source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:58
+    - decl: 'public var charts: [ChartPlacement]'
+      doc: One entry per packed chart, in placement order.
+      source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:60
+  - decl: public struct CSGOptions
+    doc: |-
+      Post-processing and tolerances for mesh CSG.
+
+      The robust Boolean itself needs no tolerances: its precision comes from the inputs'
+      bounding boxes, and exact ties are broken symbolically.
+    source: Sources/SwiftMesh/CSG.swift:112
+    members:
+    - decl: 'public init(mergeCoplanar: Bool = true, coplanarAngleTolerance: Float = 1e-4, coplanarDistanceTolerance: Float = 1e-4, attributes: MeshAttributes = [])'
+      doc: Creates options. The defaults match `union`/`intersection`/`difference` without arguments.
+      source: Sources/SwiftMesh/CSG.swift:125
+    - decl: 'public var attributes: MeshAttributes'
+      doc: |-
+        Attributes to derive on the result (for example `.flatNormals`), replacing those
+        interpolated from the inputs.
+      source: Sources/SwiftMesh/CSG.swift:122
+    - decl: 'public var coplanarAngleTolerance: Float'
+      doc: Maximum angle (radians) between normals for faces to count as coplanar.
+      source: Sources/SwiftMesh/CSG.swift:117
+    - decl: 'public var coplanarDistanceTolerance: Float'
+      doc: Maximum distance between planes for faces to count as coplanar.
+      source: Sources/SwiftMesh/CSG.swift:119
+    - decl: 'public var mergeCoplanar: Bool'
+      doc: |-
+        Merge adjacent coplanar triangles back into n-gons. Skipped when the result carries
+        per-corner attributes, because merging would drop them.
+      source: Sources/SwiftMesh/CSG.swift:115
   - decl: public struct HalfEdgeTopology
+    doc: |-
+      A pure combinatorial half-edge topology structure.
+
+      Stores only vertex IDs, half-edges, and faces with their wiring
+      (next/prev/twin). No positions or geometry — pair with external
+      attribute storage (positions, normals, UVs, etc.) to form a mesh.
+    source: Sources/SwiftMesh/HalfEdgeTopology.swift:10
     members:
     - decl: public struct Face
+      doc: 'A face: one outer loop and any number of hole loops.'
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:43
       members:
-      - decl: 'public var edge: HalfEdgeTopology.HalfEdgeID?'
-      - decl: 'public var holeEdges: [HalfEdgeTopology.HalfEdgeID]'
-      - decl: 'public let id: HalfEdgeTopology.FaceID'
+      - decl: 'public var edge: HalfEdgeID?'
+        doc: A half-edge on the outer loop, or `nil` if the face is tombstoned.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:46
+      - decl: 'public var holeEdges: [HalfEdgeID]'
+        doc: One half-edge on each hole loop.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:48
+      - decl: 'public let id: FaceID'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:44
     - decl: public struct FaceDefinition
+      doc: A face definition for building topology from indexed vertex references.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:64
       members:
       - decl: 'public init(outer: [Int], holes: [[Int]] = [])'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:70
       - decl: 'public var holes: [[Int]]'
+        doc: Vertex indices of each hole loop.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:68
       - decl: 'public var outer: [Int]'
+        doc: Vertex indices of the outer loop, counter-clockwise when viewed from the front.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:66
     - decl: public struct FaceID
+      doc: A face index. `raw` indexes ``faces`` and per-face data.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:16
       members:
       - decl: 'public init(raw: Int)'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:16
       - decl: 'public var description: String { get }'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:179
       - decl: 'public let raw: Int'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:16
     - decl: public struct HalfEdge
+      doc: |-
+        A directed edge belonging to one face loop. Its destination is `next`'s origin.
+
+        A half-edge with `next == nil` is tombstoned (removed by an editing operation).
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:28
       members:
-      - decl: 'public var face: HalfEdgeTopology.FaceID?'
-      - decl: 'public let id: HalfEdgeTopology.HalfEdgeID'
-      - decl: 'public var next: HalfEdgeTopology.HalfEdgeID?'
-      - decl: 'public var origin: HalfEdgeTopology.VertexID'
-      - decl: 'public var prev: HalfEdgeTopology.HalfEdgeID?'
-      - decl: 'public var twin: HalfEdgeTopology.HalfEdgeID?'
+      - decl: 'public var face: FaceID?'
+        doc: The face on the half-edge's left, which owns this loop.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:39
+      - decl: 'public let id: HalfEdgeID'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:29
+      - decl: 'public var next: HalfEdgeID?'
+        doc: The following half-edge in the same face loop.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:35
+      - decl: 'public var origin: VertexID'
+        doc: The vertex the half-edge starts at.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:31
+      - decl: 'public var prev: HalfEdgeID?'
+        doc: The preceding half-edge in the same face loop.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:37
+      - decl: 'public var twin: HalfEdgeID?'
+        doc: The opposite half-edge in the neighboring face, or `nil` on a boundary.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:33
     - decl: public struct HalfEdgeID
+      doc: A half-edge index. `raw` indexes ``halfEdges`` and per-corner attribute arrays.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:14
       members:
       - decl: 'public init(raw: Int)'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:14
       - decl: 'public var description: String { get }'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:173
       - decl: 'public let raw: Int'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:14
     - decl: public struct Vertex
+      doc: A vertex and one of its outgoing half-edges.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:19
       members:
-      - decl: 'public var edge: HalfEdgeTopology.HalfEdgeID?'
-      - decl: 'public let id: HalfEdgeTopology.VertexID'
+      - decl: 'public var edge: HalfEdgeID?'
+        doc: An outgoing half-edge, or `nil` if the vertex is unused or tombstoned.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:22
+      - decl: 'public let id: VertexID'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:20
     - decl: public struct VertexID
+      doc: A vertex index. `raw` indexes ``vertices`` and per-vertex arrays such as `Mesh.positions`.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:12
       members:
       - decl: 'public init(raw: Int)'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:12
       - decl: 'public var description: String { get }'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:176
       - decl: 'public let raw: Int'
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:12
     - decl: public init()
-    - decl: 'public init(vertexCount: Int, faces faceDefinitions: [HalfEdgeTopology.FaceDefinition])'
-    - decl: 'public var faces: [HalfEdgeTopology.Face] { get }'
-    - decl: 'public var halfEdges: [HalfEdgeTopology.HalfEdge] { get }'
+      doc: Creates an empty topology.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:61
+    - decl: 'public init(vertexCount: Int, faces faceDefinitions: [FaceDefinition])'
+      doc: |-
+        Build topology from a vertex count and face definitions (with optional holes).
+
+        Vertex indices are preserved (topology vertex N corresponds to external vertex N).
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:79
+    - decl: 'public var boundaryLoopCount: Int { get }'
+      doc: Number of boundary loops. Zero means watertight.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:54
+    - decl: 'public var eulerCharacteristic: Int { get }'
+      doc: V - E + F over live elements, with hole rings counted as -1 each.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:174
+    - decl: 'public var faces: [Face] { get }'
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:58
+    - decl: 'public var halfEdges: [HalfEdge] { get }'
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:57
+    - decl: 'public var hasConsistentGenus: Bool { get }'
+      doc: Every component has a valid (non-negative integer) genus.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:249
+    - decl: 'public var hasDanglingEdges: Bool { get }'
+      doc: Live half-edges with no face, or whose twin has no face.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:27
+    - decl: 'public var hasDuplicateEdges: Bool { get }'
+      doc: More than two half-edges connect the same pair of vertices, or two share a direction.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:94
+    - decl: 'public var hasDuplicateFaces: Bool { get }'
+      doc: Two live faces use the same set of vertices.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:82
+    - decl: 'public var hasInconsistentFaceWinding: Bool { get }'
+      doc: Whether ``inconsistentWindingEdges()`` is non-empty.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:267
+    - decl: 'public var hasNonConsistentNextPrev: Bool { get }'
+      doc: Some half-edge's next/prev links are not mutual.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:44
+    - decl: 'public var hasNonConsistentTwins: Bool { get }'
+      doc: Some half-edge's twin does not point back to it.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:34
+    - decl: 'public var hasOrphanedVertices: Bool { get }'
+      doc: Vertices that no live half-edge originates from.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:15
+    - decl: 'public var hasZeroValenceVertices: Bool { get }'
+      doc: Alias for ``hasOrphanedVertices``.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:24
     - decl: 'public var isManifold: Bool { get }'
-    - decl: 'public var vertices: [HalfEdgeTopology.Vertex]'
-    - decl: public func boundaryLoops() -> [[HalfEdgeTopology.VertexID]]
-    - decl: '@discardableResult public mutating func collapseEdge(_ heID: HalfEdgeTopology.HalfEdgeID) -> HalfEdgeTopology.VertexID?'
-    - decl: 'public mutating func deleteEdge(_ heID: HalfEdgeTopology.HalfEdgeID)'
-    - decl: 'public func dest(of e: HalfEdgeTopology.HalfEdgeID) -> HalfEdgeTopology.VertexID?'
-    - decl: 'public func destViaNext(of e: HalfEdgeTopology.HalfEdgeID) -> HalfEdgeTopology.VertexID?'
-    - decl: 'public func halfEdgeLoop(for face: HalfEdgeTopology.FaceID) -> [HalfEdgeTopology.HalfEdgeID]'
-    - decl: 'public func holeVertexLoops(for face: HalfEdgeTopology.FaceID) -> [[HalfEdgeTopology.VertexID]]'
-    - decl: 'public func neighborFaces(of face: HalfEdgeTopology.FaceID) -> [HalfEdgeTopology.FaceID]'
-    - decl: public func undirectedEdges() -> [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
+      doc: |-
+        Whether this topology is a closed 2-manifold.
+
+        A closed 2-manifold has:
+        - Every half-edge paired with exactly one twin (no boundary edges)
+        - Every half-edge assigned to a face
+        - Every vertex surrounded by a single, complete fan of faces
+          (no non-manifold vertices where multiple fans meet at a pinch point)
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:379
+    - decl: 'public var valences: [Int] { get }'
+      doc: Number of distinct neighbor vertices per vertex, indexed by `VertexID.raw`.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:59
+    - decl: 'public var vertices: [Vertex]'
+      doc: All vertices, indexed by `VertexID.raw`.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:52
+    - decl: public func boundaryLoops() -> [[VertexID]]
+      doc: Returns closed loops of vertex IDs formed by boundary half-edges (those with no twin).
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:469
+    - decl: '@discardableResult public mutating func collapseEdge(_ heID: HalfEdgeID) -> VertexID?'
+      doc: |-
+        Collapse an edge, merging its destination vertex into its origin vertex.
+
+        The half-edge's origin is kept; the destination vertex is tombstoned.
+        Adjacent triangle faces that become degenerate (2 edges) are removed.
+        Returns the surviving vertex ID, or nil if the collapse is invalid.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:632
+    - decl: 'public mutating func deleteEdge(_ heID: HalfEdgeID)'
+      doc: |-
+        Delete an edge between two faces.
+        If the edge is interior (shared by two faces), the two faces are merged into one.
+        If the edge is boundary (one face), it is removed from that face.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:527
+    - decl: 'public func dest(of e: HalfEdgeID) -> VertexID?'
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:153
+    - decl: 'public func destViaNext(of e: HalfEdgeID) -> VertexID?'
+      doc: |-
+        Destination vertex of a half-edge, found via the next pointer.
+        Works even when the half-edge has no twin.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:162
+    - decl: 'public func edgeLoop(from halfEdge: HalfEdgeID) -> [HalfEdgeID]'
+      doc: |-
+        The edge loop through `halfEdge`, one half-edge per edge, in walking order.
+
+        At each vertex with exactly four edges the loop continues straight through to the
+        opposite edge (Blender-style). It stops at vertices of any other valence (poles) and
+        at boundaries. A loop that returns to `halfEdge` is closed; otherwise the result runs
+        from one stopping vertex to the other and includes `halfEdge`.
+      source: Sources/SwiftMesh/EdgeLoop.swift:8
+    - decl: public func facesToFlipForConsistentWinding() -> Set<FaceID>?
+      doc: |-
+        Faces to reverse so every shared edge is used in opposite directions.
+
+        Propagates orientation from one face per connected component and flips the
+        smaller side. Returns `nil` if some component is non-orientable (for example a
+        Möbius strip), where no choice of flips works.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:276
+    - decl: '@discardableResult public mutating func flipEdge(_ halfEdge: HalfEdgeID) -> Bool'
+      doc: |-
+        Replace the edge shared by two triangles with the other diagonal of their quad.
+
+        Triangles (a, b, c) and (b, a, d) around edge a–b become (d, c, a) and (c, d, b).
+        The same half-edge ids are reused: `halfEdge` becomes d → c and its twin c → d.
+
+        - Returns: `false` (and changes nothing) if the edge is on a boundary, either face
+          is not a triangle or has holes, the opposite vertices coincide, or edge c–d already exists.
+      source: Sources/SwiftMesh/EdgeFlip.swift:10
+    - decl: 'public func halfEdgeLoop(for face: FaceID) -> [HalfEdgeID]'
+      doc: Return the ordered boundary of `face` as half-edge IDs.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:427
+    - decl: 'public func hasHighValenceVertices(threshold: Int) -> Bool'
+      doc: Whether any vertex has more than `threshold` neighbors (poles, bad merges).
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:77
+    - decl: 'public func holeVertexLoops(for face: FaceID) -> [[VertexID]]'
+      doc: Return the hole boundaries of `face` as arrays of vertex IDs.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:435
+    - decl: public func inconsistentWindingEdges() -> [(HalfEdgeID, HalfEdgeID)]
+      doc: |-
+        Pairs of faces that share an edge and use it in the same direction.
+
+        Faces are adjacent when they share an undirected edge, twinned or not. Boundary
+        edges (one face) are ignored, and edges with more than two faces are left to
+        `validate()`'s non-manifold warning.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:262
+    - decl: 'public func neighborFaces(of face: FaceID) -> [FaceID]'
+      doc: Returns faces that share an edge with the given face.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:440
+    - decl: public func surfaceComponents() -> [SurfaceComponent]
+      doc: Connected pieces (faces joined across twin edges) with their invariants.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:179
+    - decl: public func undirectedEdges() -> [(VertexID, VertexID)]
+      doc: Returns all unique undirected edges as (vertexA, vertexB) pairs.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:506
+    - decl: 'public func valenceHistogram() -> [Int : Int]'
+      doc: Map of valence → number of vertices with that valence.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:72
     - decl: public func validate() -> [ValidationIssue]
-    - decl: 'public func vertexLoop(for face: HalfEdgeTopology.FaceID) -> [HalfEdgeTopology.VertexID]'
+      doc: |-
+        Validates the consistency of the half-edge topology.
+
+        Returns an empty array if valid, or one ``ValidationIssue`` per problem found.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:230
+    - decl: 'public func vertexLoop(for face: FaceID) -> [VertexID]'
+      doc: Return the ordered boundary of `face` as vertex IDs.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:419
   - decl: public struct Mesh
+    doc: |-
+      A mesh combining half-edge topology with SoA vertex/corner attributes.
+
+      Positions are per-vertex (indexed by `VertexID.raw`).
+      Normals, UVs, and colors can be per-vertex or per-corner (indexed by `HalfEdgeID.raw`).
+      Material assignment is per-face (indexed by `FaceID.raw`).
+    source: Sources/SwiftMesh/Mesh.swift:8
     members:
     - decl: public struct PlanarChart
+      doc: |-
+        A connected, coplanar group of faces.
+
+        Charts are produced by region-growing across the half-edge topology:
+        faces only merge when they share an edge *and* their planes are similar.
+        This keeps disconnected coplanar pieces (e.g. two parallel walls) in
+        separate charts.
+      source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:10
       members:
       - decl: 'public init(faces: [HalfEdgeTopology.FaceID], normal: SIMD3<Float>, tangent: SIMD3<Float>, bitangent: SIMD3<Float>, planeOrigin: SIMD3<Float>, worldExtent: SIMD2<Float>, planeMin: SIMD2<Float>)'
+        source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:26
       - decl: 'public var bitangent: SIMD3<Float>'
+        doc: In-plane unit vector forming the chart's local V axis (`normal × tangent`).
+        source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:18
       - decl: 'public var faces: [HalfEdgeTopology.FaceID]'
+        doc: Faces belonging to this chart, in discovery order.
+        source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:12
       - decl: 'public var normal: SIMD3<Float>'
+        doc: Average plane normal (area-weighted, unit length).
+        source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:14
       - decl: 'public var planeMin: SIMD2<Float>'
+        doc: Minimum corner (in plane-local UV) — subtract this when projecting vertices.
+        source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:24
       - decl: 'public var planeOrigin: SIMD3<Float>'
+        doc: World-space origin used when projecting positions into chart-local UV.
+        source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:20
       - decl: 'public var tangent: SIMD3<Float>'
+        doc: In-plane unit vector forming the chart's local U axis.
+        source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:16
       - decl: 'public var worldExtent: SIMD2<Float>'
+        doc: Width and height (in world units) of the chart's 2D bounding rect in plane-local UV.
+        source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:22
     - decl: public struct Submesh
+      doc: |-
+        A named group of faces within the mesh.
+
+        Submeshes typically map to materials. Each becomes one `MetalMesh.Submesh` on export.
+      source: Sources/SwiftMesh/Mesh.swift:63
       members:
       - decl: 'public init(label: String? = nil, faces: [HalfEdgeTopology.FaceID])'
+        source: Sources/SwiftMesh/Mesh.swift:69
       - decl: 'public var faces: [HalfEdgeTopology.FaceID]'
+        doc: The faces in this group. A face should appear in at most one submesh.
+        source: Sources/SwiftMesh/Mesh.swift:67
       - decl: 'public var label: String?'
+        doc: An optional name, carried through to exported submeshes.
+        source: Sources/SwiftMesh/Mesh.swift:65
+    - decl: public struct VertexArrays
+      doc: A mesh flattened to indexed per-vertex arrays, as ``MetalMesh`` stores it but in CPU memory.
+      source: Sources/SwiftMesh/Mesh+VertexArrays.swift:5
+      members:
+      - decl: 'public init(attributes: [MetalMesh.VertexAttributeData], submeshes: [MetalMesh.SubmeshIndices], sourceVertices: [HalfEdgeTopology.VertexID])'
+        source: Sources/SwiftMesh/Mesh+VertexArrays.swift:15
+      - decl: 'public var attributes: [MetalMesh.VertexAttributeData]'
+        doc: Positions, then whichever of normals, texture coordinates, tangents, bitangents and colors the mesh has.
+        source: Sources/SwiftMesh/Mesh+VertexArrays.swift:7
+      - decl: 'public var sourceVertices: [HalfEdgeTopology.VertexID]'
+        doc: For each output vertex, the mesh vertex its position comes from.
+        source: Sources/SwiftMesh/Mesh+VertexArrays.swift:11
+      - decl: 'public var submeshes: [MetalMesh.SubmeshIndices]'
+        doc: One per ``Mesh/submeshes`` entry, as triangle lists.
+        source: Sources/SwiftMesh/Mesh+VertexArrays.swift:9
+      - decl: 'public var vertexCount: Int { get }'
+        source: Sources/SwiftMesh/Mesh+VertexArrays.swift:13
+      - decl: 'public func cornerTable() -> (opposites: [UInt32], vertexToHalfEdge: [UInt32])'
+        doc: |-
+          Corner-table topology over the concatenated submesh indices; see ``MetalMesh/opposites``.
+
+          Half-edges pair up when their source vertices match. Boundary and non-manifold edges get `UInt32.max`.
+        source: Sources/SwiftMesh/VertexArrays+Decoding.swift:28
     - decl: public enum BorderDirection
+      doc: |-
+        Whether the border loop is inset (toward the face center) or outset
+        (away from the face center).
+      source: Sources/SwiftMesh/Wireframe.swift:117
       members:
       - decl: public case inside
+        doc: Shrink each face boundary inward toward the centroid.
+        source: Sources/SwiftMesh/Wireframe.swift:119
       - decl: public case outside
-    - decl: 'public init(mdlMesh: MDLMesh, device: any MTLDevice) throws'
+        doc: Expand each face boundary outward away from the centroid.
+        source: Sources/SwiftMesh/Wireframe.swift:121
+    - decl: 'public init(mdlMesh: MDLMesh, device: MTLDevice) throws'
+      doc: |-
+        Create a Mesh from a ModelIO mesh.
+
+        Internally converts via MTKMesh → MetalMesh → Mesh.
+        The resulting mesh is triangle-only with per-corner attributes preserved.
+      source: Sources/SwiftMesh/ModelIO+Mesh.swift:19
+    - decl: 'public init(metalMesh: MetalMesh)'
+      doc: |-
+        Convert a MetalMesh back to a Mesh.
+
+        When ``opposites`` and ``vertToHalfedge`` are present (i.e. the mesh was
+        created with `preserveTopology: true`), the half-edge topology is rebuilt
+        with exact twin wiring from the corner table — no information is lost.
+
+        Otherwise, produces a triangle-only mesh with topology rebuilt via
+        position deduplication (lossy: original twin wiring at seams with
+        different per-corner attributes may not round-trip exactly).
+      source: Sources/SwiftMesh/MetalMesh.swift:151
     - decl: 'public init(positions: [SIMD3<Float>], faces: [HalfEdgeTopology.FaceDefinition])'
+      doc: Build from indexed vertex positions and face definitions with holes.
+      source: Sources/SwiftMesh/Mesh.swift:110
     - decl: 'public init(positions: [SIMD3<Float>], faces: [[Int]])'
-    - decl: 'public init(topology: HalfEdgeTopology, positions: [SIMD3<Float>], normals: [SIMD3<Float>]? = nil, textureCoordinates: [SIMD2<Float>]? = nil, tangents: [SIMD3<Float>]? = nil, bitangents: [SIMD3<Float>]? = nil, colors: [SIMD4<Float>]? = nil, submeshes: [Mesh.Submesh]? = nil)'
-    - decl: 'public var bitangents: [SIMD3<Float>]?'
+      doc: Build from indexed vertex positions and face definitions.
+      source: Sources/SwiftMesh/Mesh.swift:103
+    - decl: 'public init(topology: HalfEdgeTopology, positions: [SIMD3<Float>], normals: [SIMD3<Float>]? = nil, textureCoordinates: [SIMD2<Float>]? = nil, tangents: [SIMD3<Float>]? = nil, bitangents: [SIMD3<Float>]? = nil, colors: [SIMD4<Float>]? = nil, submeshes: [Submesh]? = nil)'
+      doc: |-
+        Creates a mesh from existing topology and attribute arrays.
+
+        - Parameters:
+          - topology: The wiring.
+          - positions: One position per topology vertex.
+          - normals: Optional per-corner normals, one per half-edge.
+          - textureCoordinates: Optional per-corner UVs, one per half-edge.
+          - tangents: Optional per-corner tangents, one per half-edge.
+          - bitangents: Optional per-corner bitangents, one per half-edge.
+          - colors: Optional per-corner colors, one per half-edge.
+          - submeshes: Face groups. `nil` puts every face in one submesh.
+      source: Sources/SwiftMesh/Mesh.swift:86
+    - decl: 'public init(vertexArrays arrays: VertexArrays, opposites: [UInt32]? = nil)'
+      doc: |-
+        Rebuilds a triangle mesh from indexed vertex arrays.
+
+        Output vertices with the same ``Mesh/VertexArrays/sourceVertices`` entry become one mesh
+        vertex. Each triangle becomes a face; each submesh keeps its label. With `opposites`
+        (see ``Mesh/VertexArrays/cornerTable()``), twins are wired exactly; otherwise topology is
+        rebuilt from shared vertices. Signed (`.float4`) tangents keep only xyz.
+      source: Sources/SwiftMesh/VertexArrays+Decoding.swift:61
+    - decl: 'public var bitangents: [SIMD3<Float>]? { get set }'
+      doc: Per-corner bitangents. When nil, bitangents are not assigned.
+      source: Sources/SwiftMesh/Mesh.swift:41
     - decl: 'public var bounds: (min: SIMD3<Float>, max: SIMD3<Float>) { get }'
+      doc: The axis-aligned bounding box of the mesh as (min, max).
+      source: Sources/SwiftMesh/Mesh.swift:205
     - decl: 'public var center: SIMD3<Float> { get }'
-    - decl: 'public var colors: [SIMD4<Float>]?'
+      doc: Compute the center (centroid) of the mesh.
+      source: Sources/SwiftMesh/Mesh.swift:143
+    - decl: 'public var colors: [SIMD4<Float>]? { get set }'
+      doc: Per-corner colors. When nil, colors are not assigned.
+      source: Sources/SwiftMesh/Mesh.swift:47
     - decl: 'public var edgeCount: Int { get }'
+      doc: Number of unique undirected edges.
+      source: Sources/SwiftMesh/Mesh.swift:126
     - decl: 'public var faceCount: Int { get }'
+      doc: Number of faces.
+      source: Sources/SwiftMesh/Mesh.swift:123
     - decl: 'public var isManifold: Bool { get }'
-    - decl: 'public var normals: [SIMD3<Float>]?'
+      doc: |-
+        Whether this mesh is a closed 2-manifold (no boundary edges, no
+        non-manifold vertices).
+      source: Sources/SwiftMesh/Mesh.swift:130
+    - decl: 'public var normals: [SIMD3<Float>]? { get set }'
+      doc: Per-corner normals. When nil, normals are not assigned.
+      source: Sources/SwiftMesh/Mesh.swift:23
     - decl: 'public var positions: [SIMD3<Float>]'
-    - decl: 'public var submeshes: [Mesh.Submesh]'
-    - decl: 'public var tangents: [SIMD3<Float>]?'
-    - decl: 'public var textureCoordinates: [SIMD2<Float>]?'
+      doc: Vertex positions. Count must equal `topology.vertices.count`.
+      source: Sources/SwiftMesh/Mesh.swift:15
+    - decl: 'public var signedTangents: [SIMD4<Float>]? { get }'
+      doc: |-
+        Per-corner glTF / MikkTSpace tangents: xyz is the tangent, w is the bitangent sign (±1).
+
+        w is -1 where `cross(normal, tangent)` points away from the bitangent. Nil unless the mesh has normals,
+        tangents and bitangents.
+      source: Sources/SwiftMesh/Mesh+VertexArrays.swift:26
+    - decl: 'public var submeshes: [Submesh]'
+      doc: |-
+        Face groups. Each submesh references a subset of faces.
+        Default: one submesh containing all faces.
+      source: Sources/SwiftMesh/Mesh.swift:56
+    - decl: 'public var tangents: [SIMD3<Float>]? { get set }'
+      doc: Per-corner tangents. When nil, tangents are not assigned.
+      source: Sources/SwiftMesh/Mesh.swift:35
+    - decl: 'public var textureCoordinates: [SIMD2<Float>]? { get set }'
+      doc: Per-corner texture coordinates. When nil, UVs are not assigned.
+      source: Sources/SwiftMesh/Mesh.swift:29
     - decl: 'public var topology: HalfEdgeTopology'
+      doc: The combinatorial topology (vertices, half-edges, faces, wiring).
+      source: Sources/SwiftMesh/Mesh.swift:10
     - decl: 'public var vertexCount: Int { get }'
+      doc: Number of vertices.
+      source: Sources/SwiftMesh/Mesh.swift:120
+    - decl: 'public static let defaultCreaseAngle: Float'
+      doc: 'The crease angle the shape generators use with `.smoothNormals`: 60 degrees.'
+      source: Sources/SwiftMesh/MeshAttributes.swift:57
     - decl: 'public func bakingPlanarAtlas(texelsPerMeter: Float = 256, atlasSize: SIMD2<Int> = [2_048, 2_048], padding: Int = 2, normalAngleTolerance: Float = 5 * .pi / 180, planeOffsetTolerance: Float = 0.01) throws -> (mesh: Mesh, atlas: AtlasLayout)'
-    - decl: 'public func border(thickness: Float = 0.02, direction: Mesh.BorderDirection = .inside, triangulate: Bool = false, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        Generate a planar UV atlas by partitioning into coplanar charts and bin-packing them.
+
+        Each chart is projected into its own plane (using a chart-local tangent/bitangent
+        basis), bin-packed into atlas pixel space, and the resulting per-corner UVs are
+        written back to a new mesh. UVs are normalized to `[0, 1]^2`.
+
+        - Parameters:
+          - texelsPerMeter: Scale factor from world meters to atlas pixels. Higher = more
+            atlas resolution per surface area.
+          - atlasSize: Target atlas dimensions in pixels.
+          - padding: Pixels of padding between charts (and at atlas borders) to prevent bleed.
+          - normalAngleTolerance: Forwarded to ``planarCharts(normalAngleTolerance:planeOffsetTolerance:faces:)``.
+          - planeOffsetTolerance: Forwarded to ``planarCharts(normalAngleTolerance:planeOffsetTolerance:faces:)``.
+        - Returns: A new mesh with `textureCoordinates` populated, plus the chart layout.
+        - Throws: ``AtlasBakingError/insufficientAtlasSpace(placed:total:)`` if any chart can't be placed.
+      source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:91
+    - decl: 'public func border(thickness: Float = 0.02, direction: BorderDirection = .inside, triangulate: Bool = false, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        Generate a "border" mesh: a quad-strip frame around every face.
+
+        For each face in the input mesh, an inset (or outset) copy of the
+        boundary loop is created, and quad faces are emitted connecting
+        the original boundary vertices to the offset boundary vertices.
+        The result looks like a picture-frame or "phat wireframe" that
+        follows the face topology instead of the edges.
+
+        - Parameters:
+          - thickness: How far to offset the inner/outer loop from the
+            original boundary, measured along the face plane.
+          - direction: Whether to inset or outset the loop.
+          - triangulate: If `true`, each quad in the border strip is split
+            into two triangles (simple fan, no earcut needed).
+          - attributes: Which derived attributes to compute on the result.
+        - Returns: A new mesh composed of border strips around every face.
+      source: Sources/SwiftMesh/Wireframe.swift:140
     - decl: 'public func catmullClarkSubdivided(iterations: Int = 1) -> Mesh'
+      doc: |-
+        Applies Catmull-Clark subdivision to a mesh.
+
+        Each face is split by inserting a face point at its centroid and edge
+        points at edge midpoints (adjusted by neighboring face points), then
+        connecting them to form quads. Works on meshes with any polygon type
+        (triangles, quads, n-gons) — the output is always quads.
+
+        Per-corner attributes (normals, UVs, tangents, colors) and submeshes
+        are not preserved. Call attribute-generation methods on the result
+        if needed.
+
+        - Parameter iterations: Number of subdivision passes. Each pass
+          roughly quadruples the face count.
+        - Returns: A new subdivided mesh.
+      source: Sources/SwiftMesh/Subdivision.swift:210
+    - decl: 'public func chamfered(distance: Float, segments: Int = 1, edges: Set<HalfEdgeTopology.HalfEdgeID>? = nil, attributes: MeshAttributes = []) -> Mesh?'
+      doc: |-
+        Bevel edges with a single flat face of width about `distance`.
+
+        Each chamfered edge becomes a quad strip. Faces shrink away from chamfered edges:
+        a corner between two chamfered edges moves `distance` inside both edges (in the face
+        plane); otherwise the corner slides `distance` along each unchamfered edge, so faces
+        on either side share the new point. Vertices touching chamfered edges get a patch
+        polygon when at least three distinct points surround them (for example a cube
+        corner with all three edges chamfered); with one chamfered edge the adjacent face
+        absorbs the cut instead.
+
+        With `segments` > 1 each strip curves into a rounded fillet: N quads along a quadratic
+        Bezier from one side to the other, with the original edge as the control point, so the
+        round meets both faces tangentially. Vertex patches follow the arcs; they are simple
+        polygons, not true spherical blends.
+
+        - Parameters:
+          - distance: How far the cut reaches from each chamfered edge along the faces.
+          - segments: Quads across each strip. 1 is a flat chamfer; more gives a fillet.
+          - edges: Half-edges to chamfer (either direction of an edge selects it). `nil`
+            chamfers every edge.
+          - attributes: Attributes to derive on the result. Input per-corner attributes
+            are not carried over.
+        - Returns: The chamfered mesh, or `nil` if the mesh is not a closed manifold.
+      source: Sources/SwiftMesh/EdgeChamfer.swift:27
+    - decl: public mutating func compact()
+      doc: Rebuild the mesh without tombstoned faces, vertices, and half-edges, remapping indices and per-corner attributes.
+      source: Sources/SwiftMesh/Decimation.swift:331
+    - decl: 'public func csg(_ operation: CSGOperation, _ other: Mesh, options: CSGOptions = .init()) -> Mesh'
+      doc: |-
+        Performs a CSG operation with the robust Boolean (a Swift port of Manifold's).
+
+        Both inputs must be closed manifolds; vertices at the same position (for example
+        split at UV seams) are merged first. For manifold inputs the result is always a
+        closed manifold: exact coincidences (touching or coplanar faces) are resolved by
+        symbolic perturbation, so touching solids union into one and a mesh minus itself is
+        empty. Degenerate slivers are removed, per-corner attributes are interpolated from
+        the inputs (an attribute is kept only if both inputs have it), and submeshes are
+        merged into one.
+
+        An empty operand (no faces) counts as the empty solid: union returns the other mesh,
+        intersection is empty, and difference returns `self`.
+
+        - Returns: The result, or an empty mesh if either input is not a closed manifold.
+      source: Sources/SwiftMesh/CSG.swift:77
     - decl: 'public mutating func decimate(targetFaceCount: Int)'
+      doc: |-
+        Simplify the mesh in place by reducing face count using Quadric Error Metrics.
+
+        - Parameter targetFaceCount: The desired number of faces. The algorithm stops
+          when this count is reached or no more edges can be collapsed.
+      source: Sources/SwiftMesh/Decimation.swift:163
     - decl: 'public func decimated(ratio: Float) -> Mesh'
+      doc: |-
+        Simplify the mesh by removing a ratio of faces.
+
+        - Parameter ratio: The fraction of faces to keep (0.0–1.0).
+          For example, 0.5 keeps roughly half the faces.
+        - Returns: A new simplified mesh.
+      source: Sources/SwiftMesh/Decimation.swift:375
     - decl: 'public func decimated(targetFaceCount: Int) -> Mesh'
-    - decl: 'public func difference(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh'
+      doc: |-
+        Simplify the mesh by reducing face count using Quadric Error Metrics.
+
+        - Parameter targetFaceCount: The desired number of faces. The algorithm stops
+          when this count is reached or no more edges can be collapsed.
+        - Returns: A new simplified mesh.
+      source: Sources/SwiftMesh/Decimation.swift:153
+    - decl: 'public func difference(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh'
+      doc: |-
+        Returns the CSG difference of this mesh minus another (A − B).
+
+        See ``csg(_:_:options:)`` for how the result is computed.
+
+        - Parameters:
+          - other: The mesh volume to subtract.
+          - mergeCoplanar: Merge adjacent coplanar triangles of the result back into n-gons
+            (only when the result has no attributes; see ``CSGOptions/mergeCoplanar``).
+        - Returns: A new mesh with the other's volume carved out.
+      source: Sources/SwiftMesh/CSG.swift:59
+    - decl: 'public func extrudingFace(_ face: HalfEdgeTopology.FaceID, distance: Float) -> Mesh'
+      doc: |-
+        Push a face outward along its normal and connect it to its old boundary with side walls.
+
+        The face moves to new vertices offset by `distance` along ``faceNormal(_:)``.
+        Each boundary edge (outer loop and holes) gets a quad wall. Per-corner attributes
+        are copied from the face's corners; wall normals are set to the flat wall normal.
+        Walls join the submesh of the extruded face. Use a negative distance to push inward.
+      source: Sources/SwiftMesh/FaceExtrude.swift:10
+    - decl: 'public func faceArea(_ face: HalfEdgeTopology.FaceID) -> Float'
+      doc: Area of a face's outer boundary (Newell's method).
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:117
     - decl: 'public func faceCentroid(_ face: HalfEdgeTopology.FaceID) -> SIMD3<Float>'
+      doc: Compute the centroid of a face.
+      source: Sources/SwiftMesh/Mesh.swift:170
     - decl: 'public func faceNormal(_ face: HalfEdgeTopology.FaceID) -> SIMD3<Float>'
+      doc: Compute the face normal from vertex positions (Newell's method).
+      source: Sources/SwiftMesh/Mesh.swift:151
     - decl: 'public func facePositions(_ face: HalfEdgeTopology.FaceID) -> [SIMD3<Float>]'
+      doc: Positions of a face's boundary vertices.
+      source: Sources/SwiftMesh/Mesh.swift:138
+    - decl: 'public func fillingHoles(maxEdges: Int? = nil) -> Mesh'
+      doc: |-
+        Close boundary loops (holes) with one new n-gon face each.
+
+        Each new face is wound to pair with the hole's boundary edges, so a mesh whose only
+        defects are holes becomes closed and consistently oriented. Non-planar holes still get
+        a single face; triangulation handles them later by projection. Per-corner attributes
+        on the new faces are copied from the neighboring corner at each vertex, and normals are
+        set to the hole's flat normal. New faces join the submesh of a face beside the hole.
+
+        - Parameter maxEdges: Skip holes with more edges than this, keeping intentional openings
+          (for example a hemisphere's rim) open. `nil` fills every hole.
+      source: Sources/SwiftMesh/HoleFilling.swift:14
     - decl: 'public mutating func fitToDiameter(_ diameter: Float)'
+      doc: |-
+        Uniformly scale and translate positions so the mesh fits within a sphere
+        of the given `diameter`, centered at the origin.
+
+        Aspect ratio is preserved — the longest axis of the bounding box
+        matches the diameter.
+      source: Sources/SwiftMesh/Mesh.swift:246
     - decl: 'public mutating func fitToExtents(_ extents: SIMD3<Float>)'
-    - decl: 'public func intersection(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh'
+      doc: |-
+        Uniformly scale and translate positions so the bounding box fits within
+        the given extents, centered at the origin.
+
+        Axes with zero extent in the target are ignored (positions on that axis
+        are left unchanged). This allows 2D shapes to pass `SIMD3(w, h, 0)`.
+      source: Sources/SwiftMesh/Mesh.swift:223
+    - decl: '@discardableResult public mutating func flipEdge(_ halfEdge: HalfEdgeTopology.HalfEdgeID) -> Bool'
+      doc: |-
+        Flip the edge shared by two triangles, keeping per-corner attributes with their vertices.
+
+        See ``HalfEdgeTopology/flipEdge(_:)``.
+      source: Sources/SwiftMesh/EdgeFlip.swift:71
+    - decl: 'public func hasNonPlanarFaces(tolerance: Float = 1e-5) -> Bool'
+      doc: Live faces with a vertex farther than `tolerance` from the face plane.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:132
+    - decl: 'public func hasZeroAreaFaces(tolerance: Float = 1e-12) -> Bool'
+      doc: Live faces whose area is at most `tolerance`.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:127
+    - decl: 'public func intersection(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh'
+      doc: |-
+        Returns the CSG intersection of this mesh with another (A ∩ B).
+
+        See ``csg(_:_:options:)`` for how the result is computed.
+
+        - Parameters:
+          - other: The mesh to intersect with.
+          - mergeCoplanar: Merge adjacent coplanar triangles of the result back into n-gons
+            (only when the result has no attributes; see ``CSGOptions/mergeCoplanar``).
+        - Returns: A new mesh containing only the shared volume.
+      source: Sources/SwiftMesh/CSG.swift:46
     - decl: 'public func loopSubdivided(iterations: Int = 1) -> Mesh'
+      doc: |-
+        Applies Loop subdivision to a triangle mesh.
+
+        Each triangle is split into four by inserting edge midpoints and
+        repositioning original vertices using Loop's weights. The input mesh
+        must consist entirely of triangles.
+
+        Per-corner attributes (normals, UVs, tangents, colors) and submeshes
+        are not preserved. Call attribute-generation methods on the result
+        if needed.
+
+        - Parameter iterations: Number of subdivision passes. Each pass
+          quadruples the triangle count.
+        - Returns: A new subdivided mesh.
+      source: Sources/SwiftMesh/Subdivision.swift:68
     - decl: 'public func merging(_ other: Mesh) -> Mesh'
+      doc: |-
+        Merge another mesh into this one.
+
+        The other mesh's positions are appended; its submeshes are preserved
+        (with face IDs offset). Self's existing submeshes are preserved with
+        their face IDs unchanged. To make `other` contribute a single labeled
+        submesh, assign `other.submeshes` before calling `merging(_:)`.
+
+        Per-corner attributes are preserved when present on both meshes;
+        attributes missing on either side are dropped from the result.
+
+        - Parameter other: Mesh to merge into this one.
+        - Returns: A new merged mesh.
+      source: Sources/SwiftMesh/Mesh+Merge.swift:79
     - decl: 'public func mergingCoplanarFaces(angleTolerance: Float = 1e-4, distanceTolerance: Float = 1e-4) -> Mesh'
-    - decl: 'public func planarCharts(normalAngleTolerance: Float = 5 * .pi / 180, planeOffsetTolerance: Float = 0.01, faces: [HalfEdgeTopology.FaceID]? = nil) -> [Mesh.PlanarChart]'
+      doc: |-
+        Merge adjacent coplanar faces into larger polygons.
+
+        Faces whose normals are within `angleTolerance` radians and whose
+        planes are within `distanceTolerance` are considered coplanar.
+        Adjacent coplanar faces are grouped and replaced with a single polygon
+        formed from their outer boundary.
+
+        This is useful as a post-processing step after CSG operations,
+        which tend to over-triangulate flat surfaces.
+      source: Sources/SwiftMesh/MeshOptimization.swift:13
+    - decl: 'public func planarCharts(normalAngleTolerance: Float = 5 * .pi / 180, planeOffsetTolerance: Float = 0.01, faces: [HalfEdgeTopology.FaceID]? = nil) -> [PlanarChart]'
+      doc: |-
+        Partition the mesh into connected, coplanar charts via region growing.
+
+        Two adjacent faces are merged into the same chart when:
+        - the angle between their normals is `<= normalAngleTolerance` (radians), and
+        - the perpendicular distance between their planes is `<= planeOffsetTolerance` (world units).
+
+        - Parameters:
+          - normalAngleTolerance: Maximum angle (radians) between face normals for merging.
+            Default ≈ 5°.
+          - planeOffsetTolerance: Maximum signed-distance gap between face planes for merging.
+          - faces: Optional subset of faces to consider. Defaults to all faces.
+        - Returns: Connected coplanar chart groups.
+      source: Sources/SwiftMesh/Mesh+PlanarCharts.swift:57
     - decl: 'public func position(of vertex: HalfEdgeTopology.VertexID) -> SIMD3<Float>'
+      doc: Position of a vertex.
+      source: Sources/SwiftMesh/Mesh.swift:133
+    - decl: public func reversingWinding() -> Mesh
+      doc: |-
+        The same mesh with every face loop reversed (flips which side is the front).
+
+        Per-corner attributes stay with their vertex; normals are not negated.
+      source: Sources/SwiftMesh/ReverseWinding.swift:5
+    - decl: 'public func reversingWinding(of faces: Set<HalfEdgeTopology.FaceID>) -> Mesh'
+      doc: The same mesh with only `faces` reversed. Other faces keep their winding.
+      source: Sources/SwiftMesh/ReverseWinding.swift:10
     - decl: 'public mutating func rotate(by quaternion: simd_quatf)'
+      doc: Rotate all positions and direction attributes by a quaternion.
+      source: Sources/SwiftMesh/Mesh.swift:314
     - decl: 'public func rotated(by quaternion: simd_quatf) -> Mesh'
+      doc: Return a new mesh rotated by a quaternion.
+      source: Sources/SwiftMesh/Mesh.swift:331
     - decl: 'public mutating func scale(by factor: Float)'
+      doc: Scale all positions uniformly.
+      source: Sources/SwiftMesh/Mesh.swift:295
     - decl: 'public mutating func scale(by factor: SIMD3<Float>)'
+      doc: Scale all positions by per-axis factors.
+      source: Sources/SwiftMesh/Mesh.swift:278
     - decl: 'public func scaled(by factor: Float) -> Mesh'
+      doc: Return a new mesh with positions scaled uniformly.
+      source: Sources/SwiftMesh/Mesh.swift:307
     - decl: 'public func scaled(by factor: SIMD3<Float>) -> Mesh'
-    - decl: 'public func toMDLMesh(device: any MTLDevice) -> MDLMesh'
+      doc: Return a new mesh with positions scaled by per-axis factors.
+      source: Sources/SwiftMesh/Mesh.swift:300
+    - decl: 'public func split(planeNormal normal: SIMD3<Float>, point: SIMD3<Float>, capped: Bool = true, weldTolerance: Float = 1e-5) -> (front: Mesh, back: Mesh)'
+      doc: |-
+        Split the mesh by a plane into the parts on the front (normal side) and back.
+
+        Faces that straddle the plane are clipped. With `capped`, each part's open loops on
+        the cut are closed with planar n-gon faces (nested loops become holes), so a closed
+        input yields closed parts. Per-corner attributes are not preserved, and all
+        submeshes are merged into one.
+
+        - Parameters:
+          - normal: Plane normal. Need not be unit length.
+          - point: Any point on the plane.
+          - capped: Close each part's cut with planar faces.
+          - weldTolerance: Maximum distance for merging vertices created along the cut.
+      source: Sources/SwiftMesh/PlaneSplit.swift:16
+    - decl: '@discardableResult public mutating func splitEdge(_ halfEdge: HalfEdgeTopology.HalfEdgeID, at t: Float = 0.5) -> HalfEdgeTopology.VertexID?'
+      doc: |-
+        Insert a vertex on an edge and split the adjacent triangles.
+
+        The new vertex is placed at `origin + t * (destination - origin)` of `halfEdge`.
+        Each adjacent triangle is split in two by a new edge from the new vertex to the
+        opposite corner, so an interior edge between two triangles yields four faces.
+        Non-triangle faces gain the vertex but are not split. Per-corner attributes are
+        interpolated at the new vertex. New faces join the submesh of the face they came from.
+
+        - Returns: The new vertex, or `nil` if `halfEdge` is tombstoned.
+      source: Sources/SwiftMesh/EdgeSplit.swift:14
+    - decl: 'public func toMDLMesh(device: MTLDevice) -> MDLMesh'
+      doc: |-
+        Convert to a ModelIO mesh.
+
+        Triangulates faces and packs positions, normals, and UVs into MDL vertex buffers.
+      source: Sources/SwiftMesh/ModelIO+Mesh.swift:228
     - decl: 'public mutating func transform(by matrix: simd_float4x4)'
+      doc: Apply a 4×4 transform to positions and direction attributes.
+      source: Sources/SwiftMesh/Mesh.swift:338
     - decl: 'public func transformed(by matrix: simd_float4x4) -> Mesh'
+      doc: Return a new mesh transformed by a 4×4 matrix.
+      source: Sources/SwiftMesh/Mesh.swift:369
     - decl: 'public mutating func translate(by offset: SIMD3<Float>)'
+      doc: Translate all positions by the given offset.
+      source: Sources/SwiftMesh/Mesh.swift:264
     - decl: 'public func translated(by offset: SIMD3<Float>) -> Mesh'
+      doc: Return a new mesh with all positions translated by the given offset.
+      source: Sources/SwiftMesh/Mesh.swift:271
     - decl: public func triangulate() -> [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]
-    - decl: 'public func triangulateFace(vertexIDs: [HalfEdgeTopology.VertexID]) -> [(HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID, HalfEdgeTopology.VertexID)]'
+      doc: Triangulate all faces (including their holes), returning triangles as triples of VertexIDs.
+      source: Sources/SwiftMesh/Triangulation.swift:7
     - decl: public func triangulated() -> Mesh
-    - decl: 'public func union(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh'
+      doc: |-
+        Return a new mesh where every face is a triangle.
+
+        Faces that are already triangles are preserved. Larger polygons and faces with holes
+        are split with ``triangulatedCorners(of:)``. Positions are shared; per-corner
+        attributes (normals, UVs, colors, tangents, bitangents) are carried over
+        from the original corners.
+      source: Sources/SwiftMesh/Triangulation.swift:48
+    - decl: 'public func triangulatedCorners(of face: HalfEdgeTopology.FaceID) -> [(HalfEdgeTopology.HalfEdgeID, HalfEdgeTopology.HalfEdgeID, HalfEdgeTopology.HalfEdgeID)]'
+      doc: |-
+        Triangles covering a face, holes excluded, as triples of its corners (half-edges).
+
+        Corners carry the vertex and the per-corner attributes, so callers can copy attributes
+        exactly. Triangles pass through; larger faces and faces with holes are projected on the
+        axis plane closest to the face normal and triangulated with the robust ε-aware
+        triangulator, which always returns a manifold triangulation of the face.
+      source: Sources/SwiftMesh/Triangulation.swift:21
+    - decl: 'public func union(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh'
+      doc: |-
+        Returns the CSG union of this mesh with another (A ∪ B).
+
+        See ``csg(_:_:options:)`` for how the result is computed.
+
+        - Parameters:
+          - other: The mesh to union with.
+          - mergeCoplanar: Merge adjacent coplanar triangles of the result back into n-gons
+            (only when the result has no attributes; see ``CSGOptions/mergeCoplanar``).
+        - Returns: A new mesh representing the combined volume.
+      source: Sources/SwiftMesh/CSG.swift:33
     - decl: public func validate() -> [ValidationIssue]
+      doc: |-
+        Validates topology and attribute array sizes.
+
+        Returns an empty array if valid, or one ``ValidationIssue`` per problem found.
+      source: Sources/SwiftMesh/Mesh.swift:181
+    - decl: 'public func vertexArrays(signedTangents: Bool = false) -> VertexArrays'
+      doc: |-
+        Triangulates faces and turns corners into vertices. Corners with the same position and attributes share a vertex.
+
+        With `signedTangents`, tangents are output as ``signedTangents`` and bitangents are left out.
+      source: Sources/SwiftMesh/Mesh+VertexArrays.swift:42
     - decl: 'public func welded(tolerance: Float = 1e-5) -> Mesh'
+      doc: |-
+        Returns a new mesh with near-duplicate positions merged and topology rebuilt.
+
+        Positions within `tolerance` of each other are collapsed to a single vertex.
+        Face connectivity is remapped and the half-edge topology is rebuilt so that
+        previously-separated edges at seams gain proper twin links.
+
+        Per-corner attributes (normals, UVs, tangents, colors) are preserved.
+
+        - Parameter tolerance: Maximum distance between positions to consider
+          them duplicates. Defaults to `1e-5`.
+        - Returns: A new mesh with deduplicated positions and rebuilt topology.
+      source: Sources/SwiftMesh/Mesh.swift:390
+    - decl: 'public func windingNumbers(at points: [SIMD3<Float>]) -> [Int]?'
+      doc: |-
+        Robust winding numbers of points relative to this closed mesh: 1 inside, 0 outside,
+        and higher inside nested shells. Exact ties are broken consistently rather than with a
+        tolerance, so points on the surface get a definite answer.
+
+        - Returns: One winding number per point, or `nil` if the mesh is not a closed manifold.
+      source: Sources/SwiftMesh/Boolean/Winding.swift:130
     - decl: 'public func wireframe(radius: Float = 0.01, sides: Int = 4, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        Generate a "phat wireframe" mesh: prisms extruded along each edge of the input mesh.
+
+        Each unique undirected edge becomes an N-sided prism (tube) centered on
+        that edge segment. The result is a solid mesh whose surface traces the
+        wireframe of the original.
+
+        - Parameters:
+          - radius: Half-thickness of each prism (distance from edge center to prism surface).
+          - sides: Number of sides for each prism cross-section. Use 4 for rectangular tubes,
+            higher values for cylindrical appearance.
+          - capped: Whether to add end caps to each prism. Defaults to `true`.
+          - attributes: Which attributes to compute on the result.
+        - Returns: A new mesh composed of prisms along every edge.
+      source: Sources/SwiftMesh/Wireframe.swift:19
     - decl: public func withBoxUVs() -> Mesh
+      doc: |-
+        Returns a new mesh with box-projected UV coordinates.
+
+        Each face is projected onto the side of the bounding box its normal points at most (triplanar projection), so
+        textures are not mirrored on any side. UVs are normalized to the mesh's bounding box.
+      source: Sources/SwiftMesh/MeshAttributes.swift:231
+    - decl: public func withConsistentWinding() -> Mesh?
+      doc: |-
+        The mesh with faces reversed so winding is consistent across shared edges, or `nil`
+        if a component is non-orientable. Picks the majority orientation per component; it
+        does not decide inside versus outside.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:340
     - decl: 'public func withCylindricalUVs(axis: ProjectionAxis = .y) -> Mesh'
+      doc: |-
+        Returns a new mesh with cylindrical UV coordinates unwrapped around `axis`.
+
+        u runs once around the axis, counter-clockwise seen from its positive end, so textures are not mirrored seen
+        from outside. v runs from 0 at the positive end of the bounding box to 1 at the negative end. A face that
+        crosses the seam gets u past 1 instead of wrapping.
+      source: Sources/SwiftMesh/MeshAttributes.swift:202
     - decl: public func withFlatNormals() -> Mesh
+      doc: Returns a new mesh with flat (per-face) normals assigned to every corner.
+      source: Sources/SwiftMesh/MeshAttributes.swift:8
     - decl: 'public func withPlanarUVs(axis: ProjectionAxis = .z) -> Mesh'
+      doc: |-
+        Returns a new mesh with planar UV coordinates projected along `axis`.
+
+        The two axes perpendicular to `axis` are mapped to U and V, normalized to the mesh's bounding box. Seen from
+        the positive end of `axis`, u runs right and v runs down; seen from the negative end the texture is mirrored.
+      source: Sources/SwiftMesh/MeshAttributes.swift:185
     - decl: public func withSmoothNormals() -> Mesh
+      doc: Returns a new mesh with smooth normals (face normals averaged at shared vertices).
+      source: Sources/SwiftMesh/MeshAttributes.swift:25
+    - decl: 'public func withSmoothNormals(creaseAngle: Float) -> Mesh'
+      doc: |-
+        Returns a new mesh with smooth normals that keep hard edges.
+
+        Each corner averages the normals of the faces around its vertex that are within `creaseAngle` (radians) of its
+        own face, so faces that meet at a sharper angle keep separate normals.
+      source: Sources/SwiftMesh/MeshAttributes.swift:63
     - decl: public func withSphericalUVs() -> Mesh
+      doc: |-
+        Returns a new mesh with spherical UV coordinates computed from vertex positions.
+
+        v runs from 0 at +Y to 1 at -Y. u runs once around the Y axis, counter-clockwise seen from above, so textures
+        are not mirrored seen from outside. A face that crosses the seam gets u past 1 instead of wrapping, and a
+        corner on the axis (a pole) takes the mean u of the face's other corners.
+      source: Sources/SwiftMesh/MeshAttributes.swift:99
     - decl: public func withTangents() -> Mesh
+      doc: |-
+        Returns a new mesh with tangents and bitangents computed via MikkTSpace.
+
+        Requires normals and texture coordinates to be present.
+        The mesh is triangulated internally for MikkTSpace processing.
+      source: Sources/SwiftMesh/MeshAttributes.swift:270
     - decl: 'public static func box(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+      doc: A box centered at the origin with quad faces.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:232
     - decl: 'public static func capsule(segments: Int = 32, height: Float = 1.0, radius: Float = 0.25, latitudeSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        A capsule (cylinder with hemispherical caps on each end).
+
+        The capsule is oriented along the Y axis. `height` is the total height
+        including the two hemispherical caps. `radius` is the radius of the
+        cylinder and caps.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:861
     - decl: 'public static func circle(extents: SIMD2<Float> = [1, 1], segments: Int = 32, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        A circle (flat disc) in the XY plane, centered at the origin.
+
+        Built as a single n-gon fan. `segments` controls the number of edges.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:269
     - decl: 'public static func cone(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+      doc: A cone with triangle sides and an optional n-gon base cap.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:1081
     - decl: 'public static func conicalFrustum(segments: Int = 32, height: Float = 1.0, topRadius: Float = 0.25, bottomRadius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        A conical frustum (truncated cone) with quad sides and optional n-gon caps.
+
+        When `topRadius` is 0 this degenerates to a regular cone.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:1147
     - decl: 'public static func convexHull(of points: [SIMD3<Float>], attributes: MeshAttributes = .default) -> Mesh?'
+      doc: |-
+        Compute the convex hull of a set of 3D points, returning a ``Mesh``.
+
+        Uses an incremental convex hull algorithm. The resulting mesh is a closed
+        convex polyhedron with triangular faces and outward-facing normals.
+
+        - Parameters:
+          - points: The input points. At least 4 non-coplanar points are required.
+          - attributes: Which attributes to generate on the resulting mesh.
+        - Returns: A convex hull mesh, or `nil` if the points are degenerate
+          (fewer than 4 points, or all coplanar/collinear/coincident).
+      source: Sources/SwiftMesh/ConvexHull.swift:16
+    - decl: 'public static func convexHull(ofSpheres spheres: [(center: SIMD3<Float>, radius: Float)], subdivisions: Int = 2, attributes: MeshAttributes = .default) -> Mesh?'
+      doc: |-
+        Approximate the convex hull of a set of spheres.
+
+        Each sphere is sampled with the vertices of an icosphere of its radius (a zero radius
+        contributes just its center), then the hull of all samples is taken. The result lies
+        inside the true hull and converges to it as `subdivisions` grows. Works for mixed
+        radii, where the hull is not simply the centers' hull grown by one radius.
+
+        - Returns: The hull mesh, or `nil` if the samples are degenerate (for example all
+          zero radii on a plane).
+      source: Sources/SwiftMesh/ConvexHull.swift:34
     - decl: 'public static func cube(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+      doc: A regular cube centered at the origin.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:39
     - decl: 'public static func cubeSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 8, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        A cube sphere built by subdividing a cube's faces into grids and projecting
+        vertices onto a sphere. Produces quad faces with relatively uniform sizing.
+
+        - Parameters:
+          - extents: Width, height, and depth of the bounding box the sphere fills.
+          - subdivisions: Number of subdivisions per cube face edge (minimum 1).
+          - attributes: Which attributes to generate.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:538
     - decl: 'public static func cylinder(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+      doc: A cylinder with quad sides and optional n-gon caps.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:651
     - decl: 'public static func dodecahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+      doc: A regular dodecahedron centered at the origin.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:140
     - decl: 'public static func edgePrism(from start: SIMD3<Float>, to end: SIMD3<Float>, radius: Float, sides: Int, capped: Bool = true) -> Mesh'
+      doc: |-
+        Generate a prism (tube) along a line segment between two points.
+
+        The prism is an N-sided cylinder centered on the segment from `start` to `end`.
+
+        - Parameters:
+          - start: One endpoint of the segment.
+          - end: The other endpoint of the segment.
+          - radius: Half-thickness (distance from center axis to surface).
+          - sides: Number of sides for the cross-section.
+          - capped: Whether to add end caps.
+        - Returns: A mesh representing the prism.
+      source: Sources/SwiftMesh/Wireframe.swift:52
+    - decl: 'public static func extruded(_ path: Path, depth: Float, mode: ExtrusionMode = .solid, curveSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh'
+      doc: Extrude a SwiftUI path. See ``extruded(_:depth:mode:curveSegments:attributes:)-(CGPath,_,_,_,_)``.
+      source: Sources/SwiftMesh/PathExtrusion.swift:22
+    - decl: 'public static func extruded(_ path: CGPath, depth: Float, mode: ExtrusionMode = .solid, curveSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        Extrude a path into a closed solid.
+
+        Each closed subpath is flattened (curves become `curveSegments` line segments).
+        Subpaths nested inside an odd number of others become holes, as with the
+        even-odd fill rule. The back cap lies at z = 0 and the front cap at z = `depth`,
+        joined by quad side walls. Path y is flipped so the shape reads the same as on
+        screen when viewed from +z. Caps are n-gon faces with holes. `mode` selects solid,
+        walls-only, or thin-wall output (see ``ExtrusionMode``).
+      source: Sources/SwiftMesh/PathExtrusion.swift:34
+    - decl: 'public static func extrudedText(_ string: String, font: CTFont, depth: Float, mode: ExtrusionMode = .solid, curveSegments: Int = 6, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        Extrude a string into a solid using the glyph outlines of `font`.
+
+        The text is laid out on one line with its baseline on y = 0, reading along +x with
+        y up. Units are the font's points; scale the mesh afterwards for other sizes.
+        Glyph holes (e.g. in "o") become holes in the caps. Outlines are classified with
+        the even-odd rule, so fonts that rely on overlapping contours may render overlaps
+        as holes.
+      source: Sources/SwiftMesh/TextExtrusion.swift:13
+    - decl: 'public static func extrudedText(_ string: String, fontName: String = "Helvetica", size: CGFloat = 1, depth: Float, mode: ExtrusionMode = .solid, curveSegments: Int = 6, attributes: MeshAttributes = .default) -> Mesh'
+      doc: Extrude a string using a font looked up by name and size. See ``extrudedText(_:font:depth:mode:curveSegments:attributes:)``.
+      source: Sources/SwiftMesh/TextExtrusion.swift:18
     - decl: 'public static func hemisphere(extents: SIMD3<Float> = [1, 1, 1], segments: Int = 32, latitudeSegments: Int = 8, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        A hemisphere (top half of a UV sphere) with an optional base cap.
+
+        The dome faces upward (+Y). Extents control the bounding box of the full
+        hemisphere including the flat base.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:735
     - decl: 'public static func icoSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 3, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        An icosphere built by subdividing an icosahedron and projecting vertices
+        onto a sphere. Produces a more uniform triangle distribution than a UV sphere.
+
+        - Parameters:
+          - extents: Width, height, and depth of the bounding box the sphere fills.
+          - attributes: Which attributes to generate.
+          - subdivisions: Number of subdivision iterations (0 = icosahedron, each step ×4 faces).
+      source: Sources/SwiftMesh/MeshPrimitives.swift:468
     - decl: 'public static func icosahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+      doc: A regular icosahedron centered at the origin.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:106
     - decl: 'public static func marchingCubes(resolution: Int, bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5)), isoValue: Float = 0, attributes: MeshAttributes = .default, field: (SIMD3<Float>) -> Float) -> Mesh'
+      doc: Convenience overload with uniform resolution along all axes.
+      source: Sources/SwiftMesh/MarchingCubes.swift:179
     - decl: 'public static func marchingCubes(resolution: SIMD3<Int>, bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5)), isoValue: Float = 0, attributes: MeshAttributes = .default, field: (SIMD3<Float>) -> Float) -> Mesh'
+      doc: |-
+        Generate an isosurface mesh from a scalar field using the marching cubes algorithm.
+
+        Samples the scalar field on a regular grid and produces triangles at the
+        zero crossing. Negative values are considered inside the surface.
+        The resulting mesh is welded and has the requested attributes applied.
+
+        - Parameters:
+          - resolution: Number of grid cells along each axis.
+          - bounds: The axis-aligned region to sample. Defaults to the unit cube centered at the origin.
+          - isoValue: The field value defining the isosurface. Defaults to `0`.
+          - attributes: Mesh attributes to generate (normals, UVs, etc.).
+          - field: A closure mapping a 3D position to a scalar value.
+        - Returns: A mesh representing the isosurface.
+      source: Sources/SwiftMesh/MarchingCubes.swift:160
     - decl: 'public static func merged(_ meshes: [Mesh]) -> Mesh'
+      doc: |-
+        Merge multiple meshes into a single mesh.
+
+        Positions are concatenated, face indices are offset, and per-corner
+        attributes are combined.
+
+        Each input's submeshes are preserved, with their ``Submesh/faces``
+        ranges offset to point at the corresponding faces in the merged
+        result. To collapse a source mesh into a single labeled submesh,
+        assign `mesh.submeshes` before calling `merged(_:)`.
+
+        Per-corner attributes (normals, UVs, tangents, bitangents, colors) are
+        included only if **all** input meshes provide them; otherwise they are
+        dropped from the result.
+
+        - Parameter meshes: The meshes to merge, in order.
+        - Returns: A new mesh containing all input geometry.
+      source: Sources/SwiftMesh/Mesh+Merge.swift:22
     - decl: 'public static func octahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+      doc: A regular octahedron centered at the origin.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:76
     - decl: 'public static func quad(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = .default) -> Mesh'
+      doc: A quad in the XY plane, centered at the origin.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:209
     - decl: 'public static func rectangularFrustum(height: Float = 1.0, topExtents: SIMD2<Float> = [0.5, 0.5], bottomExtents: SIMD2<Float> = [1, 1], capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        A rectangular frustum (truncated rectangular pyramid) with quad sides and optional caps.
+
+        The bottom face is centered at `y = -height/2` with size `bottomExtents`,
+        and the top face is centered at `y = +height/2` with size `topExtents`.
+        When `topExtents` is zero this degenerates to a pyramid.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:1231
     - decl: 'public static func sphere(extents: SIMD3<Float> = [1, 1, 1], latitudeSegments: Int = 16, longitudeSegments: Int = 32, attributes: MeshAttributes = .default) -> Mesh'
+      doc: A UV sphere (or ellipsoid) with quad faces (and triangle caps at the poles).
+      source: Sources/SwiftMesh/MeshPrimitives.swift:318
     - decl: 'public static func teapot(diameter: Float = 1, attributes: MeshAttributes = .default) -> Mesh'
+      doc: |-
+        The Utah teapot, loaded from a bundled OBJ file.
+
+        The mesh is uniformly scaled to fit within `diameter` and centered
+        at the origin, preserving aspect ratio.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:1286
     - decl: 'public static func tetrahedron(extents: SIMD3<Float> = [1, 1, 1], attributes: MeshAttributes = .default) -> Mesh'
+      doc: A regular tetrahedron centered at the origin.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:10
     - decl: 'public static func torus(majorSegments: Int = 32, minorSegments: Int = 16, majorRadius: Float = 0.3, minorRadius: Float = 0.15, attributes: MeshAttributes = .default) -> Mesh'
+      doc: A torus with quad faces.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:591
     - decl: 'public static func triangle(extents: SIMD2<Float> = [1, 1], attributes: MeshAttributes = .default) -> Mesh'
+      doc: A single triangle in the XY plane, centered at the origin.
+      source: Sources/SwiftMesh/MeshPrimitives.swift:188
   - decl: 'public struct Mesh2D<ID> where ID : Hashable, ID : Sendable'
+    doc: |-
+      A 2D mesh: half-edge topology paired with per-vertex `CGPoint` positions
+      and optional per-half-edge segment labels.
+
+      Provides planar-subdivision construction from arbitrary (deduped, presplit)
+      line segments, plus 2D-specific queries (polygon extraction, signed area, convexity,
+      boundary loops, edge deletion).
+    source: Sources/SwiftMesh/Mesh2D.swift:13
     members:
     - decl: public typealias FaceID = HalfEdgeTopology.FaceID
+      source: Sources/SwiftMesh/Mesh2D.swift:40
     - decl: public typealias HalfEdgeID = HalfEdgeTopology.HalfEdgeID
+      source: Sources/SwiftMesh/Mesh2D.swift:39
     - decl: public typealias VertexID = HalfEdgeTopology.VertexID
+      source: Sources/SwiftMesh/Mesh2D.swift:38
     - decl: 'public init(points: [CGPoint], faces faceDefinitions: [HalfEdgeTopology.FaceDefinition]) where ID == Int'
+      doc: |-
+        Build a 2D mesh from indexed points and face definitions (with optional holes).
+
+        Vertex indices are preserved (mesh vertex N = points[N]).
+        The label for each half-edge is the undirected edge index (sequential, shared by twin pairs).
+      source: Sources/SwiftMesh/Mesh2D.swift:184
     - decl: 'public init(segments: [Identified<ID, LineSegment>]) where ID: Hashable, ID: Sendable'
+      doc: |-
+        Build a 2D mesh from clean (deduped, split-at-T-junctions) line segments.
+
+        Each segment becomes a pair of twin half-edges. Edges sharing an endpoint are
+        sorted CCW by angle at that vertex, then next/prev are wired so each closed cycle
+        forms a face (with signed area). Boundary loops (open chains) remain unassigned.
+      source: Sources/SwiftMesh/Mesh2D.swift:62
     - decl: 'public init(topology: HalfEdgeTopology, positions: [CGPoint], edgeLabels: [ID], faceSignedAreas: [CGFloat?])'
+      doc: Creates a 2D mesh from parts. Array counts must match the topology (see each property).
+      source: Sources/SwiftMesh/Mesh2D.swift:29
     - decl: 'public var edgeLabels: [ID]'
+      doc: |-
+        Per-half-edge segment labels. Count equals `topology.halfEdges.count`, indexed by `HalfEdgeID.raw`.
+
+        Twin pairs of half-edges share the same label (they correspond to the same undirected edge).
+      source: Sources/SwiftMesh/Mesh2D.swift:23
     - decl: 'public var faceSignedAreas: [CGFloat?]'
+      doc: Per-face signed area of the outer boundary, if computed. Indexed by `FaceID.raw`.
+      source: Sources/SwiftMesh/Mesh2D.swift:26
     - decl: 'public var positions: [CGPoint]'
+      doc: Per-vertex positions. Count equals `topology.vertices.count`, indexed by `VertexID.raw`.
+      source: Sources/SwiftMesh/Mesh2D.swift:18
     - decl: 'public var topology: HalfEdgeTopology'
+      doc: The combinatorial topology (vertices, half-edges, faces, wiring).
+      source: Sources/SwiftMesh/Mesh2D.swift:15
     - decl: 'public func boundaryLoops() -> [[CGPoint]] where ID: Hashable, ID: Sendable'
+      doc: |-
+        Closed loops formed by boundary half-edges (those with no twin).
+        Each loop is an array of points tracing one connected boundary.
+      source: Sources/SwiftMesh/Mesh2D.swift:309
     - decl: 'public mutating func deleteEdge(label: ID) where ID: Hashable, ID: Sendable'
-    - decl: 'public func dest(of e: Mesh2D<ID>.HalfEdgeID) -> Mesh2D<ID>.VertexID?'
-    - decl: 'public func holePolygons(for face: Mesh2D<ID>.FaceID) -> [[CGPoint]] where ID: Hashable, ID: Sendable'
-    - decl: 'public func isConvex(_ face: Mesh2D<ID>.FaceID) -> Bool where ID: Hashable, ID: Sendable'
-    - decl: 'public func isHole(_ face: Mesh2D<ID>.FaceID) -> Bool where ID: Hashable, ID: Sendable'
-    - decl: 'public func label(_ e: Mesh2D<ID>.HalfEdgeID) -> ID'
-    - decl: 'public func point(_ v: Mesh2D<ID>.VertexID) -> CGPoint'
-    - decl: 'public func polygon(for face: Mesh2D<ID>.FaceID) -> [CGPoint] where ID: Hashable, ID: Sendable'
-    - decl: 'public func signedArea(_ face: Mesh2D<ID>.FaceID) -> CGFloat? where ID: Hashable, ID: Sendable'
-    - decl: 'public func undirectedEdges() -> [(Mesh2D<ID>.VertexID, Mesh2D<ID>.VertexID, ID)] where ID: Hashable, ID: Sendable'
+      doc: |-
+        Delete an undirected edge by its label.
+        If the edge is interior (shared by two faces), the two faces are merged.
+        If the edge is boundary (one face), it is removed from that face.
+        The half-edges are disconnected in place (indices remain stable but disconnected).
+      source: Sources/SwiftMesh/Mesh2D.swift:387
+    - decl: 'public func dest(of e: HalfEdgeID) -> VertexID?'
+      source: Sources/SwiftMesh/Mesh2D.swift:48
+    - decl: 'public func holePolygons(for face: FaceID) -> [[CGPoint]] where ID: Hashable, ID: Sendable'
+      doc: Hole boundaries of `face` as arrays of points.
+      source: Sources/SwiftMesh/Mesh2D.swift:280
+    - decl: 'public func isConvex(_ face: FaceID) -> Bool where ID: Hashable, ID: Sendable'
+      doc: Whether the face is convex (all interior cross-products same sign).
+      source: Sources/SwiftMesh/Mesh2D.swift:285
+    - decl: 'public func isHole(_ face: FaceID) -> Bool where ID: Hashable, ID: Sendable'
+      doc: Whether this face has clockwise winding (negative signed area), indicating a hole.
+      source: Sources/SwiftMesh/Mesh2D.swift:263
+    - decl: 'public func label(_ e: HalfEdgeID) -> ID'
+      source: Sources/SwiftMesh/Mesh2D.swift:46
+    - decl: 'public func point(_ v: VertexID) -> CGPoint'
+      source: Sources/SwiftMesh/Mesh2D.swift:44
+    - decl: 'public func polygon(for face: FaceID) -> [CGPoint] where ID: Hashable, ID: Sendable'
+      doc: Outer boundary of `face` as points.
+      source: Sources/SwiftMesh/Mesh2D.swift:274
+    - decl: 'public func signedArea(_ face: FaceID) -> CGFloat? where ID: Hashable, ID: Sendable'
+      doc: Signed area of the outer boundary of this face (if computed).
+      source: Sources/SwiftMesh/Mesh2D.swift:269
+    - decl: 'public func undirectedEdges() -> [(VertexID, VertexID, ID)] where ID: Hashable, ID: Sendable'
+      doc: |-
+        All unique undirected edges as (vertexA, vertexB, label) triples.
+        Each undirected edge appears exactly once.
+      source: Sources/SwiftMesh/Mesh2D.swift:342
   - decl: public struct MeshAttributes
+    doc: Attributes that a mesh primitive can generate during construction.
+    source: Sources/SwiftMesh/MeshAttributeSet.swift:2
     members:
     - decl: 'public init(rawValue: UInt)'
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:5
     - decl: 'public let rawValue: UInt'
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:3
     - decl: 'public static let all: MeshAttributes'
+      doc: Flat normals, texture coordinates, tangents, and bitangents.
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:31
     - decl: 'public static let bitangents: MeshAttributes'
+      doc: Generate bitangents (requires both normals and texture coordinates).
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:22
     - decl: 'public static let `default`: MeshAttributes'
+      doc: 'Flat normals and texture coordinates: what most primitives generate unless told otherwise.'
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:28
     - decl: 'public static let flatNormals: MeshAttributes'
+      doc: Generate flat (per-face) normals.
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:10
     - decl: 'public static let invertedNormals: MeshAttributes'
+      doc: Invert normals (face inward). Requires `.flatNormals` or `.smoothNormals`.
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:25
     - decl: 'public static let smoothNormals: MeshAttributes'
+      doc: Generate smooth (averaged) normals.
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:13
     - decl: 'public static let tangents: MeshAttributes'
+      doc: Generate tangents (requires both normals and texture coordinates).
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:19
     - decl: 'public static let textureCoordinates: MeshAttributes'
+      doc: Generate texture coordinates.
+      source: Sources/SwiftMesh/MeshAttributeSet.swift:16
   - decl: public struct MetalMesh
+    doc: |-
+      A GPU-ready mesh produced from a `Mesh` by triangulating faces,
+      and packing attributes into Metal buffers.
+
+      Vertices with identical positions and per-corner attributes are shared in
+      the output buffer(s), so downstream consumers (e.g. wireframe edge extraction)
+      can deduplicate edges by comparing index values.
+
+      N-gons and faces with holes are triangulated with ``Mesh/triangulatedCorners(of:)``; triangles pass through.
+    source: Sources/SwiftMesh/MetalMesh.swift:14
     members:
-    - decl: public struct Submesh
+    - decl: public struct MorphTargets
+      doc: |-
+        Per-vertex offsets that a renderer blends onto the base vertices by weight.
+
+        The weights for each frame are animation state and are not stored here.
+      source: Sources/SwiftMesh/MetalMesh+Extras.swift:12
       members:
-      - decl: 'public var indexBuffer: any MTLBuffer'
+      - decl: public struct Target
+        doc: One morph target. Each non-nil array has one offset per vertex of the mesh.
+        source: Sources/SwiftMesh/MetalMesh+Extras.swift:14
+        members:
+        - decl: 'public init(label: String? = nil, positionOffsets: [SIMD3<Float>]? = nil, normalOffsets: [SIMD3<Float>]? = nil, tangentOffsets: [SIMD3<Float>]? = nil)'
+          source: Sources/SwiftMesh/MetalMesh+Extras.swift:20
+        - decl: 'public var label: String?'
+          source: Sources/SwiftMesh/MetalMesh+Extras.swift:15
+        - decl: 'public var normalOffsets: [SIMD3<Float>]?'
+          source: Sources/SwiftMesh/MetalMesh+Extras.swift:17
+        - decl: 'public var positionOffsets: [SIMD3<Float>]?'
+          source: Sources/SwiftMesh/MetalMesh+Extras.swift:16
+        - decl: 'public var tangentOffsets: [SIMD3<Float>]?'
+          source: Sources/SwiftMesh/MetalMesh+Extras.swift:18
+      - decl: 'public init(targets: [Target], defaultWeights: [Float] = [])'
+        source: Sources/SwiftMesh/MetalMesh+Extras.swift:32
+      - decl: 'public var defaultWeights: [Float]'
+        doc: Weights to use when no animation sets them. Empty means all zero.
+        source: Sources/SwiftMesh/MetalMesh+Extras.swift:30
+      - decl: 'public var targets: [Target]'
+        source: Sources/SwiftMesh/MetalMesh+Extras.swift:28
+    - decl: public struct Skin
+      doc: |-
+        The joint list that the `.jointIndices` vertex attributes index into.
+
+        Which scene nodes act as the joints, and their matrices for each frame, are model state and are not stored here.
+      source: Sources/SwiftMesh/MetalMesh+Extras.swift:46
+      members:
+      - decl: 'public init(inverseBindMatrices: [simd_float4x4], jointNames: [String]? = nil)'
+        source: Sources/SwiftMesh/MetalMesh+Extras.swift:54
+      - decl: 'public var inverseBindMatrices: [simd_float4x4]'
+        doc: One inverse bind matrix per joint, in joint order.
+        source: Sources/SwiftMesh/MetalMesh+Extras.swift:48
+      - decl: 'public var jointCount: Int { get }'
+        source: Sources/SwiftMesh/MetalMesh+Extras.swift:52
+      - decl: 'public var jointNames: [String]?'
+        doc: Optional joint names, in joint order.
+        source: Sources/SwiftMesh/MetalMesh+Extras.swift:50
+    - decl: public struct Submesh
+      doc: A group of triangles within a ``MetalMesh`` sharing the same material.
+      source: Sources/SwiftMesh/MetalMesh.swift:16
+      members:
+      - decl: 'public init(label: String? = nil, indexBuffer: MTLBuffer, indexBufferOffset: Int = 0, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle, bounds: BoundingBox? = nil)'
+        doc: Creates a submesh over an existing index buffer.
+        source: Sources/SwiftMesh/MetalMesh.swift:33
+      - decl: 'public var bounds: BoundingBox?'
+        doc: Bounds of the vertices this submesh references, or nil if unknown.
+        source: Sources/SwiftMesh/MetalMesh.swift:30
+      - decl: 'public var indexBuffer: MTLBuffer'
+        doc: The Metal buffer containing indices of type ``indexType``.
+        source: Sources/SwiftMesh/MetalMesh.swift:20
+      - decl: 'public var indexBufferOffset: Int'
+        doc: Byte offset of the first index in ``indexBuffer``. Buffers may be shared between submeshes.
+        source: Sources/SwiftMesh/MetalMesh.swift:24
+      - decl: 'public var indexByteCount: Int { get }'
+        doc: Size of the index data in bytes.
+        source: Sources/SwiftMesh/MetalMesh.swift:44
       - decl: 'public var indexCount: Int'
+        doc: The number of indices in ``indexBuffer``.
+        source: Sources/SwiftMesh/MetalMesh.swift:22
+      - decl: 'public var indexType: MTLIndexType'
+        doc: The index element size. Meshes built from a ``Mesh`` use `.uint32`.
+        source: Sources/SwiftMesh/MetalMesh.swift:26
+      - decl: 'public var indices: [UInt32] { get }'
+        doc: The indices widened to `UInt32`.
+        source: Sources/SwiftMesh/MetalMesh.swift:49
       - decl: 'public var label: String?'
+        doc: An optional human-readable name for the submesh.
+        source: Sources/SwiftMesh/MetalMesh.swift:18
+      - decl: 'public var primitiveType: MTLPrimitiveType'
+        doc: How indices assemble into primitives. Converting back to ``Mesh`` requires `.triangle`.
+        source: Sources/SwiftMesh/MetalMesh.swift:28
+    - decl: public struct SubmeshIndices
+      doc: The indices of one submesh for the array initializer.
+      source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:83
+      members:
+      - decl: 'public init(label: String? = nil, indices: [UInt32], primitiveType: MTLPrimitiveType = .triangle)'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:88
+      - decl: 'public var indices: [UInt32]'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:85
+      - decl: 'public var label: String?'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:84
+      - decl: 'public var primitiveType: MTLPrimitiveType'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:86
+    - decl: public struct VertexAttributeData
+      doc: One per-vertex attribute array, packed to `format`.
+      source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:10
+      members:
+      - decl: 'public init(semantic: VertexDescriptor.Attribute.Semantic, format: MTLVertexFormat, bytes: [UInt8], count: Int)'
+        doc: Wraps `count` values already packed tightly to `format`.
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:36
+      - decl: 'public init<Element>(semantic: VertexDescriptor.Attribute.Semantic, format: MTLVertexFormat, values: [Element])'
+        doc: Copies the first `format.size` bytes of each value.
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:18
+      - decl: 'public var bytes: [UInt8]'
+        doc: '`count * format.size` bytes, tightly packed.'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:14
+      - decl: 'public var count: Int'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:15
+      - decl: 'public var format: MTLVertexFormat'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:12
+      - decl: 'public var semantic: VertexDescriptor.Attribute.Semantic'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:11
+      - decl: 'public func values<Element>(as _: Element.Type = Element.self) -> [Element] where Element : SIMD, Element.Scalar == Float'
+        doc: |-
+          The values unpacked into `Element`. Bytes beyond `format.size` are zero, so a `.float3`
+          attribute reads as `SIMD4<Float>` with w = 0, and a `.float4` one as `SIMD3<Float>` drops w.
+        source: Sources/SwiftMesh/VertexArrays+Decoding.swift:10
+      - decl: 'public static func bitangents(_ values: [SIMD3<Float>]) -> MetalMesh.VertexAttributeData'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:65
+      - decl: 'public static func colors(_ values: [SIMD4<Float>], set: Int = 0) -> MetalMesh.VertexAttributeData'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:69
+      - decl: 'public static func jointIndices(_ values: [SIMD4<UInt16>], set: Int = 0) -> MetalMesh.VertexAttributeData'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:73
+      - decl: 'public static func jointWeights(_ values: [SIMD4<Float>], set: Int = 0) -> MetalMesh.VertexAttributeData'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:77
+      - decl: 'public static func normals(_ values: [SIMD3<Float>]) -> MetalMesh.VertexAttributeData'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:48
+      - decl: 'public static func positions(_ values: [SIMD3<Float>]) -> MetalMesh.VertexAttributeData'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:44
+      - decl: 'public static func tangents(_ values: [SIMD3<Float>]) -> MetalMesh.VertexAttributeData'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:61
+      - decl: 'public static func tangents(_ values: [SIMD4<Float>]) -> MetalMesh.VertexAttributeData'
+        doc: 'glTF-style tangents: xyz plus handedness in w.'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:57
+      - decl: 'public static func textureCoordinates(_ values: [SIMD2<Float>], set: Int = 0) -> MetalMesh.VertexAttributeData'
+        source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:52
     - decl: public enum BufferLayout
+      doc: Controls how vertex attributes are packed into Metal buffers.
+      source: Sources/SwiftMesh/MetalMesh.swift:63
       members:
       - decl: public case interleaved
+        doc: All attributes interleaved into a single buffer (buffer index 0).
+        source: Sources/SwiftMesh/MetalMesh.swift:65
       - decl: public case separateBuffers
-    - decl: 'public init(device: any MTLDevice, positions: [SIMD3<Float>], normals: [SIMD3<Float>]? = nil, textureCoordinates: [SIMD2<Float>]? = nil, indices: [UInt32], label: String? = nil, bufferLayout: MetalMesh.BufferLayout = .interleaved)'
-    - decl: 'public init(mesh: Mesh, device: any MTLDevice, label: String? = nil, bufferLayout: MetalMesh.BufferLayout = .interleaved, preserveTopology: Bool = false)'
-    - decl: 'public init(mtkMesh: MTKMesh) throws'
-    - decl: 'public init(vertexBuffers: [Int : any MTLBuffer], vertexCount: Int, vertexDescriptor: VertexDescriptor, indexBuffer: any MTLBuffer, indexCount: Int, label: String? = nil)'
+        doc: Each attribute in its own buffer (buffer indices 0, 1, 2, …).
+        source: Sources/SwiftMesh/MetalMesh.swift:67
+    - decl: 'public init(device: MTLDevice, attributes: [VertexAttributeData], submeshes: [SubmeshIndices], morphTargets: MorphTargets? = nil, skin: Skin? = nil, label: String? = nil, bufferLayout: BufferLayout = .interleaved)'
+      doc: |-
+        Create a `MetalMesh` from in-memory attribute arrays, skipping the half-edge topology pipeline.
+
+        `attributes` must contain a `.position` attribute in `.float3` format, and all attributes must have the same count.
+        Attributes keep their order in the vertex descriptor. Each submesh gets its own index buffer; use
+        ``mergingIndexBuffers()`` to share one.
+      source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:100
+    - decl: 'public init(device: MTLDevice, positions: [SIMD3<Float>], normals: [SIMD3<Float>]? = nil, textureCoordinates: [SIMD2<Float>]? = nil, indices: [UInt32], label: String? = nil, bufferLayout: BufferLayout = .interleaved)'
+      doc: Create a `MetalMesh` from in-memory attribute arrays with a single triangle submesh.
+      source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:178
+    - decl: 'public init(mdlMesh: MDLMesh, device: MTLDevice) throws'
+      doc: |-
+        Create a MetalMesh from a ModelIO mesh, keeping its vertex layout and every attribute.
+
+        Packs the MDL vertex descriptor, then goes through `MTKMesh`. Unlike ``Mesh/init(mdlMesh:device:)``,
+        nothing passes through half-edge topology, so extra UV and color sets are kept.
+      source: Sources/SwiftMesh/ModelIO+Mesh.swift:38
+    - decl: 'public init(mesh: Mesh, device: MTLDevice, label: String? = nil, bufferLayout: BufferLayout = .interleaved, preserveTopology: Bool = false, signedTangents: Bool = false)'
+      doc: |-
+        Create a MetalMesh from a Mesh.
+
+        Faces are triangulated and corners become vertices (see ``Mesh/vertexArrays(signedTangents:)``).
+        Each `Mesh.Submesh` becomes a `MetalMesh.Submesh`; they share one index buffer.
+        With `signedTangents`, tangents are `.float4` with the bitangent sign in w and there is no bitangent attribute.
+      source: Sources/SwiftMesh/MetalMesh.swift:123
+    - decl: 'public init(mtkMesh: MTKMesh)'
+      doc: |-
+        Create a MetalMesh from an MTKMesh.
+
+        Maps MTKMesh's vertex buffers, vertex descriptor, and submeshes
+        into MetalMesh's representation.
+      source: Sources/SwiftMesh/ModelIO+Mesh.swift:47
+    - decl: 'public init(vertexBuffers: [Int : MTLBuffer], vertexBufferOffsets: [Int : Int] = [:], vertexCount: Int, vertexDescriptor: VertexDescriptor, indexBuffer: MTLBuffer, indexBufferOffset: Int = 0, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle, label: String? = nil)'
+      doc: Create a `MetalMesh` from existing buffers with a single submesh covering all indices.
+      source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:217
+    - decl: 'public init(vertexBuffers: [Int : MTLBuffer], vertexBufferOffsets: [Int : Int] = [:], vertexCount: Int, vertexDescriptor: VertexDescriptor, submeshes: [Submesh], label: String? = nil)'
+      doc: |-
+        Create a `MetalMesh` from existing buffers and a matching `VertexDescriptor`, with no copies.
+
+        Only cheap shape checks are performed. ``bounds`` is left nil; call ``updateBounds()`` if the buffers are CPU accessible.
+      source: Sources/SwiftMesh/MetalMesh+DirectInit.swift:196
+    - decl: 'public var bounds: BoundingBox?'
+      doc: Bounds of all vertices, or nil if unknown.
+      source: Sources/SwiftMesh/MetalMesh.swift:85
     - decl: 'public var label: String?'
-    - decl: 'public var opposites: (any MTLBuffer)?'
-    - decl: 'public var submeshes: [MetalMesh.Submesh]'
-    - decl: 'public var vertToHalfedge: (any MTLBuffer)?'
-    - decl: 'public var vertexBuffer: any MTLBuffer { get }'
-    - decl: 'public var vertexBuffers: [Int : any MTLBuffer]'
+      doc: An optional human-readable name for the mesh.
+      source: Sources/SwiftMesh/MetalMesh.swift:71
+    - decl: 'public var morphTargets: MorphTargets?'
+      doc: Morph targets for the vertices, or nil if the mesh has none.
+      source: Sources/SwiftMesh/MetalMesh.swift:87
+    - decl: 'public var opposites: MTLBuffer?'
+      doc: |-
+        Corner-table opposites buffer (`UInt32`, length = total index count across all submeshes).
+
+        `opposites[h]` is the twin half-edge of half-edge `h`, or `UInt32.max` for boundary edges.
+        Half-edge `h` belongs to face `h/3`, points at vertex `indices[h]`, and its next is
+        `(h/3)*3 + (h+1)%3`.
+
+        Present only when the mesh was created with `preserveTopology: true`.
+      source: Sources/SwiftMesh/MetalMesh.swift:98
+    - decl: 'public var skin: Skin?'
+      doc: Skin binding data for the joint index and weight attributes, or nil if the mesh is not skinned.
+      source: Sources/SwiftMesh/MetalMesh.swift:89
+    - decl: 'public var submeshes: [Submesh]'
+      doc: The triangle groups that make up the mesh.
+      source: Sources/SwiftMesh/MetalMesh.swift:83
+    - decl: 'public var vertToHalfedge: MTLBuffer?'
+      doc: |-
+        Per-vertex representative half-edge buffer (`UInt32`, length = `vertexCount`).
+
+        `vertToHalfedge[v]` is any outgoing half-edge from vertex `v`. Walk the one-ring
+        via twin/next from there.
+
+        Present only when the mesh was created with `preserveTopology: true`.
+      source: Sources/SwiftMesh/MetalMesh.swift:106
+    - decl: 'public var vertexBuffer: MTLBuffer { get }'
+      doc: |-
+        The primary vertex buffer (buffer index 0).
+
+        Convenience accessor for interleaved layouts. Equivalent to `vertexBuffers[0]!`.
+      source: Sources/SwiftMesh/MetalMesh.swift:111
+    - decl: 'public var vertexBufferOffsets: [Int : Int]'
+      doc: |-
+        Byte offset of the first vertex in each buffer, keyed by buffer index. Missing keys mean 0.
+
+        Non-zero when buffers are sub-allocated, as `MTKMeshBufferAllocator` may do.
+      source: Sources/SwiftMesh/MetalMesh.swift:77
+    - decl: 'public var vertexBuffers: [Int : MTLBuffer]'
+      doc: Vertex buffers keyed by buffer index.
+      source: Sources/SwiftMesh/MetalMesh.swift:73
     - decl: 'public var vertexCount: Int'
+      doc: The number of vertices across all buffers.
+      source: Sources/SwiftMesh/MetalMesh.swift:79
     - decl: 'public var vertexDescriptor: VertexDescriptor'
-    - decl: public func toMesh() -> Mesh
-  - decl: public struct TriangleSoup
+      doc: Describes the layout and semantics of vertex attributes.
+      source: Sources/SwiftMesh/MetalMesh.swift:81
+    - decl: public func mergingIndexBuffers() throws -> MetalMesh
+      doc: |-
+        A copy whose submeshes share one 32-bit index buffer, each at its own offset. Vertex buffers are not copied.
+
+        Code that draws the result must add each submesh's ``Submesh/indexBufferOffset``.
+      source: Sources/SwiftMesh/MetalMesh+Merging.swift:11
+    - decl: 'public func transformed(by matrix: simd_float4x4) -> MetalMesh'
+      doc: |-
+        A copy with positions, normals, tangents and bitangents transformed by `matrix`.
+
+        Vertex data is read back, transformed on the CPU, and uploaded to new buffers on the same
+        device; the source buffers must be CPU-visible. Normals use the inverse transpose; tangent
+        handedness (w of a `.float4` tangent) is kept. Other attributes, morph targets and skin are
+        copied unchanged. Index buffers are rebuilt as `.uint32`.
+      source: Sources/SwiftMesh/MetalMesh+Transform.swift:13
+    - decl: public mutating func updateBounds()
+      doc: |-
+        Recomputes ``bounds`` and each submesh's bounds by reading the position attribute.
+
+        The vertex and index buffers must be CPU accessible.
+      source: Sources/SwiftMesh/MetalMesh+Extras.swift:68
+    - decl: public func vertexArrays() -> Mesh.VertexArrays
+      doc: |-
+        Reads the vertex and index buffers back into CPU arrays.
+
+        Vertices with equal positions share a ``Mesh/VertexArrays/sourceVertices`` entry.
+        Buffers must be CPU-visible.
+      source: Sources/SwiftMesh/VertexArrays+Decoding.swift:159
+    - decl: public func vertexAttributeData() -> [VertexAttributeData]
+      doc: |-
+        Every attribute in ``vertexDescriptor``, read back from the vertex buffers into tightly packed arrays.
+
+        The vertex buffers must be CPU-visible (shared or managed storage).
+      source: Sources/SwiftMesh/MetalMesh+VertexBuffers.swift:8
+    - decl: 'public static func packingVertexBuffers(_ meshes: [MetalMesh]) throws -> [MetalMesh]'
+      doc: |-
+        Copies of `meshes` whose vertex data shares one buffer per vertex buffer index, each mesh at its own offset
+        (``vertexBufferOffsets``). Index buffers are not changed.
+
+        All meshes must have the same ``vertexDescriptor``. Code that draws the result must bind each mesh's vertex
+        buffers at its offsets, or use offset / stride as a base vertex.
+      source: Sources/SwiftMesh/MetalMesh+VertexBuffers.swift:30
+  - decl: public struct SurfaceComponent
+    doc: One connected piece of a surface and its topological invariants.
+    source: Sources/SwiftMesh/MeshDiagnostics.swift:151
     members:
-    - decl: 'public init(mesh: Mesh)'
-    - decl: 'public init(positions: [SIMD3<Float>] = [], triangles: [(Int, Int, Int)] = [])'
-    - decl: 'public var positionCount: Int { get }'
-    - decl: 'public var positions: [SIMD3<Float>]'
-    - decl: 'public var triangleCount: Int { get }'
-    - decl: 'public var triangles: [(Int, Int, Int)]'
-    - decl: '@discardableResult public mutating func addTriangle(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>) -> Int'
-    - decl: 'public mutating func append(_ other: TriangleSoup)'
-    - decl: 'public func csg(_ operation: CSGOperation, _ other: TriangleSoup) -> TriangleSoup'
-    - decl: 'public func difference(_ other: TriangleSoup) -> TriangleSoup'
-    - decl: public mutating func flipAll()
-    - decl: public func flipped() -> TriangleSoup
-    - decl: 'public func intersection(_ other: TriangleSoup) -> TriangleSoup'
-    - decl: 'public func toMesh(weldTolerance: Float = 1e-5) -> Mesh'
-    - decl: 'public func union(_ other: TriangleSoup) -> TriangleSoup'
-    - decl: 'public func welded(tolerance: Float = 1e-5) -> TriangleSoup'
-    - decl: 'public static func marchingCubes(resolution: Int, bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5)), isoValue: Float = 0, field: (SIMD3<Float>) -> Float) -> TriangleSoup'
-    - decl: 'public static func marchingCubes(resolution: SIMD3<Int>, bounds: (min: SIMD3<Float>, max: SIMD3<Float>) = (SIMD3(-0.5, -0.5, -0.5), SIMD3(0.5, 0.5, 0.5)), isoValue: Float = 0, field: (SIMD3<Float>) -> Float) -> TriangleSoup'
-    - decl: 'public static func == (lhs: TriangleSoup, rhs: TriangleSoup) -> Bool'
+    - decl: 'public var boundaryLoopCount: Int'
+      doc: Open boundary loops in this component. Zero means the component is closed.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:157
+    - decl: 'public var eulerCharacteristic: Int'
+      doc: V - E + F, with each hole ring in a face counted as -1 (a holed face is not a disk).
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:155
+    - decl: 'public var faces: [HalfEdgeTopology.FaceID]'
+      doc: The faces in this component, in face-index order.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:153
+    - decl: 'public var genus: Int? { get }'
+      doc: |-
+        Genus from chi = 2 - 2g - b (orientable) or chi = 2 - g - b (non-orientable).
+        Nil if the result is not a non-negative integer, which means the mesh is not a valid surface.
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:163
+    - decl: 'public var isOrientable: Bool'
+      doc: False if some edge's two half-edges run the same direction (faces can't be oriented consistently).
+      source: Sources/SwiftMesh/MeshDiagnostics.swift:159
   - decl: public struct ValidationIssue
+    doc: A problem found during topology or mesh validation.
+    source: Sources/SwiftMesh/HalfEdgeTopology.swift:185
     members:
     - decl: public enum Location
+      doc: Where in the topology the issue was found.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:195
       members:
       - decl: public case edge(HalfEdgeTopology.HalfEdgeID)
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:197
       - decl: public case face(HalfEdgeTopology.FaceID)
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:198
       - decl: public case mesh
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:199
       - decl: public case vertex(HalfEdgeTopology.VertexID)
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:196
     - decl: public enum Severity
+      doc: How severe the issue is.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:187
       members:
       - decl: public case error
+        doc: Structural problem that will cause incorrect behavior.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:191
       - decl: public case warning
-    - decl: 'public init(severity: ValidationIssue.Severity, location: ValidationIssue.Location, message: String)'
+        doc: Informational — not necessarily wrong but worth noting.
+        source: Sources/SwiftMesh/HalfEdgeTopology.swift:189
+    - decl: 'public init(severity: Severity, location: Location, message: String)'
+      doc: Creates an issue. Mostly useful for custom validators and tests.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:208
     - decl: 'public var description: String { get }'
-    - decl: 'public var location: ValidationIssue.Location'
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:214
+    - decl: 'public var location: Location'
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:203
     - decl: 'public var message: String'
-    - decl: 'public var severity: ValidationIssue.Severity'
+      doc: A human-readable explanation of the problem.
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:205
+    - decl: 'public var severity: Severity'
+      source: Sources/SwiftMesh/HalfEdgeTopology.swift:202
   - decl: public enum AtlasBakingError
+    doc: Errors produced by atlas baking.
+    source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:70
     members:
     - decl: 'public case insufficientAtlasSpace(placed: Int, total: Int)'
+      doc: Not all charts fit into `atlasSize`. The included counts describe the failure.
+      source: Sources/SwiftMesh/Mesh+AtlasBaking.swift:72
   - decl: public enum CSGOperation
+    doc: The type of CSG (Constructive Solid Geometry) boolean operation.
+    source: Sources/SwiftMesh/CSG.swift:4
     members:
     - decl: public case difference
+      doc: Subtract the second volume from the first (A − B).
+      source: Sources/SwiftMesh/CSG.swift:10
     - decl: public case intersection
+      doc: Keep only the overlapping volume (A ∩ B).
+      source: Sources/SwiftMesh/CSG.swift:8
     - decl: public case union
+      doc: Combine two volumes into one (A ∪ B).
+      source: Sources/SwiftMesh/CSG.swift:6
+  - decl: public enum ExtrusionMode
+    doc: What ``Mesh/extruded(_:depth:mode:curveSegments:attributes:)-(CGPath,_,_,_,_)`` builds from each outline.
+    source: Sources/SwiftMesh/PathExtrusion.swift:6
+    members:
+    - decl: public case solid
+      doc: 'Front and back caps joined by side walls: a closed solid.'
+      source: Sources/SwiftMesh/PathExtrusion.swift:8
+    - decl: 'public case thinWalls(thickness: Float)'
+      doc: |-
+        Each outline becomes a closed wall `thickness` thick, offset toward the shape's material.
+
+        Simple shapes get a direct miter offset. When that offset would fold or cross (sharp
+        corners, notches, features thinner than twice `thickness`), the wall is built with CSG
+        instead: the solid intersected with a band along every edge, with mitered joins limited
+        to twice `thickness` and rounded beyond. That path is slower and returns triangles.
+      source: Sources/SwiftMesh/PathExtrusion.swift:17
+    - decl: public case wallsOnly
+      doc: 'Side walls only, no caps: an open band per outline (fences, walls from a floor plan).'
+      source: Sources/SwiftMesh/PathExtrusion.swift:10
+  - decl: public enum MetalMeshError
+    source: Sources/SwiftMesh/MetalMesh+Merging.swift:3
+    members:
+    - decl: 'public case bufferAllocationFailed(length: Int)'
+      source: Sources/SwiftMesh/MetalMesh+Merging.swift:4
   - decl: public enum ModelIOConversionError
+    doc: Errors that can occur during ModelIO conversion.
+    source: Sources/SwiftMesh/ModelIO+Mesh.swift:8
     members:
     - decl: public case bufferCreationFailed
+      source: Sources/SwiftMesh/ModelIO+Mesh.swift:9
   - decl: public enum ProjectionAxis
+    doc: The axis used for UV projection.
+    source: Sources/SwiftMesh/MeshAttributes.swift:125
     members:
     - decl: public case x
+      source: Sources/SwiftMesh/MeshAttributes.swift:126
     - decl: public case y
+      source: Sources/SwiftMesh/MeshAttributes.swift:126
     - decl: public case z
+      source: Sources/SwiftMesh/MeshAttributes.swift:126
   extensions:
   - extended_module: Metal
     symbols:
     - decl: extension MTLRenderCommandEncoder
       members:
-      - decl: 'public func draw(_ metalMesh: MetalMesh)'
+      - decl: public extension MTLRenderCommandEncoder
+        source: Sources/SwiftMesh/MetalMesh.swift:162
+        members:
+        - decl: 'public func draw(_ metalMesh: MetalMesh)'
+          doc: |-
+            Binds the mesh's vertex buffers at their buffer indices and draws every submesh.
+
+            The pipeline's vertex descriptor must match `metalMesh.vertexDescriptor`.
+          source: Sources/SwiftMesh/MetalMesh.swift:166
+  - extended_module: Swift
+    symbols:
+    - decl: extension Array
+      members:
+      - decl: public extension Array where Element == MetalMesh
+        source: Sources/SwiftMesh/ModelIO+Mesh.swift:186
+        members:
+        - decl: 'public init(mdlAsset: MDLAsset, device: MTLDevice, applyingTransforms: Bool = true) throws where Element == MetalMesh'
+          doc: |-
+            Convert every MDLMesh in an asset into a MetalMesh, one per source mesh.
+
+            Order matches a depth-first walk of the asset's object graph. Vertex layouts and
+            attributes are kept as loaded.
+
+            - Parameter applyingTransforms: Bake each mesh's world transform into positions, normals,
+              tangents and bitangents (see ``MetalMesh/transformed(by:)``). Set `false` to keep meshes
+              in their local space and share ModelIO's buffers.
+          source: Sources/SwiftMesh/ModelIO+Mesh.swift:195
+      - decl: public extension Array where Element == Mesh
+        source: Sources/SwiftMesh/ModelIO+Mesh.swift:164
+        members:
+        - decl: 'public init(mdlAsset: MDLAsset, device: MTLDevice, applyingTransforms: Bool = true) throws where Element == Mesh'
+          doc: |-
+            Convert every MDLMesh in an asset into a Mesh, one per source mesh.
+
+            Order matches a depth-first walk of the asset's object graph. The caller
+            decides what to do with the result (render separately, `Mesh.merged(_:)`, ...).
+
+            - Parameter applyingTransforms: Bake each mesh's world transform (its own
+              and its ancestors') into positions and directions. Set `false` to keep
+              meshes in their local space.
+          source: Sources/SwiftMesh/ModelIO+Mesh.swift:173
 - name: SwiftMeshIO
   symbols:
   - decl: public enum MeshResourceConversionError
+    doc: Errors from converting a SwiftMesh `Mesh` to a RealityKit `MeshResource`.
+    source: Sources/SwiftMeshIO/Mesh+RealityKit.swift:9
     members:
     - decl: public case emptyMesh
+      doc: The mesh has no faces.
+      source: Sources/SwiftMeshIO/Mesh+RealityKit.swift:11
     - decl: public case generationFailed(any Error)
+      doc: RealityKit rejected the generated descriptor.
+      source: Sources/SwiftMeshIO/Mesh+RealityKit.swift:15
     - decl: public case invalidMesh([ValidationIssue])
+      doc: The mesh failed `Mesh.validate()` with these issues.
+      source: Sources/SwiftMeshIO/Mesh+RealityKit.swift:13
     - decl: 'public var description: String { get }'
+      source: Sources/SwiftMeshIO/Mesh+RealityKit.swift:17
   - decl: public enum PLY
+    doc: Reads and writes Stanford PLY meshes (ASCII and binary).
+    source: Sources/SwiftMeshIO/PLY.swift:28
     members:
+    - decl: public enum Format
+      doc: PLY body encoding.
+      source: Sources/SwiftMeshIO/PLY.swift:30
+      members:
+      - decl: public case ascii
+        source: Sources/SwiftMeshIO/PLY.swift:31
+      - decl: public case binaryBigEndian
+        source: Sources/SwiftMeshIO/PLY.swift:33
+      - decl: public case binaryLittleEndian
+        source: Sources/SwiftMeshIO/PLY.swift:32
     - decl: 'public static func read(from data: Data) throws -> Mesh'
+      doc: |-
+        Read a Mesh from PLY data (ASCII or binary, either endianness).
+
+        Reads vertex positions (x, y, z), optional vertex normals (nx, ny, nz), and
+        polygon faces (`vertex_indices` or `vertex_index`). Other elements and
+        properties are skipped.
+      source: Sources/SwiftMeshIO/PLY.swift:41
     - decl: 'public static func read(from string: String) throws -> Mesh'
-    - decl: 'public static func write(_ mesh: Mesh) -> Data'
+      doc: Read a Mesh from a PLY ASCII string.
+      source: Sources/SwiftMeshIO/PLY.swift:122
+    - decl: 'public static func write(_ mesh: Mesh, format: Format = .ascii) -> Data'
+      doc: |-
+        Write a Mesh to PLY.
+
+        Per-corner normals are averaged to per-vertex normals. Faces are written as
+        `uchar`-counted `int` index lists.
+      source: Sources/SwiftMeshIO/PLY.swift:130
   - decl: public enum PLYError
+    doc: Errors from reading PLY data.
+    source: Sources/SwiftMeshIO/PLY.swift:8
     members:
     - decl: public case invalidHeader(String)
+      doc: The header is missing or malformed.
+      source: Sources/SwiftMeshIO/PLY.swift:10
     - decl: public case parseError(String)
+      doc: The body doesn't match the header (bad value or early end of data).
+      source: Sources/SwiftMeshIO/PLY.swift:14
     - decl: public case unsupportedFormat(String)
+      doc: The `format` line names an encoding other than ASCII or binary.
+      source: Sources/SwiftMeshIO/PLY.swift:12
     - decl: 'public var description: String { get }'
+      source: Sources/SwiftMeshIO/PLY.swift:16
   extensions:
   - extended_module: RealityFoundation
     symbols:
     - decl: extension MeshResource
       members:
-      - decl: '@MainActor public static func generate(from mesh: Mesh, generateTangentsIfMissing: Bool = true) throws -> MeshResource'
+      - decl: public extension MeshResource
+        source: Sources/SwiftMeshIO/Mesh+RealityKit.swift:33
+        members:
+        - decl: '@MainActor public static func generate(from mesh: Mesh, generateTangentsIfMissing: Bool = true) throws -> MeshResource'
+          doc: |-
+            Convert a SwiftMesh ``Mesh`` into a `MeshResource`.
+
+            Each ``Mesh/Submesh`` becomes a separate `MeshResource.Part` within a
+            single `MeshResource.Model`, preserving its label as the part's `id`
+            (falling back to `"submesh_<index>"` when the label is `nil`).
+
+            SwiftMesh stores normals, texture coordinates, tangents, and colors
+            per half-edge corner, while RealityKit needs per-vertex arrays. Where
+            corners that share a position have differing attributes (sharp edges,
+            UV seams), vertices are duplicated so each corner gets its own slot.
+
+            N-gons and faces with holes are triangulated with ``Mesh/triangulatedCorners(of:)``.
+
+            - Parameters:
+              - mesh: The SwiftMesh mesh to convert.
+              - generateTangentsIfMissing: When `true`, derive tangents via MikkTSpace
+                if the source mesh has normals and UVs but no tangents.
+            - Returns: A new `MeshResource` ready to use with `ModelEntity`.
+          source: Sources/SwiftMeshIO/Mesh+RealityKit.swift:53

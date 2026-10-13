@@ -3,6 +3,12 @@ import simd
 @testable import SwiftMesh
 import Testing
 
+extension AtlasLayout.ChartPlacement {
+    var atlasRect: Rect<Int> {
+        Rect(origin: atlasOrigin, size: atlasExtent)
+    }
+}
+
 @Suite("PlanarCharts")
 struct PlanarChartsTests {
     @Test("Single planar quad produces one chart")

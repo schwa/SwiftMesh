@@ -3456,11 +3456,13 @@ README.md, Sources/SwiftMesh/SwiftMesh.docc/SwiftMesh.md and Documentation/ have
 ## 167: Make BinPacking internal (drop library product)
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 labels: api, effort:s
 created: 2026-10-13T20:19:26Z
+updated: 2026-10-13T20:52:48Z
+closed: 2026-10-13T20:52:48Z
 +++
 
 BinPacking is a public library product, but it is only an implementation detail of atlas baking.
