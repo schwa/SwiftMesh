@@ -1,6 +1,6 @@
 # SwiftMesh
 
-Mesh data structures and operations for Swift. Half-edge topology, n-gon faces, SoA attributes, Metal export.
+SwiftMesh is a Swift library for 3D meshes. It stores meshes as half-edge topology with n-gon faces. It edits them and exports them to Metal.
 
 ![SwiftMesh Demo](Documentation/screenshot.png)
 
@@ -19,30 +19,32 @@ encoder.draw(metalMesh)
 
 ## Types
 
-**`HalfEdgeTopology`** — half-edge wiring with no geometry. Adjacency queries, validation, diagnostics, boundary detection, edge deletion/collapse.
+**`HalfEdgeTopology`** connects vertices, half-edges, and faces. It stores no positions. Use it for adjacency queries, validation, boundary loops, and edge deletion or collapse.
 
-**`Mesh`** — topology + vertex positions + optional per-corner attributes (normals, UVs, tangents, colors). N-gon faces. Multi-material submeshes.
+**`Mesh`** is the type that you edit. It adds vertex positions and optional per-corner attributes (normals, UVs, tangents, bitangents, colors) to a `HalfEdgeTopology`. Faces can have any number of sides and can have holes. Submeshes put faces into groups, usually one group for each material.
 
-**`Mesh2D<ID>`** — 2D analogue: topology + `CGPoint` positions + per-half-edge labels. Planar subdivision construction from line segments, signed-area face classification, hole detection, boundary loop extraction, edge deletion with face merging.
+**`Mesh2D<ID>`** is the 2D version of `Mesh`. It has `CGPoint` positions and a label of type `ID` on each half-edge. It builds a planar subdivision from line segments. It also finds holes, gives signed face areas, and merges faces when you delete an edge. The DocC documentation has a full page about `Mesh2D`.
 
-**`MetalMesh`** — GPU-ready triangulated buffers. Interleaved or separate buffer layouts. Each submesh records its `indexType` (`.uint16`/`.uint32`) and `primitiveType`.
+**`MetalMesh`** is the type that you draw. It holds triangles in Metal buffers. The vertex buffers can be interleaved or separate. Each submesh has its own `indexType` (`.uint16` or `.uint32`) and `primitiveType`.
 
-**`SwiftMeshIO`** — PLY file import/export (ASCII).
+**`SwiftMeshIO`** reads and writes PLY files in ASCII and binary format.
 
-**`BinPacking`** — standalone MaxRects 2D bin packer. Used internally for atlas baking; also exposed as its own library product.
+**`BinPacking`** is a MaxRects 2D bin packer. SwiftMesh uses it to bake atlases. It is also a separate library product.
 
 ## Loading & conversion
 
 ```swift
 // From ModelIO
-let mesh = try MetalMesh(mdlMesh: mdlMesh, device: device)
-let meshes = try [MetalMesh](mdlAsset: asset, device: device) // world transforms baked in
-let mesh = MetalMesh(mtkMesh: mtkMesh)
+let metalMesh = try MetalMesh(mdlMesh: mdlMesh, device: device)   // keeps every attribute
+let metalMeshes = try [MetalMesh](mdlAsset: asset, device: device) // world transforms baked in
+let metalMesh = MetalMesh(mtkMesh: mtkMesh)
+let mesh = try Mesh(mdlMesh: mdlMesh, device: device)              // via MetalMesh; triangles only
+let meshes = try [Mesh](mdlAsset: asset, device: device)
 let mdlMesh = mesh.toMDLMesh(device: device)
 
-// From PLY
+// From PLY (SwiftMeshIO)
 let mesh = try PLY.read(from: data)
-let data = PLY.write(mesh)
+let data = PLY.write(mesh, format: .ascii)
 
 // Between types
 let metalMesh = MetalMesh(mesh: mesh, device: device) // Mesh → MetalMesh (lossy)
@@ -124,6 +126,9 @@ mesh.validate()                        // [ValidationIssue]; empty if valid
 ```swift
 mesh.splitEdge(halfEdgeID, at: 0.5)                 // insert a vertex; adjacent triangles split in two
 mesh.extrudingFace(faceID, distance: 0.3)           // push a face out along its normal, with side walls
+mesh.flipEdge(halfEdgeID)                           // flip the diagonal shared by two triangles
+mesh.chamfered(distance: 0.05, segments: 2)         // bevel edges; nil unless the mesh is a closed manifold
+mesh.fillingHoles()                                 // close boundary loops with new faces
 let (front, back) = mesh.split(planeNormal: [0, 1, 0], point: .zero)  // clip and cap; capped: false leaves it open
 ```
 
@@ -156,7 +161,7 @@ mesh.decimated(ratio: 0.5)              // reduce to 50% of faces
 mesh.decimated(targetFaceCount: 100)     // reduce to exact count
 ```
 
-Quadric error metric edge collapse. N-gon faces are triangulated first, and the result is compacted (no tombstoned elements).
+Decimation collapses edges in the order of quadric error. It triangulates n-gon faces first. The result has no unused vertices, half-edges, or faces.
 
 ### CSG (Constructive Solid Geometry)
 
@@ -166,7 +171,14 @@ meshA.intersection(meshB)   // A ∩ B
 meshA.difference(meshB)     // A − B
 ```
 
-Robust Boolean ported from [Manifold](https://github.com/elalish/manifold) (Apache-2.0; see `NOTICE`). Inputs must be closed manifolds (vertices at the same position, such as UV seams, are merged first); the result is then always a closed manifold. Exact ties such as touching or coplanar faces are resolved by symbolic perturbation, so touching solids union into one and a mesh minus itself is empty. Per-corner attributes are interpolated onto the result. Non-manifold inputs give an empty result.
+The Boolean code is a port of [Manifold](https://github.com/elalish/manifold) (Apache-2.0, see `NOTICE`).
+
+- Both inputs must be closed manifolds. CSG first merges vertices at the same position, for example at UV seams.
+- If an input is not a closed manifold, the result is empty.
+- If both inputs are closed manifolds, the result is a closed manifold.
+- Symbolic perturbation resolves exact ties, such as faces that touch or are coplanar. Thus, two solids that touch union into one solid, and a mesh minus itself is empty.
+- CSG interpolates per-corner attributes onto the result.
+- A mesh with no faces is the empty solid.
 
 ```swift
 mesh.windingNumbers(at: points)  // robust point-in-solid query (1 inside, 0 outside)
@@ -194,31 +206,34 @@ let (uvMesh, layout) = try mesh.bakingPlanarAtlas(
 
 ## Design
 
-- Faces are n-gon. Triangulation happens at `MetalMesh` export and in operations that need triangles (decimation, CSG).
-- `HalfEdgeTopology` stores no geometry — pure wiring.
-- `Mesh` is a thin wrapper: topology + SoA attribute arrays.
-- Per-corner attributes use `HalfEdgeID` as key (each half-edge = one vertex in one face). Operations that rebuild topology remap them through one internal layer (`CornerAttributes`).
-- `MetalMesh` layout is write-once export; interleave however the vertex descriptor dictates.
-- Submeshes on `Mesh` are face groups (list of `FaceID`s). `MetalMesh` maps 1:1.
-- `MetalMesh` optionally stores corner-table topology buffers (`opposites` + `vertToHalfedge`)
-  when created with `preserveTopology: true`. The existing index buffer doubles as the
-  half-edge→vertex map (V table). `opposites[h]` gives the twin half-edge (O table),
-  `vertToHalfedge[v]` gives a representative outgoing half-edge per vertex. Boundary
-  edges use `UInt32.max` as a sentinel. This makes `Mesh → MetalMesh → Mesh` lossless
-  for triangle topology — without it, `toMesh()` rebuilds topology via position
-  deduplication, which can lose twin wiring at attribute seams.
+- Faces can have any number of sides. SwiftMesh triangulates faces only for `MetalMesh` export and for operations that need triangles, such as decimation and CSG.
+- `HalfEdgeTopology` stores only connections. It stores no positions or attributes.
+- `Mesh` adds attribute arrays to a `HalfEdgeTopology`. Each attribute has its own array (structure of arrays).
+- A per-corner attribute has one value for each half-edge. A half-edge is one corner of one face.
+- When an operation rebuilds the topology, one internal type (`CornerAttributes`) moves the per-corner attributes to the new half-edges.
+- The vertex descriptor of a `MetalMesh` sets its buffer layout. SwiftMesh writes the buffers once, at export.
+- `Mesh.VertexArrays` holds the data of a `MetalMesh` in CPU memory. `mesh.vertexArrays()` makes it from a `Mesh`, and `Mesh(vertexArrays:opposites:)` makes a `Mesh` from it.
+- `metalMesh.vertexArrays()` reads the GPU buffers back. Only buffer upload and readback use Metal.
+- A `Mesh.Submesh` is a list of `FaceID`s. Each `Mesh.Submesh` becomes one `MetalMesh.Submesh`.
+- With `preserveTopology: true`, a `MetalMesh` also stores a corner table in two buffers:
+  - The index buffer gives the vertex of each half-edge.
+  - `opposites[h]` gives the twin of half-edge `h`. Boundary half-edges have the value `UInt32.max`.
+  - `vertToHalfedge[v]` gives one outgoing half-edge of vertex `v`.
+- With the corner table, `Mesh` to `MetalMesh` to `Mesh` keeps the triangle topology exactly. Without it, `toMesh()` matches vertices by position. Twins at attribute seams can then be different.
 
 ## Performance notes
 
-**Mesh → MetalMesh** is O(total triangles) with constant work per corner. Vertex dedup hashes the corner's bytes in a reusable scratch buffer, with no per-corner allocation.
+**`Mesh` to `MetalMesh`** takes time proportional to the number of triangles. Each corner needs one hash lookup. Corners with the same position and attributes share one vertex.
 
-**Triangulation** adds overhead for n-gon faces: each non-triangle face is projected to 2D and triangulated with the robust ε-aware triangulator ported from Manifold. Convex faces take a fast path; large concave faces cost more. Triangle faces pass through with no extra work.
+**Triangulation** costs more for faces with more than three sides. SwiftMesh projects each such face to 2D. Then the triangulator from Manifold triangulates it, with a tolerance for rounding errors. Convex faces use a faster path. Large concave faces take more time. Triangles need no extra work.
 
-**Benchmarks** live in the `SwiftMeshBenchmarks` executable. They cover primitives, topology, CSG, decimation, subdivision, convex hull, marching cubes, MetalMesh, and PLY. Run `swift run -c release SwiftMeshBenchmarks [--json] [name-filter...]`. Attach before/after numbers to performance changes.
+**Benchmarks** are in the `SwiftMeshBenchmarks` executable. They cover primitives, topology, CSG, decimation, subdivision, convex hull, marching cubes, `MetalMesh`, and PLY.
+
+To run the benchmarks, use `swift run -c release SwiftMeshBenchmarks [--json] [name-filter...]`. For a performance change, include the results from before and after the change.
 
 ## Dependencies
 
-- [GeometryLite2D](https://github.com/schwa/GeometryLite2D) — `LineSegment`, `Polygon`, `Identified` (used by `Mesh2D`)
+- [GeometryLite2D](https://github.com/schwa/GeometryLite2D): `Mesh2D` uses its `LineSegment`, `Polygon`, and `Identified` types.
 - [GeometryLite3D](https://github.com/schwa/GeometryLite3D)
 - [MetalSupport](https://github.com/schwa/MetalSupport)
-- [MikkTSpace](https://github.com/mmikk/MikkTSpace) (vendored) — see [mikktspace.com](http://www.mikktspace.com/)
+- [MikkTSpace](https://github.com/mmikk/MikkTSpace): a copy is in this package. For more information, see [mikktspace.com](http://www.mikktspace.com/).

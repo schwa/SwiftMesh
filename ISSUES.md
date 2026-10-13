@@ -3433,11 +3433,13 @@ Related: #163 (initializer naming), #152 (toMesh drops attributes).
 ## 166: Audit docs and remove out-of-date information
 
 +++
-status: new
+status: closed
 priority: low
 kind: documentation
 labels: area:docs, effort:s
 created: 2026-10-13T19:52:36Z
+updated: 2026-10-13T20:11:20Z
+closed: 2026-10-13T20:11:20Z
 +++
 
 README.md, Sources/SwiftMesh/SwiftMesh.docc/SwiftMesh.md and Documentation/ have drifted from the code. Recent changes not reflected everywhere: TriangleSoup made internal (#164), CSG weldTolerance removed, MetalMesh ModelIO loading added (#165), CPU vertex-array decoding (#161), corner attributes/submesh handling (#159, #160), teapot UVs (#158).

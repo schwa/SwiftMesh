@@ -117,7 +117,7 @@ public struct MetalMesh {
 
     /// Create a MetalMesh from a Mesh.
     ///
-    /// Faces are triangulated and corners become vertices (see ``Mesh/vertexArrays()``).
+    /// Faces are triangulated and corners become vertices (see ``Mesh/vertexArrays(signedTangents:)``).
     /// Each `Mesh.Submesh` becomes a `MetalMesh.Submesh`; they share one index buffer.
     /// With `signedTangents`, tangents are `.float4` with the bitangent sign in w and there is no bitangent attribute.
     public init(mesh: Mesh, device: MTLDevice, label: String? = nil, bufferLayout: BufferLayout = .interleaved, preserveTopology: Bool = false, signedTangents: Bool = false) {
