@@ -34,7 +34,6 @@ them with diagnostics; then upload them with ``MetalMesh``.
 - ``Mesh/extrudedText(_:font:depth:mode:curveSegments:attributes:)``
 - ``ExtrusionMode``
 - ``Mesh/merged(_:)``
-- ``TriangleSoup``
 
 ### Editing
 

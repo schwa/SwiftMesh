@@ -2,7 +2,7 @@ import simd
 
 // MARK: - Marching Cubes
 
-public extension TriangleSoup {
+extension TriangleSoup {
     /// Generate an isosurface mesh from a scalar field using the marching cubes algorithm.
     ///
     /// Samples the scalar field on a regular grid and produces triangles at the

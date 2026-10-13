@@ -25,10 +25,10 @@ struct CSGTests {
     @Test("CSG does not split faces the other solid doesn't touch", arguments: [CSGOperation.union, .difference])
     func noSplitOfUntouchedFaces(operation: CSGOperation) {
         let rotation = simd_quatf(angle: 0.5, axis: simd_normalize([1, 1, 0]))
-        var cube = TriangleSoup(mesh: Mesh.box(extents: [2, 2, 2], attributes: []))
-        cube.positions = cube.positions.map { rotation.act($0) }
-        let sphere = TriangleSoup(mesh: Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 2, attributes: []))
-        let result = cube.csg(operation, sphere)
+        let cubeMesh = Mesh.box(extents: [2, 2, 2], attributes: []).rotated(by: rotation)
+        let sphere = Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 2, attributes: [])
+        let cube = TriangleSoup(mesh: cubeMesh)
+        let result = TriangleSoup(mesh: cubeMesh.csg(operation, sphere, options: .init(mergeCoplanar: false)))
         let onCubeSurface = result.triangles.filter { tri in
             [tri.0, tri.1, tri.2].allSatisfy { simd_reduce_max(simd_abs(rotation.inverse.act(result.positions[$0]))) > 0.999 }
         }
@@ -39,10 +39,11 @@ struct CSGTests {
     @Test("CSG output vertices stay on input surfaces")
     func outputVerticesOnInputPlanes() {
         let rotation = simd_quatf(angle: 0.7, axis: simd_normalize([1, 2, 3]))
-        let a = TriangleSoup(mesh: Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 3, attributes: []))
-        var b = TriangleSoup(mesh: Mesh.box(extents: [0.7, 0.7, 0.7], attributes: []))
-        b.positions = b.positions.map { rotation.act($0) + [0.1, 0.05, 0.02] }
-        let result = a.intersection(b)
+        let meshA = Mesh.icoSphere(extents: [1, 1, 1], subdivisions: 3, attributes: [])
+        let meshB = Mesh.box(extents: [0.7, 0.7, 0.7], attributes: []).rotated(by: rotation).translated(by: [0.1, 0.05, 0.02])
+        let a = TriangleSoup(mesh: meshA)
+        let b = TriangleSoup(mesh: meshB)
+        let result = meshA.intersection(meshB, mergeCoplanar: false)
         var planes: [(normal: SIMD3<Double>, w: Double)] = []
         for soup in [a, b] {
             for triangle in soup.triangles {
@@ -65,7 +66,7 @@ struct CSGTests {
         let (a, b) = overlappingCubes()
         #expect(a.union(b) == a.csg(.union, b))
         #expect(a.intersection(b, mergeCoplanar: false) == a.csg(.intersection, b, options: .init(mergeCoplanar: false)))
-        #expect(a.difference(b, weldTolerance: 1e-3) == a.csg(.difference, b, options: .init(weldTolerance: 1e-3)))
+        #expect(a.difference(b) == a.csg(.difference, b))
     }
 
     @Test("CSG output is deterministic", arguments: [CSGOperation.union, .intersection, .difference])
@@ -111,61 +112,28 @@ struct CSGTests {
         return (a, b)
     }
 
-    // MARK: - TriangleSoup CSG
+    // MARK: - Triangle counts
 
-    @Test("Union of overlapping cubes produces valid soup")
-    func unionOverlapping() {
-        let (a, b) = overlappingCubes()
-        let soupA = TriangleSoup(mesh: a)
-        let soupB = TriangleSoup(mesh: b)
-        let result = soupA.union(soupB)
-        #expect(result.triangleCount > 0)
-    }
-
-    @Test("Intersection of overlapping cubes produces valid soup")
-    func intersectionOverlapping() {
-        let (a, b) = overlappingCubes()
-        let soupA = TriangleSoup(mesh: a)
-        let soupB = TriangleSoup(mesh: b)
-        let result = soupA.intersection(soupB)
-        #expect(result.triangleCount > 0)
-    }
-
-    @Test("Difference of overlapping cubes produces valid soup")
-    func differenceOverlapping() {
-        let (a, b) = overlappingCubes()
-        let soupA = TriangleSoup(mesh: a)
-        let soupB = TriangleSoup(mesh: b)
-        let result = soupA.difference(soupB)
-        #expect(result.triangleCount > 0)
+    private func triangleCount(_ mesh: Mesh) -> Int {
+        TriangleSoup(mesh: mesh).triangleCount
     }
 
     @Test("Union of separated cubes preserves all triangles")
     func unionSeparated() {
         let (a, b) = separatedCubes()
-        let soupA = TriangleSoup(mesh: a)
-        let soupB = TriangleSoup(mesh: b)
-        let result = soupA.union(soupB)
-        // Should have all triangles from both meshes
-        #expect(result.triangleCount == soupA.triangleCount + soupB.triangleCount)
+        #expect(triangleCount(a.union(b, mergeCoplanar: false)) == triangleCount(a) + triangleCount(b))
     }
 
     @Test("Intersection of separated cubes is empty")
     func intersectionSeparated() {
         let (a, b) = separatedCubes()
-        let soupA = TriangleSoup(mesh: a)
-        let soupB = TriangleSoup(mesh: b)
-        let result = soupA.intersection(soupB)
-        #expect(result.triangleCount == 0)
+        #expect(a.intersection(b, mergeCoplanar: false).faceCount == 0)
     }
 
     @Test("Difference of separated cubes preserves A")
     func differenceSeparated() {
         let (a, b) = separatedCubes()
-        let soupA = TriangleSoup(mesh: a)
-        let soupB = TriangleSoup(mesh: b)
-        let result = soupA.difference(soupB)
-        #expect(result.triangleCount == soupA.triangleCount)
+        #expect(triangleCount(a.difference(b, mergeCoplanar: false)) == triangleCount(a))
     }
 
     // MARK: - Mesh CSG API
@@ -237,19 +205,15 @@ struct CSGTests {
 
     // MARK: - Edge cases
 
-    @Test("CSG with empty soup")
+    @Test("CSG with an empty mesh treats it as the empty solid")
     func csgWithEmpty() {
-        let cube = TriangleSoup(mesh: Mesh.box(extents: [1, 1, 1], attributes: []))
-        let empty = TriangleSoup()
-
-        let unionResult = cube.union(empty)
-        #expect(unionResult.triangleCount == cube.triangleCount)
-
-        let interResult = cube.intersection(empty)
-        #expect(interResult.triangleCount == 0)
-
-        let diffResult = cube.difference(empty)
-        #expect(diffResult.triangleCount == cube.triangleCount)
+        let cube = Mesh.box(extents: [1, 1, 1], attributes: [])
+        let empty = Mesh(positions: [], faces: [[Int]]())
+        #expect(cube.union(empty) == cube)
+        #expect(empty.union(cube) == cube)
+        #expect(cube.intersection(empty).faceCount == 0)
+        #expect(cube.difference(empty) == cube)
+        #expect(empty.difference(cube).faceCount == 0)
     }
 
     @Test("Union with sphere and cube")

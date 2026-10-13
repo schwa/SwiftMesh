@@ -29,10 +29,9 @@ public extension Mesh {
     ///   - other: The mesh to union with.
     ///   - mergeCoplanar: Merge adjacent coplanar triangles of the result back into n-gons
     ///     (only when the result has no attributes; see ``CSGOptions/mergeCoplanar``).
-    ///   - weldTolerance: Used only when CSG is applied to triangle soups; see ``CSGOptions/weldTolerance``.
     /// - Returns: A new mesh representing the combined volume.
-    func union(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
-        csg(.union, other, options: CSGOptions(weldTolerance: weldTolerance, mergeCoplanar: mergeCoplanar))
+    func union(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh {
+        csg(.union, other, options: CSGOptions(mergeCoplanar: mergeCoplanar))
     }
 
     /// Returns the CSG intersection of this mesh with another (A ∩ B).
@@ -43,10 +42,9 @@ public extension Mesh {
     ///   - other: The mesh to intersect with.
     ///   - mergeCoplanar: Merge adjacent coplanar triangles of the result back into n-gons
     ///     (only when the result has no attributes; see ``CSGOptions/mergeCoplanar``).
-    ///   - weldTolerance: Used only when CSG is applied to triangle soups; see ``CSGOptions/weldTolerance``.
     /// - Returns: A new mesh containing only the shared volume.
-    func intersection(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
-        csg(.intersection, other, options: CSGOptions(weldTolerance: weldTolerance, mergeCoplanar: mergeCoplanar))
+    func intersection(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh {
+        csg(.intersection, other, options: CSGOptions(mergeCoplanar: mergeCoplanar))
     }
 
     /// Returns the CSG difference of this mesh minus another (A − B).
@@ -57,10 +55,9 @@ public extension Mesh {
     ///   - other: The mesh volume to subtract.
     ///   - mergeCoplanar: Merge adjacent coplanar triangles of the result back into n-gons
     ///     (only when the result has no attributes; see ``CSGOptions/mergeCoplanar``).
-    ///   - weldTolerance: Used only when CSG is applied to triangle soups; see ``CSGOptions/weldTolerance``.
     /// - Returns: A new mesh with the other's volume carved out.
-    func difference(_ other: Mesh, mergeCoplanar: Bool = true, weldTolerance: Float = 1e-2) -> Mesh {
-        csg(.difference, other, options: CSGOptions(weldTolerance: weldTolerance, mergeCoplanar: mergeCoplanar))
+    func difference(_ other: Mesh, mergeCoplanar: Bool = true) -> Mesh {
+        csg(.difference, other, options: CSGOptions(mergeCoplanar: mergeCoplanar))
     }
 
     /// Performs a CSG operation with the robust Boolean (a Swift port of Manifold's).
@@ -73,8 +70,23 @@ public extension Mesh {
     /// the inputs (an attribute is kept only if both inputs have it), and submeshes are
     /// merged into one.
     ///
+    /// An empty operand (no faces) counts as the empty solid: union returns the other mesh,
+    /// intersection is empty, and difference returns `self`.
+    ///
     /// - Returns: The result, or an empty mesh if either input is not a closed manifold.
     func csg(_ operation: CSGOperation, _ other: Mesh, options: CSGOptions = .init()) -> Mesh {
+        if faceCount == 0 || other.faceCount == 0 {
+            switch operation {
+            case .union:
+                return faceCount == 0 ? other : self
+
+            case .intersection:
+                return Mesh(positions: [], faces: [[Int]]())
+
+            case .difference:
+                return self
+            }
+        }
         guard let p = try? BooleanMesh(mesh: self), let q = try? BooleanMesh(mesh: other) else {
             return Mesh(positions: [], faces: [[Int]]())
         }
@@ -98,9 +110,6 @@ public extension Mesh {
 /// The robust Boolean itself needs no tolerances: its precision comes from the inputs'
 /// bounding boxes, and exact ties are broken symbolically.
 public struct CSGOptions: Sendable {
-    /// Maximum distance for merging vertices when CSG is applied to ``TriangleSoup`` inputs,
-    /// which must be welded into closed meshes first. Not used for ``Mesh`` inputs.
-    public var weldTolerance: Float
     /// Merge adjacent coplanar triangles back into n-gons. Skipped when the result carries
     /// per-corner attributes, because merging would drop them.
     public var mergeCoplanar: Bool
@@ -113,65 +122,10 @@ public struct CSGOptions: Sendable {
     public var attributes: MeshAttributes
 
     /// Creates options. The defaults match `union`/`intersection`/`difference` without arguments.
-    public init(weldTolerance: Float = 1e-2, mergeCoplanar: Bool = true, coplanarAngleTolerance: Float = 1e-4, coplanarDistanceTolerance: Float = 1e-4, attributes: MeshAttributes = []) {
-        self.weldTolerance = weldTolerance
+    public init(mergeCoplanar: Bool = true, coplanarAngleTolerance: Float = 1e-4, coplanarDistanceTolerance: Float = 1e-4, attributes: MeshAttributes = []) {
         self.mergeCoplanar = mergeCoplanar
         self.coplanarAngleTolerance = coplanarAngleTolerance
         self.coplanarDistanceTolerance = coplanarDistanceTolerance
         self.attributes = attributes
-    }
-}
-
-// MARK: - TriangleSoup CSG
-
-public extension TriangleSoup {
-    /// Performs a CSG boolean operation combining this soup with another.
-    ///
-    /// Both soups are welded (positions within 1e-5) into meshes, which must then be
-    /// closed manifolds, and combined with the robust Boolean (see `Mesh.csg(_:_:options:)`).
-    ///
-    /// - Parameters:
-    ///   - operation: The boolean operation to perform.
-    ///   - other: The second operand.
-    /// - Returns: The result as a soup, or an empty soup if a welded input is not a closed manifold.
-    func csg(_ operation: CSGOperation, _ other: TriangleSoup) -> TriangleSoup {
-        guard !triangles.isEmpty, !other.triangles.isEmpty else {
-            switch operation {
-            case .union:
-                return triangles.isEmpty ? other : self
-
-            case .intersection:
-                return Self()
-
-            case .difference:
-                return self
-            }
-        }
-        let result = toMesh().csg(operation, other.toMesh(), options: CSGOptions(mergeCoplanar: false))
-        return TriangleSoup(mesh: result)
-    }
-
-    /// Returns the union of this soup with another (A ∪ B).
-    ///
-    /// - Parameter other: The second operand.
-    /// - Returns: A new triangle soup representing the union.
-    func union(_ other: TriangleSoup) -> TriangleSoup {
-        csg(.union, other)
-    }
-
-    /// Returns the intersection of this soup with another (A ∩ B).
-    ///
-    /// - Parameter other: The second operand.
-    /// - Returns: A new triangle soup representing the intersection.
-    func intersection(_ other: TriangleSoup) -> TriangleSoup {
-        csg(.intersection, other)
-    }
-
-    /// Returns the difference of this soup minus another (A − B).
-    ///
-    /// - Parameter other: The volume to subtract.
-    /// - Returns: A new triangle soup with the other's volume carved out.
-    func difference(_ other: TriangleSoup) -> TriangleSoup {
-        csg(.difference, other)
     }
 }

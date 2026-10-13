@@ -1,32 +1,28 @@
 import simd
 
-/// A flat indexed-triangle representation used as an intermediate format for
-/// CSG and other whole-mesh operations.
+/// Unwelded indexed triangles: a staging format for builders (marching cubes, plane split,
+/// convex hull, import) that produce triangles before shared vertices are known.
 ///
-/// Positions are stored in a shared array; triangles reference them by index.
-/// Duplicate positions can be merged via ``welded(tolerance:)``.
-///
-/// Convert to and from ``Mesh`` with ``init(mesh:)`` and ``toMesh(weldTolerance:)``.
-/// When converting from a mesh, all submeshes are merged into one and per-corner
-/// attributes (normals, UVs, tangents, colors) are discarded.
-public struct TriangleSoup: Sendable, Equatable {
+/// Weld with `welded(tolerance:)`, then convert with `toMesh(weldTolerance:)`. Converting from a
+/// mesh merges all submeshes and discards per-corner attributes.
+struct TriangleSoup: Sendable, Equatable {
     /// All vertex positions (may contain duplicates).
-    public var positions: [SIMD3<Float>]
+    var positions: [SIMD3<Float>]
 
     /// Triangles as index triples into ``positions``.
-    public var triangles: [(Int, Int, Int)]
+    var triangles: [(Int, Int, Int)]
 
     /// Creates a soup from positions and index triples. Indices are not validated.
-    public init(positions: [SIMD3<Float>] = [], triangles: [(Int, Int, Int)] = []) {
+    init(positions: [SIMD3<Float>] = [], triangles: [(Int, Int, Int)] = []) {
         self.positions = positions
         self.triangles = triangles
     }
 
     /// Number of triangles.
-    public var triangleCount: Int { triangles.count }
+    var triangleCount: Int { triangles.count }
 
     /// Number of positions (including potential duplicates).
-    public var positionCount: Int { positions.count }
+    var positionCount: Int { positions.count }
 
     // MARK: - Mutation
 
@@ -40,7 +36,7 @@ public struct TriangleSoup: Sendable, Equatable {
     ///   - c: The third vertex position.
     /// - Returns: The index of the newly added triangle.
     @discardableResult
-    public mutating func addTriangle(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>) -> Int {
+    mutating func addTriangle(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>) -> Int {
         let base = positions.count
         positions.append(contentsOf: [a, b, c])
         let idx = triangles.count
@@ -52,7 +48,7 @@ public struct TriangleSoup: Sendable, Equatable {
     ///
     /// Positions are concatenated and triangle indices are offset so they
     /// reference the correct positions in the combined array.
-    public mutating func append(_ other: Self) {
+    mutating func append(_ other: Self) {
         let offset = positions.count
         positions.append(contentsOf: other.positions)
         for (a, b, c) in other.triangles {
@@ -71,7 +67,7 @@ public struct TriangleSoup: Sendable, Equatable {
     /// - Parameter tolerance: Maximum distance between positions to consider
     ///   them duplicates. Defaults to `1e-5`.
     /// - Returns: A new soup with deduplicated positions.
-    public func welded(tolerance: Float = 1e-5) -> Self {
+    func welded(tolerance: Float = 1e-5) -> Self {
         guard !positions.isEmpty else {
             return self
         }
@@ -126,14 +122,14 @@ public struct TriangleSoup: Sendable, Equatable {
     ///
     /// Swaps the second and third index of every triangle, reversing
     /// face orientation.
-    public mutating func flipAll() {
+    mutating func flipAll() {
         triangles = triangles.map { ($0.0, $0.2, $0.1) }
     }
 
     /// Returns a copy with all triangle windings flipped.
     ///
     /// - Returns: A new soup with reversed face orientation.
-    public func flipped() -> Self {
+    func flipped() -> Self {
         var copy = self
         copy.flipAll()
         return copy
@@ -142,7 +138,7 @@ public struct TriangleSoup: Sendable, Equatable {
 
 // MARK: - Mesh conversions
 
-public extension TriangleSoup {
+extension TriangleSoup {
     /// Creates a triangle soup from a mesh by triangulating all faces.
     ///
     /// All faces are triangulated regardless of which submesh they belong to;
@@ -181,7 +177,7 @@ public extension TriangleSoup {
 // MARK: - Equatable conformance for tuple arrays
 
 extension TriangleSoup {
-    public static func == (lhs: TriangleSoup, rhs: TriangleSoup) -> Bool {
+    static func == (lhs: TriangleSoup, rhs: TriangleSoup) -> Bool {
         guard lhs.positions == rhs.positions else {
             return false
         }
