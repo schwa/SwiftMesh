@@ -312,16 +312,7 @@ struct MetalMeshView: View {
         guard let device = MTLCreateSystemDefaultDevice() else {
             return
         }
-        var prepared = mesh
-        if prepared.normals == nil {
-            prepared = prepared.withFlatNormals()
-        }
-        if prepared.textureCoordinates == nil {
-            prepared = prepared.withSphericalUVs()
-        }
-        if prepared.tangents == nil || prepared.bitangents == nil {
-            prepared = prepared.withTangents()
-        }
+        var prepared = mesh.preparedForShading()
         if case .topology(let overlay) = renderMode {
             prepared.textureCoordinates = overlay.textureCoordinates(for: prepared)
         }

@@ -309,6 +309,7 @@ struct MeshDetailView: View {
     @State private var showInspector = true
     @State private var selection: MeshSelection?
     @State private var showVertexDots = false
+    @AppStorage("hideOccludedEdges") private var hideOccludedEdges = false
     @State private var isModified = false
     @State private var isExporting = false
     @State private var exportFormat: PLY.Format = .ascii
@@ -332,6 +333,7 @@ struct MeshDetailView: View {
                     mesh: currentMesh,
                     highlightedFaces: showStandalone ? standaloneFaceIDs : nil,
                     showVertexDots: showVertexDots,
+                    hideOccludedEdges: hideOccludedEdges,
                     selection: $selection
                 )
             }
@@ -446,6 +448,8 @@ struct MeshDetailView: View {
                         .help("Highlight faces that share no edge with another face.")
                     Toggle("Vertex Dots", isOn: $showVertexDots)
                         .help("Draw a dot at every vertex.")
+                    Toggle("Hide Occluded Edges", isOn: $hideOccludedEdges)
+                        .help("Draw the surface into the depth buffer first, so only edges and vertices visible from the camera are shown.")
                 }
             }
             .inspectorColumnWidth(min: 220, ideal: 260, max: 320)

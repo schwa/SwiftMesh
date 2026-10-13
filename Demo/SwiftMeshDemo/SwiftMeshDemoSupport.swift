@@ -3,7 +3,9 @@ import Interaction3D
 import Metal
 import MetalSprockets
 import MetalSprocketsAddOns
+import MetalSprocketsAddOnsShaders
 import MetalSprocketsUI
+import MetalSupport
 import simd
 import SwiftMesh
 import SwiftUI
@@ -38,6 +40,25 @@ extension Mesh {
             }
         }
         return result
+    }
+}
+
+// MARK: - Shading preparation
+
+extension Mesh {
+    /// Fills in the attributes the AddOns shaders read: normals, UVs, tangents and bitangents.
+    func preparedForShading() -> Mesh {
+        var prepared = self
+        if prepared.normals == nil {
+            prepared = prepared.withFlatNormals()
+        }
+        if prepared.textureCoordinates == nil {
+            prepared = prepared.withSphericalUVs()
+        }
+        if prepared.tangents == nil || prepared.bitangents == nil {
+            prepared = prepared.withTangents()
+        }
+        return prepared
     }
 }
 
@@ -114,17 +135,43 @@ extension GraphicsContext3D {
 }
 
 /// Renders a `GraphicsContext3D` over a transparent background.
+///
+/// With an `occluder`, the occluder is drawn into the depth buffer only (pushed back slightly so
+/// edges lying on its surface win), so lines behind it are hidden.
 struct WireframeRenderView: View {
     let context: GraphicsContext3D
     let camera: WireframeCamera
+    var occluder: MetalMesh?
 
     var body: some View {
         RenderView { _, drawableSize in
             let aspect = drawableSize.height > 0 ? Float(drawableSize.width / drawableSize.height) : 1
+            let viewProjection = camera.projectionMatrix(aspectRatio: aspect) * camera.viewMatrix
             try RenderPass(label: "Wireframe") {
+                if let occluder {
+                    try DebugRenderPipeline(
+                        modelMatrix: .identity,
+                        normalMatrix: matrix_identity_float3x3,
+                        debugMode: .normal,
+                        lightPosition: .zero,
+                        cameraPosition: .zero,
+                        viewProjectionMatrix: viewProjection
+                    ) {
+                        Draw { encoder in
+                            encoder.draw(occluder)
+                        }
+                        .metalMesh(occluder)
+                    }
+                    .vertexDescriptor(MTLVertexDescriptor(occluder.vertexDescriptor))
+                    .depthCompare(function: .less, enabled: true)
+                    .depthBias(1, slopeScale: 2, clamp: 0.01)
+                    .renderPipelineDescriptorTransformer { descriptor in
+                        descriptor.colorAttachments[0].writeMask = []
+                    }
+                }
                 GraphicsContext3DRenderPipeline(
                     context: context,
-                    viewProjection: camera.projectionMatrix(aspectRatio: aspect) * camera.viewMatrix,
+                    viewProjection: viewProjection,
                     viewport: SIMD2<Float>(Float(drawableSize.width), Float(drawableSize.height))
                 )
             }
@@ -155,7 +202,10 @@ struct MeshInteractiveView: View {
     let mesh: Mesh
     var highlightedFaces: Set<HalfEdgeTopology.FaceID>?
     var showVertexDots: Bool = false
+    var hideOccludedEdges: Bool = false
     @Binding var selection: MeshSelection?
+
+    @State private var occluder: MetalMesh?
 
     @State private var cameraRotation = simd_quatf(angle: 0, axis: [0, 1, 0])
     @State private var cameraDistance: Float = 4
@@ -164,10 +214,11 @@ struct MeshInteractiveView: View {
 
     private let hitThreshold: CGFloat = 8
 
-    init(mesh: Mesh, highlightedFaces: Set<HalfEdgeTopology.FaceID>? = nil, showVertexDots: Bool = false, selection: Binding<MeshSelection?> = .constant(nil)) {
+    init(mesh: Mesh, highlightedFaces: Set<HalfEdgeTopology.FaceID>? = nil, showVertexDots: Bool = false, hideOccludedEdges: Bool = false, selection: Binding<MeshSelection?> = .constant(nil)) {
         self.mesh = mesh
         self.highlightedFaces = highlightedFaces
         self.showVertexDots = showVertexDots
+        self.hideOccludedEdges = hideOccludedEdges
         self._selection = selection
     }
 
@@ -203,7 +254,14 @@ struct MeshInteractiveView: View {
     }
 
     var body: some View {
-        WireframeRenderView(context: context, camera: camera)
+        WireframeRenderView(context: context, camera: camera, occluder: hideOccludedEdges ? occluder : nil)
+            .task(id: OccluderKey(mesh: mesh, enabled: hideOccludedEdges)) {
+                guard hideOccludedEdges, let device = MTLCreateSystemDefaultDevice() else {
+                    occluder = nil
+                    return
+                }
+                occluder = MetalMesh(mesh: mesh.preparedForShading(), device: device, label: "Wireframe Occluder")
+            }
             .contentShape(Rectangle())
             .onTapGesture { location in
                 hitTest(at: location)
@@ -215,6 +273,11 @@ struct MeshInteractiveView: View {
                 distance: $cameraDistance,
                 target: $cameraTarget
             )
+    }
+
+    private struct OccluderKey: Equatable {
+        var mesh: Mesh
+        var enabled: Bool
     }
 
     private func hitTest(at location: CGPoint) {
