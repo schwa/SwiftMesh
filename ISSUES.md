@@ -3250,3 +3250,21 @@ created: 2026-10-13T17:09:52Z
 Mesh stores tangents and bitangents as separate SIMD3 arrays, and Mesh.vertexArrays() / MetalMesh(mesh:) output them as .float3 tangent and bitangent attributes. glTF, MikkTSpace and MetalSprocketsPBR use one SIMD4 tangent with w = bitangent sign (±1). A caller that needs that form must compute the sign from normal, tangent and bitangent for each vertex. SwiftMesh has MetalMesh.VertexAttributeData.tangents([SIMD4<Float>]), but nothing makes those values from a Mesh.
 
 ---
+
+## 158: UV projection helpers do not follow the texture coordinate convention
+
++++
+status: new
+priority: low
+kind: bug
+created: 2026-10-13T17:22:49Z
++++
+
+After #153, the shape generators and Mesh.withSphericalUVs() make v-down, unmirrored UVs (glTF / Metal convention, enforced by TextureCoordinateConventionTests). The other projection helpers in MeshAttributes.swift do not:
+
+- withPlanarUVs(axis:) and withCylindricalUVs(axis:) set v from the position along the axis, so v runs up.
+- withCylindricalUVs(axis:) sets u per vertex from atan2, so faces that cross the seam wrap from about 1 back to 0 and smear the texture (withSphericalUVs had the same problem).
+- withBoxUVs() projects each face onto an axis plane by position only, so faces on the negative side of each axis get mirrored textures.
+- Mesh.teapot uses withSphericalUVs(), and spherical projection mirrors parts of a non-convex shape (1312 of 6320 UV triangles mirrored), so it is not in the convention tests.
+
+---
