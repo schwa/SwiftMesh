@@ -1,0 +1,44 @@
+import GeometryLite3D
+import Metal
+import MetalSupport
+import simd
+@testable import SwiftMesh
+import Testing
+
+@Suite("Mesh vertex arrays")
+struct MeshVertexArraysTests {
+    @Test("Corners with the same position and no attributes share a vertex")
+    func sharedPositions() {
+        let arrays = Mesh.tetrahedron(attributes: []).vertexArrays()
+        #expect(arrays.vertexCount == 4)
+        #expect(arrays.attributes.map(\.semantic) == [.position])
+        #expect(arrays.submeshes.count == 1)
+        #expect(arrays.submeshes[0].indices.count == 12)
+    }
+
+    @Test("Flat normals split each cube corner into one vertex per face")
+    func flatNormalsSplitCorners() {
+        let mesh = Mesh.box(extents: [1, 1, 1], attributes: [.flatNormals])
+        let arrays = mesh.vertexArrays()
+        #expect(arrays.vertexCount == 24)
+        #expect(arrays.attributes.map(\.semantic) == [.position, .normal])
+        // Each output vertex keeps the position of its source vertex.
+        let positions = arrays.attributes[0].bytes.withUnsafeBytes { bytes in
+            (0 ..< arrays.vertexCount).map { bytes.loadUnaligned(fromByteOffset: $0 * 12, as: Packed3<Float>.self) }
+        }
+        for (position, source) in zip(positions, arrays.sourceVertices) {
+            #expect(SIMD3(position) == mesh.positions[source.raw])
+        }
+    }
+
+    @Test("MetalMesh(mesh:) matches the vertex arrays")
+    func metalMeshMatches() throws {
+        let device = try #require(MTLCreateSystemDefaultDevice())
+        let mesh = Mesh.sphere(attributes: [.smoothNormals, .textureCoordinates])
+        let arrays = mesh.vertexArrays()
+        let metalMesh = MetalMesh(mesh: mesh, device: device)
+        #expect(metalMesh.vertexCount == arrays.vertexCount)
+        #expect(metalMesh.vertexDescriptor.attributes.map(\.semantic) == arrays.attributes.map(\.semantic))
+        #expect(metalMesh.submeshes.map(\.indices) == arrays.submeshes.map(\.indices))
+    }
+}

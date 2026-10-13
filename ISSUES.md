@@ -3200,15 +3200,19 @@ Seen while comparing SwiftMesh generators with MetalSprocketsGLTF's viewer shape
 ## 155: No CPU path from Mesh to per-vertex attribute arrays
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-10-13T16:27:56Z
+updated: 2026-10-13T17:09:47Z
+closed: 2026-10-13T17:09:47Z
 +++
 
 MetalMesh(mesh:device:) turns a Mesh into an indexed, per-vertex form (corners with the same attributes are shared), but only into MTLBuffers. There is no way to get the same per-vertex result as Swift arrays (for example [MetalMesh.VertexAttributeData] plus indices for each submesh) without making GPU buffers and reading them back.
 
 Use case: MetalSprocketsPBR's PBRGeometryBuilder.add(attributes:indices:...) takes VertexAttributeData arrays and packs them into its own shared buffers. Drawing a SwiftMesh shape with the PBR renderer now needs a GPU round trip or code that repeats the corner deduplication in MetalMesh(mesh:). Mesh tangents are SIMD3 plus separate bitangents, so a caller that needs SIMD4 tangents with a handedness sign must also compute the sign.
+
+- `2026-10-13T17:09:47Z`: Mesh.vertexArrays() returns per-vertex attribute arrays, per-submesh indices and source vertices without GPU buffers; MetalMesh(mesh:) is built on it. Not done: SIMD4 tangents with handedness (filed separately).
 
 ---
 
