@@ -260,7 +260,6 @@ public extension Mesh {
     }
 }
 
-
 // MARK: - Tangent Generation (MikkTSpace)
 
 public extension Mesh {
