@@ -3156,10 +3156,12 @@ MetalMesh.toMesh() reads only position, normal, texcoord(0), tangent (as float3)
 ## 153: Shape generators use different texture coordinate conventions
 
 +++
-status: new
+status: closed
 priority: medium
 kind: bug
 created: 2026-10-13T16:27:56Z
+updated: 2026-10-13T17:24:04Z
+closed: 2026-10-13T17:24:04Z
 +++
 
 The UVs from the shape generators do not follow one convention, so the same texture looks different on different shapes (mirrored or upside down). Measured with a throwaway program (/tmp/shape-compare) that counts UV winding per triangle: for a front-facing (counter-clockwise) triangle, positive UV area means unmirrored if v runs up, and negative means unmirrored if v runs down.
@@ -3179,6 +3181,8 @@ The UVs from the shape generators do not follow one convention, so the same text
 - torus: the winding is opposite to box and quad.
 
 The intended convention (v up or v down) is not documented. glTF and Metal texture space have v down; MetalSprocketsGLTF's viewer shapes use v down, with u running counter-clockwise seen from above.
+
+- `2026-10-13T17:24:04Z`: All shape generators and withSphericalUVs() now make v-down, unmirrored UVs; TextureCoordinateConventionTests enforce it. Projection helpers and teapot: #158.
 
 ---
 

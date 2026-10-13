@@ -58,23 +58,31 @@ public extension Mesh {
 
 public extension Mesh {
     /// Returns a new mesh with spherical UV coordinates computed from vertex positions.
+    ///
+    /// v runs from 0 at +Y to 1 at -Y. u runs once around the Y axis, counter-clockwise seen from above, so textures
+    /// are not mirrored seen from outside. A face that crosses the seam gets u past 1 instead of wrapping, and a
+    /// corner on the axis (a pole) takes the mean u of the face's other corners.
     func withSphericalUVs() -> Mesh {
         var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
 
-        for he in topology.halfEdges {
-            let pos = positions[he.origin.raw]
-            let x = Double(pos.x)
-            let y = Double(pos.y)
-            let z = Double(pos.z)
-
-            var u = atan2(z, x) / (2.0 * .pi) + 0.5
-            u -= floor(u)
-
-            let r = sqrt(x * x + y * y + z * z)
-            let cosTheta = r > 0 ? max(-1.0, min(1.0, y / r)) : 0.0
-            let v = acos(cosTheta) / .pi
-
-            uvs[he.id.raw] = SIMD2<Float>(Float(u), Float(v))
+        for face in topology.faces {
+            let corners = topology.halfEdgeLoop(for: face.id)
+            var cornerUs: [Double?] = []
+            for corner in corners {
+                let position = SIMD3<Double>(positions[topology.halfEdges[corner.raw].origin.raw])
+                let radius = simd_length(position)
+                let cosTheta = radius > 0 ? max(-1.0, min(1.0, position.y / radius)) : 0.0
+                uvs[corner.raw].y = Float(acos(cosTheta) / .pi)
+                let onAxis = position.x * position.x + position.z * position.z <= 1e-12 * max(radius * radius, 1e-30)
+                cornerUs.append(onAxis ? nil : 0.5 - atan2(position.z, position.x) / (2.0 * .pi))
+            }
+            let offAxis = cornerUs.compactMap(\.self)
+            let wraps = (offAxis.max() ?? 0) - (offAxis.min() ?? 0) > 0.5
+            let unwrapped = cornerUs.map { $0.map { wraps && $0 < 0.5 ? $0 + 1 : $0 } }
+            let poleU = unwrapped.compactMap(\.self).reduce(0, +) / Double(max(1, offAxis.count))
+            for (corner, u) in zip(corners, unwrapped) {
+                uvs[corner.raw].x = Float(u ?? poleU)
+            }
         }
 
         var result = self

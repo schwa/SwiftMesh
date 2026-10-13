@@ -44,15 +44,12 @@ struct MeshPrimitivesTests {
         let mesh = Mesh.cube(attributes: .textureCoordinates)
         let uvs = try #require(mesh.textureCoordinates)
         #expect(uvs.count == mesh.topology.halfEdges.count)
-        // Each quad face should have corners mapped to [0,0], [1,0], [1,1], [0,1]
+        // Each quad face covers the whole unit square (orientation is checked in TextureCoordinateConventionTests).
         for face in mesh.topology.faces {
             let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
             #expect(heLoop.count == 4)
-            let faceUVs = heLoop.map { uvs[$0.raw] }
-            #expect(faceUVs[0] == SIMD2<Float>(0, 0))
-            #expect(faceUVs[1] == SIMD2<Float>(1, 0))
-            #expect(faceUVs[2] == SIMD2<Float>(1, 1))
-            #expect(faceUVs[3] == SIMD2<Float>(0, 1))
+            let faceUVs = Set(heLoop.map { uvs[$0.raw] })
+            #expect(faceUVs == [SIMD2<Float>(0, 0), SIMD2<Float>(1, 0), SIMD2<Float>(1, 1), SIMD2<Float>(0, 1)])
         }
     }
 
@@ -90,10 +87,11 @@ struct MeshPrimitivesTests {
         let uvs = try #require(mesh.textureCoordinates)
         #expect(uvs.count == mesh.topology.halfEdges.count)
         let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: 0))
-        #expect(uvs[heLoop[0].raw] == SIMD2<Float>(0, 0))
-        #expect(uvs[heLoop[1].raw] == SIMD2<Float>(1, 0))
-        #expect(uvs[heLoop[2].raw] == SIMD2<Float>(1, 1))
-        #expect(uvs[heLoop[3].raw] == SIMD2<Float>(0, 1))
+        // Corners run bottom-left, bottom-right, top-right, top-left; v runs down.
+        #expect(uvs[heLoop[0].raw] == SIMD2<Float>(0, 1))
+        #expect(uvs[heLoop[1].raw] == SIMD2<Float>(1, 1))
+        #expect(uvs[heLoop[2].raw] == SIMD2<Float>(1, 0))
+        #expect(uvs[heLoop[3].raw] == SIMD2<Float>(0, 0))
     }
 
     @Test("box(attributes: .textureCoordinates) has per-corner UVs")

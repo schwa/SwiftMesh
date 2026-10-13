@@ -70,8 +70,16 @@ struct MeshAttributesTests {
         #expect(mesh.textureCoordinates!.count == mesh.topology.halfEdges.count)
 
         for uv in mesh.textureCoordinates! {
-            #expect(uv.x >= 0 && uv.x <= 1, "U should be in [0,1], got \(uv.x)")
+            // Faces that cross the seam continue past 1 instead of wrapping.
+            #expect(uv.x >= 0 && uv.x < 2, "U should be in [0,2), got \(uv.x)")
             #expect(uv.y >= 0 && uv.y <= 1, "V should be in [0,1], got \(uv.y)")
+        }
+        // A face that straddles the axis (as the icosahedron's top edge does) has no good u; subdividing puts a pole
+        // vertex there instead.
+        let sphere = Mesh.icoSphere(subdivisions: 1, attributes: []).withSphericalUVs()
+        for face in sphere.topology.faces {
+            let us = sphere.topology.halfEdgeLoop(for: face.id).map { sphere.textureCoordinates![$0.raw].x }
+            #expect(us.max()! - us.min()! < 0.5, "A face should not wrap around the seam: \(us)")
         }
     }
 

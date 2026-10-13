@@ -49,15 +49,20 @@ public extension Mesh {
         mesh.fitToExtents(extents)
 
         if attributes.contains(.textureCoordinates) {
-            // Each quad face maps to the full [0,1]×[0,1] square.
-            let quadUVs: [SIMD2<Float>] = [
-                SIMD2(0, 0), SIMD2(1, 0), SIMD2(1, 1), SIMD2(0, 1)
-            ]
+            // Each face maps to the full [0,1]×[0,1] square, upright seen from outside: side faces have +Y up, the
+            // top face -Z up and the bottom face +Z up.
+            let (low, high) = mesh.bounds
+            let center = (low + high) / 2
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
             for face in mesh.topology.faces {
-                let heLoop = mesh.topology.halfEdgeLoop(for: face.id)
-                for (i, he) in heLoop.enumerated() {
-                    uvs[he.raw] = quadUVs[i]
+                let normal = mesh.faceNormal(face.id)
+                let up: SIMD3<Float> = abs(normal.y) < 0.5 ? [0, 1, 0] : [0, 0, -normal.y]
+                let right = simd_cross(up, normal)
+                for corner in mesh.topology.halfEdgeLoop(for: face.id) {
+                    let offset = mesh.positions[mesh.topology.halfEdges[corner.raw].origin.raw] - center
+                    let x = simd_dot(offset, right) / max(simd_dot(abs(right), high - low), .ulpOfOne)
+                    let y = simd_dot(offset, up) / max(simd_dot(abs(up), high - low), .ulpOfOne)
+                    uvs[corner.raw] = SIMD2(0.5 + x, 0.5 - y)
                 }
             }
             mesh.textureCoordinates = uvs
@@ -81,7 +86,7 @@ public extension Mesh {
 
         if attributes.contains(.textureCoordinates) {
             let triUVs: [SIMD2<Float>] = [
-                SIMD2(0, 0), SIMD2(1, 0), SIMD2(0.5, 1)
+                SIMD2(0, 1), SIMD2(1, 1), SIMD2(0.5, 0)
             ]
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
             for face in mesh.topology.faces {
@@ -115,7 +120,7 @@ public extension Mesh {
 
         if attributes.contains(.textureCoordinates) {
             let triUVs: [SIMD2<Float>] = [
-                SIMD2(0, 0), SIMD2(1, 0), SIMD2(0.5, 1)
+                SIMD2(0, 1), SIMD2(1, 1), SIMD2(0.5, 0)
             ]
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
             for face in mesh.topology.faces {
@@ -212,10 +217,10 @@ public extension Mesh {
         if attributes.contains(.textureCoordinates) {
             let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: 0))
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
-            uvs[heLoop[0].raw] = SIMD2(0, 0)
-            uvs[heLoop[1].raw] = SIMD2(1, 0)
-            uvs[heLoop[2].raw] = SIMD2(1, 1)
-            uvs[heLoop[3].raw] = SIMD2(0, 1)
+            uvs[heLoop[0].raw] = SIMD2(0, 1)
+            uvs[heLoop[1].raw] = SIMD2(1, 1)
+            uvs[heLoop[2].raw] = SIMD2(1, 0)
+            uvs[heLoop[3].raw] = SIMD2(0, 0)
             mesh.textureCoordinates = uvs
         }
 
@@ -243,7 +248,7 @@ public extension Mesh {
 
         if attributes.contains(.textureCoordinates) {
             let quadUVs: [SIMD2<Float>] = [
-                SIMD2(0, 0), SIMD2(1, 0), SIMD2(1, 1), SIMD2(0, 1)
+                SIMD2(0, 1), SIMD2(1, 1), SIMD2(1, 0), SIMD2(0, 0)
             ]
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
             for face in mesh.topology.faces {
@@ -293,10 +298,10 @@ public extension Mesh {
                 uvs[heLoop[0].raw] = SIMD2(0.5, 0.5)
                 // Current rim vertex
                 let angle0 = 2 * Float.pi * Float(seg) / Float(segments)
-                uvs[heLoop[1].raw] = SIMD2(0.5 + 0.5 * cos(angle0), 0.5 + 0.5 * sin(angle0))
+                uvs[heLoop[1].raw] = SIMD2(0.5 + 0.5 * cos(angle0), 0.5 - 0.5 * sin(angle0))
                 // Next rim vertex
                 let angle1 = 2 * Float.pi * Float(seg + 1) / Float(segments)
-                uvs[heLoop[2].raw] = SIMD2(0.5 + 0.5 * cos(angle1), 0.5 + 0.5 * sin(angle1))
+                uvs[heLoop[2].raw] = SIMD2(0.5 + 0.5 * cos(angle1), 0.5 - 0.5 * sin(angle1))
             }
             mesh.textureCoordinates = uvs
         }
@@ -398,7 +403,8 @@ public extension Mesh {
                 } else {
                     effectiveLon = Float(lonSlot)
                 }
-                let u = effectiveLon / Float(N)
+                // Longitude runs clockwise seen from outside, so u counts it backwards to keep textures unmirrored.
+                let u = 1 - effectiveLon / Float(N)
                 return SIMD2<Float>(u, v)
             }
 
@@ -410,7 +416,7 @@ public extension Mesh {
                 let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
                 // 3 half-edges: pole, ring0+lon, ring0+nextLon
                 // Pole gets u centered on this face's longitude column
-                let polU = (Float(lon) + 0.5) / Float(N)
+                let polU = 1 - (Float(lon) + 0.5) / Float(N)
                 uvs[heLoop[0].raw] = SIMD2<Float>(polU, 0)            // top pole
                 uvs[heLoop[1].raw] = uv(latRing: 1, lonSlot: lon, faceLon: lon)
                 uvs[heLoop[2].raw] = uv(latRing: 1, lonSlot: nextLon, faceLon: lon)
@@ -437,7 +443,7 @@ public extension Mesh {
                 let nextLon = (lon + 1) % N
                 let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
                 // 3 half-edges: lastRing+lon, bottomPole, lastRing+nextLon
-                let polU = (Float(lon) + 0.5) / Float(N)
+                let polU = 1 - (Float(lon) + 0.5) / Float(N)
                 uvs[heLoop[0].raw] = uv(latRing: L - 1, lonSlot: lon, faceLon: lon)
                 uvs[heLoop[1].raw] = SIMD2<Float>(polU, 1)            // bottom pole
                 uvs[heLoop[2].raw] = uv(latRing: L - 1, lonSlot: nextLon, faceLon: lon)
@@ -680,12 +686,13 @@ public extension Mesh {
         if attributes.contains(.textureCoordinates) {
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
 
-            // Side quads: unwrap around circumference
+            // Side quads: unwrap around circumference. The rings run clockwise seen from outside, so u counts
+            // backwards to keep textures unmirrored.
             for seg in 0..<segments {
                 let faceID = HalfEdgeTopology.FaceID(raw: seg)
                 let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
-                let u0 = Float(seg) / Float(segments)
-                let u1 = Float(seg + 1) / Float(segments)
+                let u0 = 1 - Float(seg) / Float(segments)
+                let u1 = 1 - Float(seg + 1) / Float(segments)
                 // Face vertices: [bottom, nextBottom, nextTop, top]
                 uvs[heLoop[0].raw] = SIMD2(u0, 1)
                 uvs[heLoop[1].raw] = SIMD2(u1, 1)
@@ -693,7 +700,8 @@ public extension Mesh {
                 uvs[heLoop[3].raw] = SIMD2(u0, 0)
             }
 
-            // Cap UVs: project onto unit circle centered at (0.5, 0.5)
+            // Cap UVs: project onto unit circle centered at (0.5, 0.5). Seen from above, u follows +X and v +Z;
+            // the bottom cap, seen from below, has v follow -Z.
             if capped {
                 let bottomFaceID = HalfEdgeTopology.FaceID(raw: segments)
                 let bottomLoop = mesh.topology.halfEdgeLoop(for: bottomFaceID)
@@ -701,7 +709,7 @@ public extension Mesh {
                     // Bottom cap is reversed, so map index back to segment
                     let seg = segments - 1 - i
                     let angle = 2 * Float.pi * Float(seg) / Float(segments)
-                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 - 0.5 * sin(angle))
                 }
 
                 let topFaceID = HalfEdgeTopology.FaceID(raw: segments + 1)
@@ -793,7 +801,8 @@ public extension Mesh {
                 } else {
                     effectiveLon = Float(lonSlot)
                 }
-                let u = effectiveLon / Float(N)
+                // Longitude runs clockwise seen from outside, so u counts it backwards to keep textures unmirrored.
+                let u = 1 - effectiveLon / Float(N)
                 return SIMD2<Float>(u, v)
             }
 
@@ -803,7 +812,7 @@ public extension Mesh {
             for lon in 0..<N {
                 let nextLon = (lon + 1) % N
                 let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
-                let polU = (Float(lon) + 0.5) / Float(N)
+                let polU = 1 - (Float(lon) + 0.5) / Float(N)
                 uvs[heLoop[0].raw] = SIMD2<Float>(polU, 0)
                 uvs[heLoop[1].raw] = uv(latRing: 1, lonSlot: lon, faceLon: lon)
                 uvs[heLoop[2].raw] = uv(latRing: 1, lonSlot: nextLon, faceLon: lon)
@@ -831,7 +840,8 @@ public extension Mesh {
                 for (i, he) in capLoop.enumerated() {
                     let seg = N - 1 - i
                     let angle = 2 * Float.pi * Float(seg) / Float(N)
-                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                    // Seen from below: u follows +X, v follows -Z.
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 - 0.5 * sin(angle))
                 }
             }
 
@@ -990,7 +1000,8 @@ public extension Mesh {
                 } else {
                     effectiveLon = Float(lonSlot)
                 }
-                let u = effectiveLon / Float(N)
+                // Longitude runs clockwise seen from outside, so u counts it backwards to keep textures unmirrored.
+                let u = 1 - effectiveLon / Float(N)
                 return SIMD2<Float>(u, v)
             }
 
@@ -1000,7 +1011,7 @@ public extension Mesh {
             for lon in 0..<N {
                 let nextLon = (lon + 1) % N
                 let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
-                let polU = (Float(lon) + 0.5) / Float(N)
+                let polU = 1 - (Float(lon) + 0.5) / Float(N)
                 uvs[heLoop[0].raw] = SIMD2<Float>(polU, 0)
                 uvs[heLoop[1].raw] = uv(band: 1, lonSlot: lon, faceLon: lon)
                 uvs[heLoop[2].raw] = uv(band: 1, lonSlot: nextLon, faceLon: lon)
@@ -1051,7 +1062,7 @@ public extension Mesh {
             for lon in 0..<N {
                 let nextLon = (lon + 1) % N
                 let heLoop = mesh.topology.halfEdgeLoop(for: HalfEdgeTopology.FaceID(raw: faceIndex))
-                let polU = (Float(lon) + 0.5) / Float(N)
+                let polU = 1 - (Float(lon) + 0.5) / Float(N)
                 uvs[heLoop[0].raw] = uv(band: totalBands - 1, lonSlot: lon, faceLon: lon)
                 uvs[heLoop[1].raw] = SIMD2<Float>(polU, 1)
                 uvs[heLoop[2].raw] = uv(band: totalBands - 1, lonSlot: nextLon, faceLon: lon)
@@ -1099,12 +1110,13 @@ public extension Mesh {
         if attributes.contains(.textureCoordinates) {
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
 
-            // Side triangles: unwrap around circumference
+            // Side triangles: unwrap around circumference. The base ring runs clockwise seen from outside, so u
+            // counts backwards to keep textures unmirrored.
             for seg in 0..<segments {
                 let faceID = HalfEdgeTopology.FaceID(raw: seg)
                 let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
-                let u0 = Float(seg) / Float(segments)
-                let u1 = Float(seg + 1) / Float(segments)
+                let u0 = 1 - Float(seg) / Float(segments)
+                let u1 = 1 - Float(seg + 1) / Float(segments)
                 let uMid = (u0 + u1) / 2
                 // Face vertices: [apex, nextBase, base]
                 uvs[heLoop[0].raw] = SIMD2(uMid, 0) // apex
@@ -1112,13 +1124,13 @@ public extension Mesh {
                 uvs[heLoop[2].raw] = SIMD2(u0, 1)   // base
             }
 
-            // Base cap: project onto unit circle centered at (0.5, 0.5)
+            // Base cap: project onto unit circle centered at (0.5, 0.5). Seen from below: u follows +X, v follows -Z.
             if capped {
                 let capFaceID = HalfEdgeTopology.FaceID(raw: segments)
                 let capLoop = mesh.topology.halfEdgeLoop(for: capFaceID)
                 for (i, he) in capLoop.enumerated() {
                     let angle = 2 * Float.pi * Float(i) / Float(segments)
-                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 - 0.5 * sin(angle))
                 }
             }
 
@@ -1172,26 +1184,27 @@ public extension Mesh {
         if attributes.contains(.textureCoordinates) {
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
 
-            // Side quads: unwrap around circumference
+            // Side quads: unwrap around circumference. The rings run clockwise seen from outside, so u counts
+            // backwards to keep textures unmirrored.
             for seg in 0..<segments {
                 let faceID = HalfEdgeTopology.FaceID(raw: seg)
                 let heLoop = mesh.topology.halfEdgeLoop(for: faceID)
-                let u0 = Float(seg) / Float(segments)
-                let u1 = Float(seg + 1) / Float(segments)
+                let u0 = 1 - Float(seg) / Float(segments)
+                let u1 = 1 - Float(seg + 1) / Float(segments)
                 uvs[heLoop[0].raw] = SIMD2(u0, 1)
                 uvs[heLoop[1].raw] = SIMD2(u1, 1)
                 uvs[heLoop[2].raw] = SIMD2(u1, 0)
                 uvs[heLoop[3].raw] = SIMD2(u0, 0)
             }
 
-            // Cap UVs
+            // Cap UVs. Seen from above, u follows +X and v +Z; the bottom cap, seen from below, has v follow -Z.
             if capped {
                 let bottomFaceID = HalfEdgeTopology.FaceID(raw: segments)
                 let bottomLoop = mesh.topology.halfEdgeLoop(for: bottomFaceID)
                 for (i, he) in bottomLoop.enumerated() {
                     let seg = segments - 1 - i
                     let angle = 2 * Float.pi * Float(seg) / Float(segments)
-                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 + 0.5 * sin(angle))
+                    uvs[he.raw] = SIMD2(0.5 + 0.5 * cos(angle), 0.5 - 0.5 * sin(angle))
                 }
 
                 let topFaceID = HalfEdgeTopology.FaceID(raw: segments + 1)
@@ -1243,8 +1256,9 @@ public extension Mesh {
         var mesh = Mesh(positions: positions, faces: faces)
 
         if attributes.contains(.textureCoordinates) {
+            // Faces are reversed below, so these run backwards to come out v down and unmirrored.
             let quadUVs: [SIMD2<Float>] = [
-                SIMD2(0, 0), SIMD2(1, 0), SIMD2(1, 1), SIMD2(0, 1)
+                SIMD2(1, 1), SIMD2(0, 1), SIMD2(0, 0), SIMD2(1, 0)
             ]
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
             for face in mesh.topology.faces {
