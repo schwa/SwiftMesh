@@ -3219,10 +3219,12 @@ Use case: MetalSprocketsPBR's PBRGeometryBuilder.add(attributes:indices:...) tak
 ## 156: MetalMesh shares one index buffer between submeshes without being asked
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 created: 2026-10-13T17:08:15Z
+updated: 2026-10-13T17:11:45Z
+closed: 2026-10-13T17:11:45Z
 +++
 
 MetalMesh(device:attributes:submeshes:...) (MetalMesh+DirectInit.swift) always puts every submesh's indices in one shared index buffer and sets Submesh.indexBufferOffset. The uncommitted #155 change (MetalMesh(mesh:) built on Mesh.vertexArrays() plus that init) makes MetalMesh(mesh:) do the same, where it used to make one index buffer per submesh.
@@ -3231,6 +3233,8 @@ Code that assumes each submesh's indices start at offset 0 draws the wrong indic
 
 ## Proposed fix (per schwa)
 Do not merge automatically: inits make one index buffer per submesh. Add a manual, merge-style operation on MetalMesh that combines the submeshes' index buffers into one and sets the offsets.
+
+- `2026-10-13T17:11:45Z`: Inits make one index buffer per submesh again; MetalMesh.mergingIndexBuffers() shares one on request.
 
 ---
 

@@ -748,7 +748,7 @@ struct MetalMeshTests {
         #expect(metalMesh.vertexDescriptor.attributes.map(\.semantic) == [.position, .tangent, .texcoord(1), .jointIndices(0)])
         #expect(metalMesh.vertexDescriptor.layouts[0]?.stride == 12 + 16 + 8 + 8)
         #expect(metalMesh.submeshes.count == 2)
-        #expect(metalMesh.submeshes[1].indexBufferOffset == 12)
+        #expect(metalMesh.submeshes[1].indexBufferOffset == 0)
         #expect(metalMesh.submeshes[1].indices == [2, 3])
         #expect(metalMesh.submeshes[1].primitiveType == .line)
         #expect(metalMesh.submeshes[0].bounds == BoundingBox(min: [0, 0, 0], max: [1, 1, 0]))

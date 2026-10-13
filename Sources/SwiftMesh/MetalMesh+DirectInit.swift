@@ -86,7 +86,8 @@ public extension MetalMesh {
     /// Create a `MetalMesh` from in-memory attribute arrays, skipping the half-edge topology pipeline.
     ///
     /// `attributes` must contain a `.position` attribute in `.float3` format, and all attributes must have the same count.
-    /// Attributes keep their order in the vertex descriptor. All submeshes share one index buffer.
+    /// Attributes keep their order in the vertex descriptor. Each submesh gets its own index buffer; use
+    /// ``mergingIndexBuffers()`` to share one.
     init(
         device: MTLDevice,
         attributes: [VertexAttributeData],
@@ -142,28 +143,16 @@ public extension MetalMesh {
             vertexBuffers[bufferIndex] = buffer
         }
 
-        let allIndices = submeshes.flatMap(\.indices)
-        let indexBuffer = device.makeBuffer(bytes: allIndices, length: max(1, MemoryLayout<UInt32>.stride * allIndices.count), options: [])!
-        indexBuffer.label = label.map { "\($0) Indices" }
-
         let positions: [SIMD3<Float>] = positionData.bytes.withUnsafeBytes { bytes in
             (0..<vertexCount).map { index in
                 SIMD3(bytes.loadUnaligned(fromByteOffset: index * 12, as: Float.self), bytes.loadUnaligned(fromByteOffset: index * 12 + 4, as: Float.self), bytes.loadUnaligned(fromByteOffset: index * 12 + 8, as: Float.self))
             }
         }
 
-        var offset = 0
-        var builtSubmeshes: [Submesh] = []
-        for submesh in submeshes {
-            builtSubmeshes.append(Submesh(
-                label: submesh.label,
-                indexBuffer: indexBuffer,
-                indexBufferOffset: offset * MemoryLayout<UInt32>.stride,
-                indexCount: submesh.indices.count,
-                primitiveType: submesh.primitiveType,
-                bounds: Self.bounds(of: positions, indices: submesh.indices)
-            ))
-            offset += submesh.indices.count
+        let builtSubmeshes = submeshes.map { submesh in
+            let indexBuffer = device.makeBuffer(bytes: submesh.indices, length: max(1, MemoryLayout<UInt32>.stride * submesh.indices.count), options: [])!
+            indexBuffer.label = submesh.label ?? label.map { "\($0) Indices" }
+            return Submesh(label: submesh.label, indexBuffer: indexBuffer, indexCount: submesh.indices.count, primitiveType: submesh.primitiveType, bounds: Self.bounds(of: positions, indices: submesh.indices))
         }
 
         self.label = label
