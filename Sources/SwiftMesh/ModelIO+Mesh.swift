@@ -17,17 +17,11 @@ public extension Mesh {
     /// Internally converts via MTKMesh → MetalMesh → Mesh.
     /// The resulting mesh is triangle-only with per-corner attributes preserved.
     init(mdlMesh: MDLMesh, device: MTLDevice) throws {
-        // Ensure the MDL mesh has a suitable vertex descriptor for Metal
-        let mdlDescriptor = mdlMesh.vertexDescriptor
-        Self.ensurePackedLayout(mdlDescriptor)
-
-        let mtkMesh = try MTKMesh(mesh: mdlMesh, device: device)
-        let metalMesh = try MetalMesh(mtkMesh: mtkMesh)
-        self = metalMesh.toMesh()
+        self = try MetalMesh(mdlMesh: mdlMesh, device: device).toMesh()
     }
 
     /// Ensure all MDL vertex attributes have packed offsets and strides.
-    private static func ensurePackedLayout(_ descriptor: MDLVertexDescriptor) {
+    fileprivate static func ensurePackedLayout(_ descriptor: MDLVertexDescriptor) {
         // MDL sometimes has zero strides — fix by calling makePacked
         descriptor.setPackedOffsets()
         descriptor.setPackedStrides()
@@ -37,6 +31,15 @@ public extension Mesh {
 // MARK: - MetalMesh from MTKMesh
 
 public extension MetalMesh {
+    /// Create a MetalMesh from a ModelIO mesh, keeping its vertex layout and every attribute.
+    ///
+    /// Packs the MDL vertex descriptor, then goes through `MTKMesh`. Unlike ``Mesh/init(mdlMesh:device:)``,
+    /// nothing passes through half-edge topology, so extra UV and color sets are kept.
+    init(mdlMesh: MDLMesh, device: MTLDevice) throws {
+        Mesh.ensurePackedLayout(mdlMesh.vertexDescriptor)
+        self.init(mtkMesh: try MTKMesh(mesh: mdlMesh, device: device))
+    }
+
     /// Create a MetalMesh from an MTKMesh.
     ///
     /// Maps MTKMesh's vertex buffers, vertex descriptor, and submeshes
@@ -168,26 +171,51 @@ public extension Array where Element == Mesh {
     ///   and its ancestors') into positions and directions. Set `false` to keep
     ///   meshes in their local space.
     init(mdlAsset: MDLAsset, device: MTLDevice, applyingTransforms: Bool = true) throws {
-        var meshes: [Mesh] = []
-        func visit(_ object: MDLObject) throws {
+        self = try mdlAsset.meshesWithTransforms().map { mdlMesh, transform in
+            var mesh = try Mesh(mdlMesh: mdlMesh, device: device)
+            if applyingTransforms, transform != matrix_identity_float4x4 {
+                mesh.transform(by: transform)
+            }
+            return mesh
+        }
+    }
+}
+
+// MARK: - MDLAsset → [MetalMesh]
+
+public extension Array where Element == MetalMesh {
+    /// Convert every MDLMesh in an asset into a MetalMesh, one per source mesh.
+    ///
+    /// Order matches a depth-first walk of the asset's object graph. Vertex layouts and
+    /// attributes are kept as loaded.
+    ///
+    /// - Parameter applyingTransforms: Bake each mesh's world transform into positions, normals,
+    ///   tangents and bitangents (see ``MetalMesh/transformed(by:)``). Set `false` to keep meshes
+    ///   in their local space and share ModelIO's buffers.
+    init(mdlAsset: MDLAsset, device: MTLDevice, applyingTransforms: Bool = true) throws {
+        self = try mdlAsset.meshesWithTransforms().map { mdlMesh, transform in
+            let mesh = try MetalMesh(mdlMesh: mdlMesh, device: device)
+            return applyingTransforms && transform != matrix_identity_float4x4 ? mesh.transformed(by: transform) : mesh
+        }
+    }
+}
+
+private extension MDLAsset {
+    /// Every MDLMesh, depth first, with its world transform.
+    func meshesWithTransforms() -> [(MDLMesh, simd_float4x4)] {
+        var result: [(MDLMesh, simd_float4x4)] = []
+        func visit(_ object: MDLObject) {
             if let mdlMesh = object as? MDLMesh {
-                var mesh = try Mesh(mdlMesh: mdlMesh, device: device)
-                if applyingTransforms {
-                    let transform = MDLTransform.globalTransform(with: object, atTime: 0)
-                    if transform != matrix_identity_float4x4 {
-                        mesh.transform(by: transform)
-                    }
-                }
-                meshes.append(mesh)
+                result.append((mdlMesh, MDLTransform.globalTransform(with: object, atTime: 0)))
             }
             for child in object.children.objects {
-                try visit(child)
+                visit(child)
             }
         }
-        for index in 0..<mdlAsset.count {
-            try visit(mdlAsset.object(at: index))
+        for index in 0..<count {
+            visit(object(at: index))
         }
-        self = meshes
+        return result
     }
 }
 

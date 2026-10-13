@@ -25,8 +25,6 @@ encoder.draw(metalMesh)
 
 **`Mesh2D<ID>`** — 2D analogue: topology + `CGPoint` positions + per-half-edge labels. Planar subdivision construction from line segments, signed-area face classification, hole detection, boundary loop extraction, edge deletion with face merging.
 
-**`TriangleSoup`** — flat indexed triangles. Intermediate format for CSG and whole-mesh operations.
-
 **`MetalMesh`** — GPU-ready triangulated buffers. Interleaved or separate buffer layouts. Each submesh records its `indexType` (`.uint16`/`.uint32`) and `primitiveType`.
 
 **`SwiftMeshIO`** — PLY file import/export (ASCII).
@@ -37,7 +35,8 @@ encoder.draw(metalMesh)
 
 ```swift
 // From ModelIO
-let mesh = MetalMesh(mdlMesh: mdlMesh, device: device)
+let mesh = try MetalMesh(mdlMesh: mdlMesh, device: device)
+let meshes = try [MetalMesh](mdlAsset: asset, device: device) // world transforms baked in
 let mesh = MetalMesh(mtkMesh: mtkMesh)
 let mdlMesh = mesh.toMDLMesh(device: device)
 
@@ -46,8 +45,6 @@ let mesh = try PLY.read(from: data)
 let data = PLY.write(mesh)
 
 // Between types
-let soup = TriangleSoup(mesh: mesh)        // Mesh → TriangleSoup
-let mesh = soup.toMesh(weldTolerance: 1e-5) // TriangleSoup → Mesh
 let metalMesh = MetalMesh(mesh: mesh, device: device) // Mesh → MetalMesh (lossy)
 let metalMesh = MetalMesh(mesh: mesh, device: device, preserveTopology: true) // lossless
 let mesh = metalMesh.toMesh()              // MetalMesh → Mesh

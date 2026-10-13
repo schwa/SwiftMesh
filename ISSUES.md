@@ -3389,11 +3389,13 @@ Note: BooleanMesh.toMesh() and TriangleSoup.toMesh() exist too; consider them se
 ## 164: Make TriangleSoup internal
 
 +++
-status: new
+status: closed
 priority: low
 kind: task
 labels: area:triangle-mesh, effort:s
 created: 2026-10-13T19:37:39Z
+updated: 2026-10-13T19:53:56Z
+closed: 2026-10-13T19:53:56Z
 +++
 
 TriangleSoup is only an internal staging format: marching cubes, plane split, convex hull, and ModelIO import collect unwelded triangles, weld, then convert to Mesh.
@@ -3409,11 +3411,13 @@ TriangleSoup is only an internal staging format: marching cubes, plane split, co
 ## 165: Load MetalMesh directly from ModelIO (MDLMesh and MDLAsset)
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 labels: area:io, effort:s
 created: 2026-10-13T19:41:52Z
+updated: 2026-10-13T19:53:56Z
+closed: 2026-10-13T19:53:56Z
 +++
 
 Today the only ModelIO path to a MetalMesh is manual: MTKMesh(mesh:device:) then MetalMesh(mtkMesh:). The asset loader returns [Mesh] only, so loading for rendering round-trips through half-edge topology and drops anything Mesh cannot store (extra UV/color sets, skinning, morph targets).
@@ -3423,5 +3427,24 @@ Add:
 - Array<MetalMesh>(mdlAsset:device:applyingTransforms:) mirroring the [Mesh] asset loader. When applying transforms, positions/normals/tangents must be transformed in the vertex data.
 
 Related: #163 (initializer naming), #152 (toMesh drops attributes).
+
+---
+
+## 166: Audit docs and remove out-of-date information
+
++++
+status: new
+priority: low
+kind: documentation
+labels: area:docs, effort:s
+created: 2026-10-13T19:52:36Z
++++
+
+README.md, Sources/SwiftMesh/SwiftMesh.docc/SwiftMesh.md and Documentation/ have drifted from the code. Recent changes not reflected everywhere: TriangleSoup made internal (#164), CSG weldTolerance removed, MetalMesh ModelIO loading added (#165), CPU vertex-array decoding (#161), corner attributes/submesh handling (#159, #160), teapot UVs (#158).
+
+- Check every code sample and API name in README and DocC against the current API; fix or remove stale ones.
+- Check DocC symbol links resolve (build docs, look for warnings).
+- Decide whether to remove Documentation/Mesh2D.md (158 lines, not linked from README or DocC). Either delete it or fold the useful parts into DocC as an article.
+- Refresh Documentation/screenshot.png if the demo changed.
 
 ---

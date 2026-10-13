@@ -318,6 +318,48 @@ struct MetalMeshTests {
         #expect(simd_distance((local[1].bounds.min + local[1].bounds.max) / 2, .zero) < 1e-5)
     }
 
+    @Test("MDLMesh to MetalMesh keeps every attribute without going through Mesh")
+    func metalMeshFromMDLMesh() throws {
+        let device = try requireDevice()
+        let mdlMesh = MDLMesh.newBox(withDimensions: [1, 1, 1], segments: [1, 1, 1], geometryType: .triangles, inwardNormals: false, allocator: MTKMeshBufferAllocator(device: device))
+        let metalMesh = try MetalMesh(mdlMesh: mdlMesh, device: device)
+        let semantics = metalMesh.vertexDescriptor.attributes.map(\.semantic)
+        #expect(semantics.contains(.position))
+        #expect(semantics.contains(.normal))
+        #expect(semantics.contains(.texcoord()))
+        #expect(metalMesh.vertexCount == mdlMesh.vertexCount)
+        #expect(metalMesh.submeshes.reduce(0) { $0 + $1.indexCount } == 36)
+    }
+
+    @Test("MDLAsset to [MetalMesh] applies transforms to positions and normals")
+    func metalMeshesFromAsset() throws {
+        let device = try requireDevice()
+        let allocator = MTKMeshBufferAllocator(device: device)
+        let asset = MDLAsset(bufferAllocator: allocator)
+        let box = MDLMesh.newBox(withDimensions: [1, 2, 3], segments: [1, 1, 1], geometryType: .triangles, inwardNormals: false, allocator: allocator)
+        let rotation = simd_quatf(angle: .pi / 2, axis: [0, 0, 1])
+        box.transform = MDLTransform(matrix: simd_float4x4(translation: [10, 0, 0]) * simd_float4x4(rotation))
+        asset.add(box)
+
+        let local = try [MetalMesh](mdlAsset: asset, device: device, applyingTransforms: false)
+        let world = try [MetalMesh](mdlAsset: asset, device: device)
+        #expect(local.count == 1 && world.count == 1)
+
+        func values(_ mesh: MetalMesh, _ semantic: VertexDescriptor.Attribute.Semantic) throws -> [SIMD3<Float>] {
+            try #require(mesh.vertexAttributeData().first { $0.semantic == semantic }).values()
+        }
+        let localPositions = try values(local[0], .position)
+        let worldPositions = try values(world[0], .position)
+        let localNormals = try values(local[0], .normal)
+        let worldNormals = try values(world[0], .normal)
+        #expect(localPositions.count == worldPositions.count)
+        for index in localPositions.indices {
+            #expect(simd_distance(rotation.act(localPositions[index]) + [10, 0, 0], worldPositions[index]) < 1e-5)
+            #expect(simd_distance(rotation.act(localNormals[index]), worldNormals[index]) < 1e-5)
+        }
+        #expect(world[0].submeshes.map(\.indices) == local[0].submeshes.map(\.indices))
+    }
+
     // MARK: - Direct initializers (bypass Mesh / topology)
 
     @Test("Direct init from positions/indices")
