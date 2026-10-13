@@ -71,8 +71,14 @@ struct TextureCoordinateConventionTests {
         ("capsule", .capsule(attributes: attributes)),
         ("cone", .cone(attributes: attributes)),
         ("conicalFrustum", .conicalFrustum(attributes: attributes)),
-        ("rectangularFrustum", .rectangularFrustum(attributes: attributes))
+        ("rectangularFrustum", .rectangularFrustum(attributes: attributes)),
+        ("cylindricalUVs", Mesh.cylinder(attributes: [.flatNormals]).withCylindricalUVs()),
+        ("boxUVs", Mesh.box(attributes: [.flatNormals]).withBoxUVs())
     ]
+
+    // Exact axis permutations (no rounding), so cap vertices stay coplanar.
+    static let yToX = simd_float4x4(columns: ([0, 0, 1, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]))
+    static let yToZ = simd_float4x4(columns: ([0, 1, 0, 0], [0, 0, 1, 0], [1, 0, 0, 0], [0, 0, 0, 1]))
 
     // Faces of these have no common up direction (polyhedron faces, the torus tube).
     static let unorientedShapes: [(String, Mesh)] = [
@@ -80,8 +86,29 @@ struct TextureCoordinateConventionTests {
         ("octahedron", .octahedron(attributes: attributes)),
         ("icosahedron", .icosahedron(attributes: attributes)),
         ("dodecahedron", .dodecahedron(attributes: attributes)),
-        ("torus", .torus(attributes: attributes))
+        ("torus", .torus(attributes: attributes)),
+        ("boxUVs sphere", Mesh.sphere(attributes: [.flatNormals]).withBoxUVs()),
+        ("cylindricalUVs x", Mesh.cylinder(attributes: [.flatNormals]).transformed(by: yToX).withCylindricalUVs(axis: .x)),
+        ("cylindricalUVs z", Mesh.cylinder(attributes: [.flatNormals]).transformed(by: yToZ).withCylindricalUVs(axis: .z))
     ]
+
+    @Test("Planar UVs are not mirrored seen from the positive end of the axis", arguments: [ProjectionAxis.x, .y, .z])
+    func planarNotMirrored(_ axis: ProjectionAxis) {
+        let normal: SIMD3<Float> = switch axis {
+        case .x: [1, 0, 0]
+        case .y: [0, 1, 0]
+        case .z: [0, 0, 1]
+        }
+        // A quad faces +Z; turn it to face the axis.
+        let quad = Mesh.quad(attributes: [])
+        let turned = normal.z == 1 ? quad : quad.rotated(by: simd_quatf(from: [0, 0, 1], to: normal))
+        let measurement = Self.measure(turned.withPlanarUVs(axis: axis))
+        #expect(measurement.unmirroredTriangles > 0)
+        #expect(measurement.mirroredTriangles == 0)
+        if axis != .y {
+            #expect(measurement.sideVUp == 0 && measurement.sideVSideways == 0)
+        }
+    }
 
     @Test("Textures are not mirrored", arguments: uprightShapes + unorientedShapes)
     func notMirrored(_ name: String, _ mesh: Mesh) {

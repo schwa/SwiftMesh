@@ -119,8 +119,9 @@ public struct MetalMesh {
     ///
     /// Faces are triangulated and corners become vertices (see ``Mesh/vertexArrays()``).
     /// Each `Mesh.Submesh` becomes a `MetalMesh.Submesh`; they share one index buffer.
-    public init(mesh: Mesh, device: MTLDevice, label: String? = nil, bufferLayout: BufferLayout = .interleaved, preserveTopology: Bool = false) {
-        let arrays = mesh.vertexArrays()
+    /// With `signedTangents`, tangents are `.float4` with the bitangent sign in w and there is no bitangent attribute.
+    public init(mesh: Mesh, device: MTLDevice, label: String? = nil, bufferLayout: BufferLayout = .interleaved, preserveTopology: Bool = false, signedTangents: Bool = false) {
+        let arrays = mesh.vertexArrays(signedTangents: signedTangents)
         self.init(device: device, attributes: arrays.attributes, submeshes: arrays.submeshes, label: label, bufferLayout: bufferLayout)
         let metalVertexToPosition = arrays.sourceVertices.map { UInt32($0.raw) }
 

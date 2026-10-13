@@ -31,6 +31,27 @@ struct MeshVertexArraysTests {
         }
     }
 
+    @Test("Signed tangents carry the bitangent sign in w")
+    func signedTangents() throws {
+        let mesh = Mesh.sphere(attributes: [.smoothNormals, .textureCoordinates]).withTangents()
+        let cornerTangents = try #require(mesh.signedTangents)
+        #expect(cornerTangents.count == mesh.topology.halfEdges.count)
+        for (index, tangent) in cornerTangents.enumerated() {
+            #expect(abs(tangent.w) == 1)
+            let rebuilt = tangent.w * simd_cross(mesh.normals![index], SIMD3(tangent.x, tangent.y, tangent.z))
+            #expect(simd_dot(rebuilt, mesh.bitangents![index]) >= 0)
+        }
+        // Mirroring the mesh flips the sign.
+        var mirrored = mesh
+        mirrored.bitangents = mesh.bitangents!.map { -$0 }
+        #expect(mirrored.signedTangents!.allSatisfy { $0.w == -1 } == cornerTangents.allSatisfy { $0.w == 1 })
+
+        let arrays = mesh.vertexArrays(signedTangents: true)
+        #expect(arrays.attributes.map(\.semantic) == [.position, .normal, .texcoord(0), .tangent])
+        #expect(arrays.attributes[3].format == .float4)
+        #expect(arrays.attributes[3].count == arrays.vertexCount)
+    }
+
     @Test("MetalMesh(mesh:) matches the vertex arrays")
     func metalMeshMatches() throws {
         let device = try #require(MTLCreateSystemDefaultDevice())

@@ -110,12 +110,8 @@ public extension Mesh {
                 let onAxis = position.x * position.x + position.z * position.z <= 1e-12 * max(radius * radius, 1e-30)
                 cornerUs.append(onAxis ? nil : 0.5 - atan2(position.z, position.x) / (2.0 * .pi))
             }
-            let offAxis = cornerUs.compactMap(\.self)
-            let wraps = (offAxis.max() ?? 0) - (offAxis.min() ?? 0) > 0.5
-            let unwrapped = cornerUs.map { $0.map { wraps && $0 < 0.5 ? $0 + 1 : $0 } }
-            let poleU = unwrapped.compactMap(\.self).reduce(0, +) / Double(max(1, offAxis.count))
-            for (corner, u) in zip(corners, unwrapped) {
-                uvs[corner.raw].x = Float(u ?? poleU)
+            for (corner, u) in zip(corners, unwrappedUs(cornerUs)) {
+                uvs[corner.raw].x = u
             }
         }
 
@@ -130,36 +126,69 @@ public enum ProjectionAxis: Sendable {
     case x, y, z
 }
 
+private extension ProjectionAxis {
+    /// Maps a position to (right, along, back) so that `along` is this axis, keeping handedness:
+    /// for `.y` it is (x, y, z), for `.x` (z, x, y), for `.z` (y, z, x).
+    func permute(_ position: SIMD3<Float>) -> SIMD3<Float> {
+        switch self {
+        case .x: SIMD3(position.z, position.x, position.y)
+        case .y: position
+        case .z: SIMD3(position.y, position.z, position.x)
+        }
+    }
+}
+
+/// Projects `position` onto the plane seen from `direction` (±1) along `axis`, normalized to the bounds.
+///
+/// u runs right and v runs down as seen from that side, so the texture is not mirrored on faces that look that way.
+private func planarUV(_ position: SIMD3<Float>, axis: ProjectionAxis, direction: Float, lo: SIMD3<Float>, size: SIMD3<Float>) -> SIMD2<Float> {
+    func normalized(_ index: Int) -> Float {
+        size[index] > 0 ? (position[index] - lo[index]) / size[index] : 0
+    }
+    // Seen from +X: right is -Z, down is -Y. From +Y: right is +X, down is +Z. From +Z: right is +X, down is -Y.
+    // Seen from the negative side, right flips.
+    let u: Float
+    let v: Float
+    switch axis {
+    case .x:
+        u = direction > 0 ? 1 - normalized(2) : normalized(2)
+        v = 1 - normalized(1)
+
+    case .y:
+        u = direction > 0 ? normalized(0) : 1 - normalized(0)
+        v = normalized(2)
+
+    case .z:
+        u = direction > 0 ? normalized(0) : 1 - normalized(0)
+        v = 1 - normalized(1)
+    }
+    return SIMD2(u, v)
+}
+
+/// Turns per-corner u angles (nil on the axis) into the u values of one face.
+///
+/// A face that crosses the seam gets u past 1 instead of wrapping, and a corner on the axis takes the mean u of the
+/// face's other corners.
+private func unwrappedUs(_ cornerUs: [Double?]) -> [Float] {
+    let offAxis = cornerUs.compactMap(\.self)
+    let wraps = (offAxis.max() ?? 0) - (offAxis.min() ?? 0) > 0.5
+    let unwrapped = cornerUs.map { $0.map { wraps && $0 < 0.5 ? $0 + 1 : $0 } }
+    let axisU = unwrapped.compactMap(\.self).reduce(0, +) / Double(max(1, offAxis.count))
+    return unwrapped.map { Float($0 ?? axisU) }
+}
+
 public extension Mesh {
     /// Returns a new mesh with planar UV coordinates projected along `axis`.
     ///
-    /// The two axes perpendicular to `axis` are mapped to U and V,
-    /// normalized to the mesh's bounding box.
+    /// The two axes perpendicular to `axis` are mapped to U and V, normalized to the mesh's bounding box. Seen from
+    /// the positive end of `axis`, u runs right and v runs down; seen from the negative end the texture is mirrored.
     func withPlanarUVs(axis: ProjectionAxis = .z) -> Mesh {
         let (lo, hi) = bounds
         let size = hi - lo
         var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
-
-        for he in topology.halfEdges {
-            let pos = positions[he.origin.raw]
-            let u: Float
-            let v: Float
-            switch axis {
-            case .x:
-                u = size.z > 0 ? (pos.z - lo.z) / size.z : 0
-                v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
-
-            case .y:
-                u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
-                v = size.z > 0 ? (pos.z - lo.z) / size.z : 0
-
-            case .z:
-                u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
-                v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
-            }
-            uvs[he.id.raw] = SIMD2<Float>(u, v)
+        for halfEdge in topology.halfEdges {
+            uvs[halfEdge.id.raw] = planarUV(positions[halfEdge.origin.raw], axis: axis, direction: 1, lo: lo, size: size)
         }
-
         var result = self
         result.textureCoordinates = uvs
         return result
@@ -167,34 +196,27 @@ public extension Mesh {
 
     /// Returns a new mesh with cylindrical UV coordinates unwrapped around `axis`.
     ///
-    /// U is computed from the angle around the axis, V from the position
-    /// along the axis normalized to the bounding box.
+    /// u runs once around the axis, counter-clockwise seen from its positive end, so textures are not mirrored seen
+    /// from outside. v runs from 0 at the positive end of the bounding box to 1 at the negative end. A face that
+    /// crosses the seam gets u past 1 instead of wrapping.
     func withCylindricalUVs(axis: ProjectionAxis = .y) -> Mesh {
         let (lo, hi) = bounds
-        let size = hi - lo
+        let along = axis.permute(lo)[1]...axis.permute(hi)[1]
+        let length = along.upperBound - along.lowerBound
         var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
 
-        for he in topology.halfEdges {
-            let pos = positions[he.origin.raw]
-            let u: Float
-            let v: Float
-            switch axis {
-            case .x:
-                let angle = atan2(Double(pos.z), Double(pos.y))
-                u = Float(angle / (2 * .pi) + 0.5)
-                v = size.x > 0 ? (pos.x - lo.x) / size.x : 0
-
-            case .y:
-                let angle = atan2(Double(pos.z), Double(pos.x))
-                u = Float(angle / (2 * .pi) + 0.5)
-                v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
-
-            case .z:
-                let angle = atan2(Double(pos.y), Double(pos.x))
-                u = Float(angle / (2 * .pi) + 0.5)
-                v = size.z > 0 ? (pos.z - lo.z) / size.z : 0
+        for face in topology.faces {
+            let corners = topology.halfEdgeLoop(for: face.id)
+            var cornerUs: [Double?] = []
+            for corner in corners {
+                let position = axis.permute(positions[topology.halfEdges[corner.raw].origin.raw])
+                uvs[corner.raw].y = length > 0 ? (along.upperBound - position.y) / length : 0
+                let onAxis = position.x * position.x + position.z * position.z <= 1e-12
+                cornerUs.append(onAxis ? nil : 0.5 - atan2(Double(position.z), Double(position.x)) / (2.0 * .pi))
             }
-            uvs[he.id.raw] = SIMD2<Float>(u, v)
+            for (corner, u) in zip(corners, unwrappedUs(cornerUs)) {
+                uvs[corner.raw].x = u
+            }
         }
 
         var result = self
@@ -204,8 +226,8 @@ public extension Mesh {
 
     /// Returns a new mesh with box-projected UV coordinates.
     ///
-    /// Each face is projected onto the plane most aligned with its normal
-    /// (triplanar projection). UVs are normalized to the mesh's bounding box.
+    /// Each face is projected onto the side of the bounding box its normal points at most (triplanar projection), so
+    /// textures are not mirrored on any side. UVs are normalized to the mesh's bounding box.
     func withBoxUVs() -> Mesh {
         let (lo, hi) = bounds
         let size = hi - lo
@@ -213,39 +235,22 @@ public extension Mesh {
 
         for face in topology.faces {
             let normal = faceNormal(face.id)
-            let ax = abs(normal.x)
-            let ay = abs(normal.y)
-            let az = abs(normal.z)
-
-            // Pick dominant axis
-            let dominantAxis: ProjectionAxis
-            if ax >= ay, ax >= az {
-                dominantAxis = .x
-            } else if ay >= az {
-                dominantAxis = .y
+            let magnitude = abs(normal)
+            let axis: ProjectionAxis
+            let direction: Float
+            if magnitude.x >= magnitude.y, magnitude.x >= magnitude.z {
+                axis = .x
+                direction = normal.x < 0 ? -1 : 1
+            } else if magnitude.y >= magnitude.z {
+                axis = .y
+                direction = normal.y < 0 ? -1 : 1
             } else {
-                dominantAxis = .z
+                axis = .z
+                direction = normal.z < 0 ? -1 : 1
             }
-
-            let heLoop = topology.halfEdgeLoop(for: face.id)
-            for heID in heLoop {
-                let pos = positions[topology.halfEdges[heID.raw].origin.raw]
-                let u: Float
-                let v: Float
-                switch dominantAxis {
-                case .x:
-                    u = size.z > 0 ? (pos.z - lo.z) / size.z : 0
-                    v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
-
-                case .y:
-                    u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
-                    v = size.z > 0 ? (pos.z - lo.z) / size.z : 0
-
-                case .z:
-                    u = size.x > 0 ? (pos.x - lo.x) / size.x : 0
-                    v = size.y > 0 ? (pos.y - lo.y) / size.y : 0
-                }
-                uvs[heID.raw] = SIMD2<Float>(u, v)
+            for corner in topology.halfEdgeLoop(for: face.id) {
+                let position = positions[topology.halfEdges[corner.raw].origin.raw]
+                uvs[corner.raw] = planarUV(position, axis: axis, direction: direction, lo: lo, size: size)
             }
         }
 
@@ -254,6 +259,7 @@ public extension Mesh {
         return result
     }
 }
+
 
 // MARK: - Tangent Generation (MikkTSpace)
 

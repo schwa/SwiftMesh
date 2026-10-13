@@ -3251,12 +3251,13 @@ Do not merge automatically: inits make one index buffer per submesh. Add a manua
 ## 157: Mesh tangents have no handedness sign
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:s, area:metal
 created: 2026-10-13T17:09:52Z
-updated: 2026-10-13T17:31:15Z
+updated: 2026-10-13T17:58:22Z
+closed: 2026-10-13T17:58:22Z
 +++
 
 Mesh stores tangents and bitangents as separate SIMD3 arrays, and Mesh.vertexArrays() / MetalMesh(mesh:) output them as .float3 tangent and bitangent attributes. glTF, MikkTSpace and MetalSprocketsPBR use one SIMD4 tangent with w = bitangent sign (±1). A caller that needs that form must compute the sign from normal, tangent and bitangent for each vertex. SwiftMesh has MetalMesh.VertexAttributeData.tangents([SIMD4<Float>]), but nothing makes those values from a Mesh.
@@ -3280,5 +3281,7 @@ After #153, the shape generators and Mesh.withSphericalUVs() make v-down, unmirr
 - withCylindricalUVs(axis:) sets u per vertex from atan2, so faces that cross the seam wrap from about 1 back to 0 and smear the texture (withSphericalUVs had the same problem).
 - withBoxUVs() projects each face onto an axis plane by position only, so faces on the negative side of each axis get mirrored textures.
 - Mesh.teapot uses withSphericalUVs(), and spherical projection mirrors parts of a non-convex shape (1312 of 6320 UV triangles mirrored), so it is not in the convention tests.
+
+- `2026-10-13T17:58:22Z`: Planar, cylindrical and box projections now follow the convention. Remaining: Mesh.teapot uses withSphericalUVs() and is excluded from convention tests; needs a non-projection UV method.
 
 ---

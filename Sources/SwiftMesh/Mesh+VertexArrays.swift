@@ -13,8 +13,27 @@ public extension Mesh {
         public var vertexCount: Int { sourceVertices.count }
     }
 
+    /// Per-corner glTF / MikkTSpace tangents: xyz is the tangent, w is the bitangent sign (±1).
+    ///
+    /// w is -1 where `cross(normal, tangent)` points away from the bitangent. Nil unless the mesh has normals,
+    /// tangents and bitangents.
+    var signedTangents: [SIMD4<Float>]? {
+        guard let normals, let tangents, let bitangents else {
+            return nil
+        }
+        return tangents.indices.map { index in
+            Self.signedTangent(normal: normals[index], tangent: tangents[index], bitangent: bitangents[index])
+        }
+    }
+
+    private static func signedTangent(normal: SIMD3<Float>, tangent: SIMD3<Float>, bitangent: SIMD3<Float>) -> SIMD4<Float> {
+        SIMD4(tangent, simd_dot(simd_cross(normal, tangent), bitangent) < 0 ? -1 : 1)
+    }
+
     /// Triangulates faces and turns corners into vertices. Corners with the same position and attributes share a vertex.
-    func vertexArrays() -> VertexArrays {
+    ///
+    /// With `signedTangents`, tangents are output as ``signedTangents`` and bitangents are left out.
+    func vertexArrays(signedTangents: Bool = false) -> VertexArrays {
         struct CornerKey: Hashable {
             var position: SIMD3<Float>
             var normal: SIMD3<Float>
@@ -74,11 +93,17 @@ public extension Mesh {
         if self.textureCoordinates != nil {
             attributes.append(.textureCoordinates(textureCoordinates))
         }
-        if self.tangents != nil {
-            attributes.append(.tangents(tangents))
-        }
-        if self.bitangents != nil {
-            attributes.append(.bitangents(bitangents))
+        if signedTangents, self.signedTangents != nil {
+            attributes.append(.tangents(tangents.indices.map { index in
+                Self.signedTangent(normal: normals[index], tangent: tangents[index], bitangent: bitangents[index])
+            }))
+        } else {
+            if self.tangents != nil {
+                attributes.append(.tangents(tangents))
+            }
+            if self.bitangents != nil {
+                attributes.append(.bitangents(bitangents))
+            }
         }
         if self.colors != nil {
             attributes.append(.colors(colors))

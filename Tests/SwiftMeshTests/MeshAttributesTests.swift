@@ -107,13 +107,18 @@ struct MeshAttributesTests {
 
     // MARK: - Cylindrical UVs
 
-    @Test("withCylindricalUVs produces UVs in [0,1]")
+    @Test("withCylindricalUVs does not wrap faces across the seam")
     func cylindricalUVs() {
         let mesh = Mesh.cylinder(segments: 8, attributes: []).withCylindricalUVs(axis: .y)
-        #expect(mesh.textureCoordinates != nil)
-        for uv in mesh.textureCoordinates! {
-            #expect(uv.x >= -1e-5 && uv.x <= 1.0 + 1e-5)
+        let uvs = mesh.textureCoordinates!
+        for uv in uvs {
+            #expect(uv.x >= -1e-5 && uv.x <= 1.5)
             #expect(uv.y >= -1e-5 && uv.y <= 1.0 + 1e-5)
+        }
+        // Side quads only; the caps span the whole circle.
+        for face in mesh.topology.faces where mesh.topology.halfEdgeLoop(for: face.id).count == 4 {
+            let us = mesh.topology.halfEdgeLoop(for: face.id).map { uvs[$0.raw].x }
+            #expect(us.max()! - us.min()! <= 0.5)
         }
     }
 
