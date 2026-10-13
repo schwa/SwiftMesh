@@ -60,7 +60,7 @@ public struct MetalMesh {
     }
 
     /// Controls how vertex attributes are packed into Metal buffers.
-    public enum BufferLayout {
+    public enum BufferLayout: Sendable {
         /// All attributes interleaved into a single buffer (buffer index 0).
         case interleaved
         /// Each attribute in its own buffer (buffer indices 0, 1, 2, …).

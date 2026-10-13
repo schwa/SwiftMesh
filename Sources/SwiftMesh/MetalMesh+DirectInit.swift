@@ -32,6 +32,15 @@ public extension MetalMesh {
             self.count = values.count
         }
 
+        /// Wraps `count` values already packed tightly to `format`.
+        public init(semantic: VertexDescriptor.Attribute.Semantic, format: MTLVertexFormat, bytes: [UInt8], count: Int) {
+            precondition(bytes.count == format.size * count, "bytes must hold count values of format \(format)")
+            self.semantic = semantic
+            self.format = format
+            self.bytes = bytes
+            self.count = count
+        }
+
         public static func positions(_ values: [SIMD3<Float>]) -> Self {
             .init(semantic: .position, format: .float3, values: values)
         }
