@@ -117,10 +117,10 @@ public struct MetalMesh {
             (.position, .float3)
         ]
         if mesh.normals != nil { rawAttributes.append((.normal, .float3)) }
-        if mesh.textureCoordinates != nil { rawAttributes.append((.texcoord, .float2)) }
+        if mesh.textureCoordinates != nil { rawAttributes.append((.texcoord(), .float2)) }
         if mesh.tangents != nil { rawAttributes.append((.tangent, .float3)) }
         if mesh.bitangents != nil { rawAttributes.append((.bitangent, .float3)) }
-        if mesh.colors != nil { rawAttributes.append((.color, .float4)) }
+        if mesh.colors != nil { rawAttributes.append((.color(), .float4)) }
 
         // Assign buffer indices based on layout
         let attributes: [VertexDescriptor.Attribute]
@@ -421,10 +421,10 @@ public extension MetalMesh {
 
         let positionAttr = findAttr(.position)!
         let normalAttr = findAttr(.normal)
-        let texcoordAttr = findAttr(.texcoord)
+        let texcoordAttr = findAttr(.texcoord())
         let tangentAttr = findAttr(.tangent)
         let bitangentAttr = findAttr(.bitangent)
-        let colorAttr = findAttr(.color)
+        let colorAttr = findAttr(.color())
 
         // Buffer pointers and strides
         var bufferPtrs: [Int: UnsafeMutablePointer<UInt8>] = [:]

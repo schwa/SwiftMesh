@@ -45,7 +45,7 @@ public extension MetalMesh {
             (.position, .float3)
         ]
         if normals != nil { rawAttributes.append((.normal, .float3)) }
-        if textureCoordinates != nil { rawAttributes.append((.texcoord, .float2)) }
+        if textureCoordinates != nil { rawAttributes.append((.texcoord(), .float2)) }
 
         let attributes: [VertexDescriptor.Attribute]
         let layouts: [VertexDescriptor.Layout]

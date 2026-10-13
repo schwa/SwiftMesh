@@ -52,10 +52,10 @@ public extension MetalMesh {
         let semanticMap: [String: VertexDescriptor.Attribute.Semantic] = [
             MDLVertexAttributePosition: .position,
             MDLVertexAttributeNormal: .normal,
-            MDLVertexAttributeTextureCoordinate: .texcoord,
+            MDLVertexAttributeTextureCoordinate: .texcoord(),
             MDLVertexAttributeTangent: .tangent,
             MDLVertexAttributeBitangent: .bitangent,
-            MDLVertexAttributeColor: .color
+            MDLVertexAttributeColor: .color()
         ]
 
         for mdlAttr in mdlDescriptor.attributes as! [MDLVertexAttribute] {
@@ -209,10 +209,10 @@ public extension Mesh {
         let semanticToName: [VertexDescriptor.Attribute.Semantic: String] = [
             .position: MDLVertexAttributePosition,
             .normal: MDLVertexAttributeNormal,
-            .texcoord: MDLVertexAttributeTextureCoordinate,
+            .texcoord(): MDLVertexAttributeTextureCoordinate,
             .tangent: MDLVertexAttributeTangent,
             .bitangent: MDLVertexAttributeBitangent,
-            .color: MDLVertexAttributeColor
+            .color(): MDLVertexAttributeColor
         ]
 
         for (idx, attr) in metalMesh.vertexDescriptor.attributes.enumerated() {
