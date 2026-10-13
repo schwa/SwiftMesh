@@ -3269,12 +3269,13 @@ Mesh stores tangents and bitangents as separate SIMD3 arrays, and Mesh.vertexArr
 ## 158: UV projection helpers do not follow the texture coordinate convention
 
 +++
-status: open
+status: closed
 priority: low
 kind: bug
 labels: effort:m, area:primitives
 created: 2026-10-13T17:22:49Z
-updated: 2026-10-13T17:31:15Z
+updated: 2026-10-13T19:22:20Z
+closed: 2026-10-13T19:22:20Z
 +++
 
 After #153, the shape generators and Mesh.withSphericalUVs() make v-down, unmirrored UVs (glTF / Metal convention, enforced by TextureCoordinateConventionTests). The other projection helpers in MeshAttributes.swift do not:

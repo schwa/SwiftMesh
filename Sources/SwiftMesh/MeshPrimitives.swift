@@ -1298,17 +1298,16 @@ public extension Mesh {
         guard var mesh = try? Mesh(mdlMesh: mdlMesh, device: device) else {
             fatalError("Failed to convert teapot MDLMesh to Mesh")
         }
-        // Strip imported attributes — we'll apply the requested ones below
-        mesh.normals = nil
-        mesh.textureCoordinates = nil
-        mesh.tangents = nil
-        mesh.bitangents = nil
-        mesh.colors = nil
+        // The OBJ's UVs are an unwrap in model units with v up. Flip v and scale uniformly into 0...1.
+        let importedUVs = mesh.textureCoordinates
+        mesh.cornerAttributes = CornerAttributes()
 
         mesh.fitToDiameter(diameter)
 
-        if attributes.contains(.textureCoordinates) {
-            mesh = mesh.withSphericalUVs()
+        if attributes.contains(.textureCoordinates), let importedUVs, let first = importedUVs.first {
+            let (low, high) = importedUVs.reduce((first, first)) { (simd_min($0.0, $1), simd_max($0.1, $1)) }
+            let scale = 1 / max(high.x - low.x, high.y - low.y)
+            mesh.textureCoordinates = importedUVs.map { SIMD2(($0.x - low.x) * scale, (high.y - $0.y) * scale) }
         }
         mesh.applyAttributes(attributes, creaseAngle: Self.defaultCreaseAngle)
         return mesh

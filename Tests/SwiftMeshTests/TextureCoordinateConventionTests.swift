@@ -72,6 +72,7 @@ struct TextureCoordinateConventionTests {
         ("cone", .cone(attributes: attributes)),
         ("conicalFrustum", .conicalFrustum(attributes: attributes)),
         ("rectangularFrustum", .rectangularFrustum(attributes: attributes)),
+        ("teapot", .teapot(attributes: attributes)),
         ("cylindricalUVs", Mesh.cylinder(attributes: [.flatNormals]).withCylindricalUVs()),
         ("boxUVs", Mesh.box(attributes: [.flatNormals]).withBoxUVs())
     ]
