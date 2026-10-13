@@ -26,15 +26,18 @@ public struct MetalMesh {
         public var indexType: MTLIndexType
         /// How indices assemble into primitives. Converting back to ``Mesh`` requires `.triangle`.
         public var primitiveType: MTLPrimitiveType
+        /// Bounds of the vertices this submesh references, or nil if unknown.
+        public var bounds: BoundingBox?
 
         /// Creates a submesh over an existing index buffer.
-        public init(label: String? = nil, indexBuffer: MTLBuffer, indexBufferOffset: Int = 0, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle) {
+        public init(label: String? = nil, indexBuffer: MTLBuffer, indexBufferOffset: Int = 0, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle, bounds: BoundingBox? = nil) {
             self.label = label
             self.indexBuffer = indexBuffer
             self.indexBufferOffset = indexBufferOffset
             self.indexCount = indexCount
             self.indexType = indexType
             self.primitiveType = primitiveType
+            self.bounds = bounds
         }
 
         /// Size of the index data in bytes.
@@ -77,6 +80,12 @@ public struct MetalMesh {
     public var vertexDescriptor: VertexDescriptor
     /// The triangle groups that make up the mesh.
     public var submeshes: [Submesh]
+    /// Bounds of all vertices, or nil if unknown.
+    public var bounds: BoundingBox?
+    /// Morph targets for the vertices, or nil if the mesh has none.
+    public var morphTargets: MorphTargets?
+    /// Skin binding data for the joint index and weight attributes, or nil if the mesh is not skinned.
+    public var skin: Skin?
 
     /// Corner-table opposites buffer (`UInt32`, length = total index count across all submeshes).
     ///
@@ -264,6 +273,15 @@ public struct MetalMesh {
         self.vertexBuffers = vtxBuffers
 
         // Create submeshes
+        let positionAttribute = descriptor.attributes.first { $0.semantic == .position }!
+        let positionSlot = bufferIndices.firstIndex(of: positionAttribute.bufferIndex)!
+        let positions: [SIMD3<Float>] = bufferStorage[positionSlot].withUnsafeBytes { bytes in
+            (0..<Int(currentVertexIndex)).map { index in
+                let base = index * strides[positionSlot] + positionAttribute.offset
+                return SIMD3(bytes.load(fromByteOffset: base, as: Float.self), bytes.load(fromByteOffset: base + 4, as: Float.self), bytes.load(fromByteOffset: base + 8, as: Float.self))
+            }
+        }
+        self.bounds = Self.bounds(of: positions)
         self.submeshes = builtSubmeshes.map { sub in
             let idxBuffer = device.makeBuffer(
                 bytes: sub.indices,
@@ -274,7 +292,8 @@ public struct MetalMesh {
             return Submesh(
                 label: sub.label,
                 indexBuffer: idxBuffer,
-                indexCount: sub.indices.count
+                indexCount: sub.indices.count,
+                bounds: Self.bounds(of: positions, indices: sub.indices)
             )
         }
 

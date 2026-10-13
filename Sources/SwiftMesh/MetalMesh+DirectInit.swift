@@ -6,27 +6,177 @@ import simd
 // MARK: - Direct initializers (bypass Mesh / topology)
 
 public extension MetalMesh {
-    /// Create a `MetalMesh` directly from in-memory attribute arrays and an
-    /// index list, skipping the half-edge topology / dedup / triangulation
-    /// pipeline.
+    /// One per-vertex attribute array, packed to `format`.
+    struct VertexAttributeData {
+        public var semantic: VertexDescriptor.Attribute.Semantic
+        public var format: MTLVertexFormat
+        /// `count * format.size` bytes, tightly packed.
+        public var bytes: [UInt8]
+        public var count: Int
+
+        /// Copies the first `format.size` bytes of each value.
+        public init<Element>(semantic: VertexDescriptor.Attribute.Semantic, format: MTLVertexFormat, values: [Element]) {
+            let size = format.size
+            precondition(size > 0 && MemoryLayout<Element>.size >= size, "\(Element.self) is too small for format \(format)")
+            var bytes = [UInt8](repeating: 0, count: size * values.count)
+            bytes.withUnsafeMutableBytes { destination in
+                values.withUnsafeBytes { source in
+                    for index in values.indices {
+                        (destination.baseAddress! + index * size).copyMemory(from: source.baseAddress! + index * MemoryLayout<Element>.stride, byteCount: size)
+                    }
+                }
+            }
+            self.semantic = semantic
+            self.format = format
+            self.bytes = bytes
+            self.count = values.count
+        }
+
+        public static func positions(_ values: [SIMD3<Float>]) -> Self {
+            .init(semantic: .position, format: .float3, values: values)
+        }
+
+        public static func normals(_ values: [SIMD3<Float>]) -> Self {
+            .init(semantic: .normal, format: .float3, values: values)
+        }
+
+        public static func textureCoordinates(_ values: [SIMD2<Float>], set: Int = 0) -> Self {
+            .init(semantic: .texcoord(set), format: .float2, values: values)
+        }
+
+        /// glTF-style tangents: xyz plus handedness in w.
+        public static func tangents(_ values: [SIMD4<Float>]) -> Self {
+            .init(semantic: .tangent, format: .float4, values: values)
+        }
+
+        public static func tangents(_ values: [SIMD3<Float>]) -> Self {
+            .init(semantic: .tangent, format: .float3, values: values)
+        }
+
+        public static func bitangents(_ values: [SIMD3<Float>]) -> Self {
+            .init(semantic: .bitangent, format: .float3, values: values)
+        }
+
+        public static func colors(_ values: [SIMD4<Float>], set: Int = 0) -> Self {
+            .init(semantic: .color(set), format: .float4, values: values)
+        }
+
+        public static func jointIndices(_ values: [SIMD4<UInt16>], set: Int = 0) -> Self {
+            .init(semantic: .jointIndices(set), format: .ushort4, values: values)
+        }
+
+        public static func jointWeights(_ values: [SIMD4<Float>], set: Int = 0) -> Self {
+            .init(semantic: .jointWeights(set), format: .float4, values: values)
+        }
+    }
+
+    /// The indices of one submesh for the array initializer.
+    struct SubmeshIndices {
+        public var label: String?
+        public var indices: [UInt32]
+        public var primitiveType: MTLPrimitiveType
+
+        public init(label: String? = nil, indices: [UInt32], primitiveType: MTLPrimitiveType = .triangle) {
+            self.label = label
+            self.indices = indices
+            self.primitiveType = primitiveType
+        }
+    }
+
+    /// Create a `MetalMesh` from in-memory attribute arrays, skipping the half-edge topology pipeline.
     ///
-    /// Use this when you already have GPU-ready, per-vertex attribute arrays
-    /// (e.g. from a third-party loader, procedural geometry, or ARKit mesh
-    /// anchors) and you don't need a `Mesh` for editing.
-    ///
-    /// The resulting mesh has a single submesh covering all indices and uses
-    /// the same `VertexDescriptor` shape that `MetalMesh(mesh:device:)` would
-    /// produce for the same set of attributes.
-    ///
-    /// - Parameters:
-    ///   - device: The Metal device used to allocate buffers.
-    ///   - positions: Per-vertex positions. Required.
-    ///   - normals: Optional per-vertex normals. Must match `positions.count` if non-nil.
-    ///   - textureCoordinates: Optional per-vertex UVs. Must match `positions.count` if non-nil.
-    ///   - indices: Triangle indices into the attribute arrays.
-    ///   - label: Optional label propagated to the mesh and its buffers.
-    ///   - bufferLayout: Whether attributes are interleaved into one buffer
-    ///     or split across separate buffers.
+    /// `attributes` must contain a `.position` attribute in `.float3` format, and all attributes must have the same count.
+    /// Attributes keep their order in the vertex descriptor. All submeshes share one index buffer.
+    init(
+        device: MTLDevice,
+        attributes: [VertexAttributeData],
+        submeshes: [SubmeshIndices],
+        morphTargets: MorphTargets? = nil,
+        skin: Skin? = nil,
+        label: String? = nil,
+        bufferLayout: BufferLayout = .interleaved
+    ) {
+        guard let positionData = attributes.first(where: { $0.semantic == .position }), positionData.format == .float3 else {
+            preconditionFailure("attributes must contain a .float3 .position attribute")
+        }
+        let vertexCount = positionData.count
+        for attribute in attributes {
+            precondition(attribute.count == vertexCount, "attribute \(attribute.semantic) count must equal the position count")
+        }
+
+        let descriptorAttributes: [VertexDescriptor.Attribute]
+        let layouts: [VertexDescriptor.Layout]
+        switch bufferLayout {
+        case .interleaved:
+            descriptorAttributes = attributes.map {
+                VertexDescriptor.Attribute(semantic: $0.semantic, format: $0.format, offset: 0, bufferIndex: 0)
+            }
+            layouts = [.init(bufferIndex: 0, stride: 0, stepFunction: .perVertex, stepRate: 1)]
+
+        case .separateBuffers:
+            descriptorAttributes = attributes.enumerated().map { index, attribute in
+                VertexDescriptor.Attribute(semantic: attribute.semantic, format: attribute.format, offset: 0, bufferIndex: index)
+            }
+            layouts = attributes.indices.map {
+                .init(bufferIndex: $0, stride: 0, stepFunction: .perVertex, stepRate: 1)
+            }
+        }
+        let descriptor = VertexDescriptor(attributes: descriptorAttributes, layouts: layouts).normalized()
+
+        var vertexBuffers: [Int: MTLBuffer] = [:]
+        for bufferIndex in Set(descriptor.attributes.map(\.bufferIndex)).sorted() {
+            let stride = descriptor.layouts[bufferIndex]!.stride
+            var data = [UInt8](repeating: 0, count: stride * vertexCount)
+            data.withUnsafeMutableBytes { destination in
+                for (attribute, source) in zip(descriptor.attributes, attributes) where attribute.bufferIndex == bufferIndex {
+                    let size = attribute.format.size
+                    source.bytes.withUnsafeBytes { sourceBytes in
+                        for vertex in 0..<vertexCount {
+                            (destination.baseAddress! + vertex * stride + attribute.offset).copyMemory(from: sourceBytes.baseAddress! + vertex * size, byteCount: size)
+                        }
+                    }
+                }
+            }
+            let buffer = data.isEmpty ? device.makeBuffer(length: 1, options: [])! : device.makeBuffer(bytes: data, length: data.count, options: [])!
+            buffer.label = label.map { "\($0) Vertices[\(bufferIndex)]" }
+            vertexBuffers[bufferIndex] = buffer
+        }
+
+        let allIndices = submeshes.flatMap(\.indices)
+        let indexBuffer = device.makeBuffer(bytes: allIndices, length: max(1, MemoryLayout<UInt32>.stride * allIndices.count), options: [])!
+        indexBuffer.label = label.map { "\($0) Indices" }
+
+        let positions: [SIMD3<Float>] = positionData.bytes.withUnsafeBytes { bytes in
+            (0..<vertexCount).map { index in
+                SIMD3(bytes.loadUnaligned(fromByteOffset: index * 12, as: Float.self), bytes.loadUnaligned(fromByteOffset: index * 12 + 4, as: Float.self), bytes.loadUnaligned(fromByteOffset: index * 12 + 8, as: Float.self))
+            }
+        }
+
+        var offset = 0
+        var builtSubmeshes: [Submesh] = []
+        for submesh in submeshes {
+            builtSubmeshes.append(Submesh(
+                label: submesh.label,
+                indexBuffer: indexBuffer,
+                indexBufferOffset: offset * MemoryLayout<UInt32>.stride,
+                indexCount: submesh.indices.count,
+                primitiveType: submesh.primitiveType,
+                bounds: Self.bounds(of: positions, indices: submesh.indices)
+            ))
+            offset += submesh.indices.count
+        }
+
+        self.label = label
+        self.vertexBuffers = vertexBuffers
+        self.vertexCount = vertexCount
+        self.vertexDescriptor = descriptor
+        self.submeshes = builtSubmeshes
+        self.bounds = Self.bounds(of: positions)
+        self.morphTargets = morphTargets
+        self.skin = skin
+    }
+
+    /// Create a `MetalMesh` from in-memory attribute arrays with a single triangle submesh.
     init(
         device: MTLDevice,
         positions: [SIMD3<Float>],
@@ -36,152 +186,55 @@ public extension MetalMesh {
         label: String? = nil,
         bufferLayout: BufferLayout = .interleaved
     ) {
-        let vertexCount = positions.count
-        if let normals { precondition(normals.count == vertexCount, "normals.count must equal positions.count") }
-        if let textureCoordinates { precondition(textureCoordinates.count == vertexCount, "textureCoordinates.count must equal positions.count") }
-
-        // Build attribute list matching MetalMesh(mesh:device:)'s ordering.
-        var rawAttributes: [(semantic: VertexDescriptor.Attribute.Semantic, format: MTLVertexFormat)] = [
-            (.position, .float3)
-        ]
-        if normals != nil { rawAttributes.append((.normal, .float3)) }
-        if textureCoordinates != nil { rawAttributes.append((.texcoord(), .float2)) }
-
-        let attributes: [VertexDescriptor.Attribute]
-        let layouts: [VertexDescriptor.Layout]
-
-        switch bufferLayout {
-        case .interleaved:
-            attributes = rawAttributes.map {
-                VertexDescriptor.Attribute(semantic: $0.semantic, format: $0.format, offset: 0, bufferIndex: 0)
-            }
-            layouts = [.init(bufferIndex: 0, stride: 0, stepFunction: .perVertex, stepRate: 1)]
-
-        case .separateBuffers:
-            attributes = rawAttributes.enumerated().map { idx, attr in
-                VertexDescriptor.Attribute(semantic: attr.semantic, format: attr.format, offset: 0, bufferIndex: idx)
-            }
-            layouts = rawAttributes.indices.map {
-                .init(bufferIndex: $0, stride: 0, stepFunction: .perVertex, stepRate: 1)
-            }
-        }
-
-        let descriptor = VertexDescriptor(attributes: attributes, layouts: layouts).normalized()
-
-        // Pack vertex data per buffer.
-        let bufferIndices = Set(descriptor.attributes.map(\.bufferIndex)).sorted()
-        var bufferData: [Int: [UInt8]] = [:]
-        for bi in bufferIndices {
-            let stride = descriptor.layouts[bi]!.stride
-            bufferData[bi] = [UInt8](repeating: 0, count: stride * vertexCount)
-        }
-
-        for bi in bufferIndices {
-            let stride = descriptor.layouts[bi]!.stride
-            bufferData[bi]!.withUnsafeMutableBytes { buf in
-                guard let base = buf.baseAddress else { return }
-                for attr in descriptor.attributes where attr.bufferIndex == bi {
-                    for vi in 0..<vertexCount {
-                        let dest = base.advanced(by: vi * stride + attr.offset)
-                        switch attr.semantic {
-                        case .position:
-                            var packed = Packed3<Float>(positions[vi])
-                            withUnsafeBytes(of: &packed) { src in
-                                dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
-                            }
-
-                        case .normal:
-                            var packed = Packed3<Float>(normals![vi])
-                            withUnsafeBytes(of: &packed) { src in
-                                dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
-                            }
-
-                        case .texcoord:
-                            var uv = textureCoordinates![vi]
-                            withUnsafeBytes(of: &uv) { src in
-                                dest.copyMemory(from: src.baseAddress!, byteCount: src.count)
-                            }
-
-                        default:
-                            break
-                        }
-                    }
-                }
-            }
-        }
-
-        // Allocate vertex buffers.
-        var vtxBuffers: [Int: MTLBuffer] = [:]
-        for bi in bufferIndices {
-            let data = bufferData[bi]!
-            let buffer: MTLBuffer
-            if data.isEmpty {
-                buffer = device.makeBuffer(length: 1, options: [])!
-            } else {
-                buffer = device.makeBuffer(bytes: data, length: data.count, options: [])!
-            }
-            buffer.label = label.map { "\($0) Vertices[\(bi)]" }
-            vtxBuffers[bi] = buffer
-        }
-
-        // Index buffer.
-        let indexBuffer = device.makeBuffer(
-            bytes: indices,
-            length: MemoryLayout<UInt32>.stride * indices.count,
-            options: []
-        )!
-        indexBuffer.label = label.map { "\($0) Indices" }
-
-        self.label = label
-        self.vertexBuffers = vtxBuffers
-        self.vertexCount = vertexCount
-        self.vertexDescriptor = descriptor
-        self.submeshes = [
-            Submesh(label: nil, indexBuffer: indexBuffer, indexCount: indices.count)
-        ]
+        var attributes: [VertexAttributeData] = [.positions(positions)]
+        if let normals { attributes.append(.normals(normals)) }
+        if let textureCoordinates { attributes.append(.textureCoordinates(textureCoordinates)) }
+        self.init(device: device, attributes: attributes, submeshes: [SubmeshIndices(indices: indices)], label: label, bufferLayout: bufferLayout)
     }
 
-    /// Create a `MetalMesh` directly from preexisting `MTLBuffer`s and a
-    /// matching `VertexDescriptor`, with no copies.
+    /// Create a `MetalMesh` from existing buffers and a matching `VertexDescriptor`, with no copies.
     ///
-    /// Use this for zero-copy paths where buffers and a descriptor have
-    /// already been produced (e.g. memory-mapped raw blobs from disk).
-    ///
-    /// The resulting mesh has a single submesh covering all indices. The
-    /// caller is responsible for ensuring the buffers, vertex count, index
-    /// count, and descriptor are mutually consistent — only cheap shape
-    /// checks are performed.
-    ///
-    /// - Parameters:
-    ///   - vertexBuffers: Vertex buffers keyed by buffer index. Must contain a
-    ///     buffer for every `bufferIndex` referenced by `vertexDescriptor`.
-    ///   - vertexCount: Number of vertices addressable in `vertexBuffers`.
-    ///   - vertexDescriptor: Describes the layout and semantics of vertex attributes.
-    ///   - indexBuffer: Buffer of indices of type `indexType`.
-    ///   - indexCount: Number of indices in `indexBuffer`.
-    ///   - indexType: Index element type.
-    ///   - primitiveType: How indices are assembled into primitives.
-    ///   - label: Optional label propagated to the mesh.
+    /// Only cheap shape checks are performed. ``bounds`` is left nil; call ``updateBounds()`` if the buffers are CPU accessible.
     init(
         vertexBuffers: [Int: MTLBuffer],
+        vertexBufferOffsets: [Int: Int] = [:],
+        vertexCount: Int,
+        vertexDescriptor: VertexDescriptor,
+        submeshes: [Submesh],
+        label: String? = nil
+    ) {
+        for bufferIndex in Set(vertexDescriptor.attributes.map(\.bufferIndex)) {
+            precondition(vertexBuffers[bufferIndex] != nil, "vertexBuffers is missing buffer at index \(bufferIndex) referenced by vertexDescriptor")
+        }
+
+        self.label = label
+        self.vertexBuffers = vertexBuffers
+        self.vertexBufferOffsets = vertexBufferOffsets
+        self.vertexCount = vertexCount
+        self.vertexDescriptor = vertexDescriptor
+        self.submeshes = submeshes
+    }
+
+    /// Create a `MetalMesh` from existing buffers with a single submesh covering all indices.
+    init(
+        vertexBuffers: [Int: MTLBuffer],
+        vertexBufferOffsets: [Int: Int] = [:],
         vertexCount: Int,
         vertexDescriptor: VertexDescriptor,
         indexBuffer: MTLBuffer,
+        indexBufferOffset: Int = 0,
         indexCount: Int,
         indexType: MTLIndexType = .uint32,
         primitiveType: MTLPrimitiveType = .triangle,
         label: String? = nil
     ) {
-        for bi in Set(vertexDescriptor.attributes.map(\.bufferIndex)) {
-            precondition(vertexBuffers[bi] != nil, "vertexBuffers is missing buffer at index \(bi) referenced by vertexDescriptor")
-        }
-
-        self.label = label
-        self.vertexBuffers = vertexBuffers
-        self.vertexCount = vertexCount
-        self.vertexDescriptor = vertexDescriptor
-        self.submeshes = [
-            Submesh(label: nil, indexBuffer: indexBuffer, indexCount: indexCount, indexType: indexType, primitiveType: primitiveType)
-        ]
+        self.init(
+            vertexBuffers: vertexBuffers,
+            vertexBufferOffsets: vertexBufferOffsets,
+            vertexCount: vertexCount,
+            vertexDescriptor: vertexDescriptor,
+            submeshes: [Submesh(indexBuffer: indexBuffer, indexBufferOffset: indexBufferOffset, indexCount: indexCount, indexType: indexType, primitiveType: primitiveType)],
+            label: label
+        )
     }
 }

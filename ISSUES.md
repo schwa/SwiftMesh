@@ -3045,11 +3045,12 @@ SwiftMesh only has triangles outside MetalMesh. glTF primitives can also be line
 ## 146: MetalMesh array init supports only positions, normals and UVs
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 created: 2026-10-13T00:28:21Z
-updated: 2026-10-13T00:30:10Z
+updated: 2026-10-13T00:42:51Z
+closed: 2026-10-13T00:42:51Z
 +++
 
 MetalMesh.init(device:positions:normals:textureCoordinates:indices:...) (MetalMesh+DirectInit.swift) has no tangents, colors, second UV set or extra attributes. The attributes it does take have fixed formats. Loaders with other per-vertex data (for example glTF: SIMD4 tangents, TEXCOORD_1, joints and weights) must pack buffers themselves and use the buffer init.
@@ -3061,10 +3062,12 @@ Use case: MetalSprocketsGLTF / MetalSprocketsPBR would like to build MetalMesh v
 ## 147: MetalMesh direct inits make exactly one submesh
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 created: 2026-10-13T00:28:21Z
+updated: 2026-10-13T00:42:51Z
+closed: 2026-10-13T00:42:51Z
 +++
 
 Both direct inits in MetalMesh+DirectInit.swift (from arrays and from buffers) make one submesh over all indices, with a single primitive type. A glTF mesh has several primitives with different materials and maybe different primitive types (triangles, lines, points) over shared vertex data. To get more than one submesh, the caller must change submeshes after init. The buffer init also has no vertexBufferOffsets parameter, so meshes in sub-allocated or shared buffers need a change after init too.
@@ -3091,11 +3094,12 @@ MetalMesh.Submesh has label, index buffer data and primitiveType, but nothing th
 ## 149: MetalMesh has no morph target data
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-10-13T00:28:22Z
-updated: 2026-10-13T00:32:05Z
+updated: 2026-10-13T00:42:51Z
+closed: 2026-10-13T00:42:51Z
 +++
 
 MetalMesh has nowhere to store morph targets: per-target, per-vertex offsets for position, normal and tangent, plus the default weights (glTF stores these on the mesh). glTF primitives carry them, and MetalSprocketsPBR stores the offsets as [[PBRMorphDelta]] ([target][vertex]) and reads them by vertexID from a buffer, not as vertex attributes. The live weights for each frame are animation state for the model above, not mesh data.
@@ -3105,10 +3109,12 @@ MetalMesh has nowhere to store morph targets: per-target, per-vertex offsets for
 ## 150: MetalMesh has no bounds
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 created: 2026-10-13T00:28:22Z
+updated: 2026-10-13T00:42:51Z
+closed: 2026-10-13T00:42:51Z
 +++
 
 MetalMesh does not store or compute bounding boxes, for the mesh or for each submesh. Callers that cull, frame the camera or merge draws must read the vertex buffers back to compute them. MetalSprocketsPBR computes bounds for each primitive (PBRBounds) when it builds geometry.
@@ -3118,10 +3124,12 @@ MetalMesh does not store or compute bounding boxes, for the mesh or for each sub
 ## 151: MetalMesh has no skin binding data
 
 +++
-status: new
+status: closed
 priority: medium
 kind: feature
 created: 2026-10-13T00:32:05Z
+updated: 2026-10-13T00:42:52Z
+closed: 2026-10-13T00:42:52Z
 +++
 
 A MetalMesh can carry joint indexes and weights as vertex attributes, but it has nowhere to store the data those attributes depend on: the joint count, the joint order (and maybe names), and one inverse bind matrix per joint. The joint indexes in the vertices only mean something with that joint order, and the inverse bind matrices describe the pose the mesh was bound in. So this data goes with the mesh, not the model.

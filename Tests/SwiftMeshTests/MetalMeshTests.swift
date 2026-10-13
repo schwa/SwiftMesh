@@ -733,4 +733,40 @@ struct MetalMeshTests {
         #expect(restored.vertexCount == original.vertexCount)
         #expect(restored.normals != nil)
     }
+
+    @Test("Array init packs extra attributes and multiple submeshes")
+    func arrayInitAttributesAndSubmeshes() throws {
+        let device = try requireDevice()
+        let positions: [SIMD3<Float>] = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 2]]
+        let tangents: [SIMD4<Float>] = [[1, 0, 0, 1], [1, 0, 0, -1], [0, 1, 0, 1], [0, 0, 1, -1]]
+        let joints: [SIMD4<UInt16>] = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]
+        let metalMesh = MetalMesh(
+            device: device,
+            attributes: [.positions(positions), .tangents(tangents), .textureCoordinates(Array(repeating: [0.5, 0.25], count: 4), set: 1), .jointIndices(joints)],
+            submeshes: [.init(label: "tri", indices: [0, 1, 2]), .init(label: "line", indices: [2, 3], primitiveType: .line)]
+        )
+        #expect(metalMesh.vertexDescriptor.attributes.map(\.semantic) == [.position, .tangent, .texcoord(1), .jointIndices(0)])
+        #expect(metalMesh.vertexDescriptor.layouts[0]?.stride == 12 + 16 + 8 + 8)
+        #expect(metalMesh.submeshes.count == 2)
+        #expect(metalMesh.submeshes[1].indexBufferOffset == 12)
+        #expect(metalMesh.submeshes[1].indices == [2, 3])
+        #expect(metalMesh.submeshes[1].primitiveType == .line)
+        #expect(metalMesh.submeshes[0].bounds == BoundingBox(min: [0, 0, 0], max: [1, 1, 0]))
+        #expect(metalMesh.bounds == BoundingBox(min: [0, 0, 0], max: [1, 1, 2]))
+
+        let base = metalMesh.vertexBuffer.contents() + 44
+        #expect(base.loadUnaligned(fromByteOffset: 12 + 12, as: Float.self) == -1)
+        #expect(base.loadUnaligned(fromByteOffset: 36, as: UInt16.self) == 4)
+    }
+
+    @Test("Bounds from Mesh and updateBounds agree")
+    func boundsFromMesh() throws {
+        let device = try requireDevice()
+        var metalMesh = MetalMesh(mesh: .cube(attributes: []), device: device)
+        let bounds = try #require(metalMesh.bounds)
+        #expect(metalMesh.submeshes[0].bounds == bounds)
+        metalMesh.bounds = nil
+        metalMesh.updateBounds()
+        #expect(metalMesh.bounds == bounds)
+    }
 }
