@@ -2874,6 +2874,8 @@ updated: 2026-10-13T00:25:40Z
 
 catmullClarkSubdivided and loopSubdivided drop normals, UVs, tangents, and colors. Interpolate them like Blender/OpenSubdiv: smooth UVs across faces but keep UV seams, and recompute or interpolate normals. Use the internal CornerAttributes helpers.
 
+- `2026-10-13T18:31:00Z`: Related: #159 would provide the shared corner-attribute machinery.
+
 ---
 
 ## 137: Edge creases for subdivision
@@ -3289,11 +3291,12 @@ After #153, the shape generators and Mesh.withSphericalUVs() make v-down, unmirr
 ## 159: Unify per-corner attribute handling across Mesh operations
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
-labels: architecture
+labels: architecture, effort:l, area:topology
 created: 2026-10-13T18:11:13Z
+updated: 2026-10-13T18:31:00Z
 +++
 
 Mesh stores 5 optional per-corner arrays (normals, textureCoordinates, tangents, bitangents, colors). The internal CornerAttributes type groups them, but only some operations use it.
@@ -3304,16 +3307,20 @@ Mesh stores 5 optional per-corner arrays (normals, textureCoordinates, tangents,
 
 Goal: one deep module that owns corner attributes and their rules for new corners (copy, interpolate, recompute). Operations call it instead of touching each array. Replace per-op attribute tests with boundary invariant tests (every attribute present, count matches half-edges, values interpolated or copied correctly).
 
+- `2026-10-13T18:31:00Z`: Related: #136 (carry corner attributes through subdivision) becomes a consumer of this.
+
 ---
 
 ## 160: Centralize submesh face remapping across Mesh operations
 
 +++
-status: new
+status: open
 priority: medium
 kind: task
-labels: architecture
+labels: architecture, effort:m, area:topology
+depends: 159
 created: 2026-10-13T18:11:14Z
+updated: 2026-10-13T18:31:00Z
 +++
 
 Submesh.faces holds FaceIDs outside the topology, so every rebuild remaps them by hand: 17 faceMap / Submesh(label:) sites across 7 files. New faces pick a submesh ad hoc (HoleFilling uses a neighbor; EdgeSplit uses an O(n) firstIndex(where: contains)). PlaneSplit, CSG, and TriangleSoup merge all submeshes into one.
