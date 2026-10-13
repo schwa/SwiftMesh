@@ -3341,12 +3341,13 @@ Goal: a pure CPU layer that converts attribute arrays to and from byte buffers p
 ## 162: Use MetalSprocketsAddOns GraphicsContext3D for demo wireframes instead of Canvas
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 labels: demo
 created: 2026-10-13T18:12:48Z
-updated: 2026-10-13T18:13:16Z
+updated: 2026-10-13T18:29:52Z
+closed: 2026-10-13T18:29:52Z
 +++
 
 The demo wireframe views draw with SwiftUI Canvas + the CPU SoftwareRenderer (Demo/SwiftMeshDemo/SoftwareRenderer.swift; SwiftMeshDemoSupport.swift static preview at :30 and interactive view at :77).

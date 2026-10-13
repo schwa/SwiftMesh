@@ -1,5 +1,9 @@
 import GeometryLite3D
 import Interaction3D
+import Metal
+import MetalSprockets
+import MetalSprocketsAddOns
+import MetalSprocketsUI
 import simd
 import SwiftMesh
 import SwiftUI
@@ -20,6 +24,116 @@ enum MeshSelection: Equatable {
     case edges(Set<MeshEdge>)
 }
 
+// MARK: - Standalone face detection
+
+extension Mesh {
+    /// Returns face IDs where no edge of the face has a twin (completely isolated).
+    func standaloneFaces() -> Set<HalfEdgeTopology.FaceID> {
+        var result = Set<HalfEdgeTopology.FaceID>()
+        for face in topology.faces {
+            let edges = topology.halfEdgeLoop(for: face.id)
+            let allBoundary = edges.allSatisfy { topology.halfEdges[$0.raw].twin == nil }
+            if allBoundary {
+                result.insert(face.id)
+            }
+        }
+        return result
+    }
+}
+
+// MARK: - Wireframe drawing
+
+struct WireframeCamera {
+    var viewMatrix: float4x4
+
+    func projectionMatrix(aspectRatio: Float) -> float4x4 {
+        PerspectiveProjection(verticalAngleOfView: .degrees(45)).projectionMatrix(aspectRatio: aspectRatio)
+    }
+
+    /// Projects a world-space point to view coordinates (origin top-left), or nil if behind the camera.
+    func project(_ position: SIMD3<Float>, viewSize: CGSize) -> CGPoint? {
+        guard viewSize.width > 0, viewSize.height > 0 else {
+            return nil
+        }
+        let projection = projectionMatrix(aspectRatio: Float(viewSize.width / viewSize.height))
+        let clip = projection * viewMatrix * SIMD4(position, 1)
+        guard clip.w > Float.leastNormalMagnitude else {
+            return nil
+        }
+        let ndc = clip / clip.w
+        return CGPoint(x: CGFloat((ndc.x + 1) * 0.5) * viewSize.width, y: CGFloat((1 - ndc.y) * 0.5) * viewSize.height)
+    }
+}
+
+extension Mesh {
+    /// Every undirected edge as one stroke, plus optional face highlights.
+    func wireframeContext(
+        color: Color,
+        lineWidth: Float,
+        highlightedFaces: Set<HalfEdgeTopology.FaceID>? = nil,
+        highlightColor: Color = Color(red: 1, green: 0, blue: 1)
+    ) -> GraphicsContext3D {
+        GraphicsContext3D { context in
+            let edges = Path3D { path in
+                for (a, b) in topology.undirectedEdges() {
+                    path.move(to: positions[a.raw])
+                    path.addLine(to: positions[b.raw])
+                }
+            }
+            context.stroke(edges, with: color, lineWidth: lineWidth)
+
+            if let highlightedFaces, !highlightedFaces.isEmpty {
+                let outlines = Path3D { path in
+                    for face in highlightedFaces {
+                        let loop = topology.vertexLoop(for: face)
+                        guard let first = loop.first else {
+                            continue
+                        }
+                        path.move(to: positions[first.raw])
+                        for vertex in loop.dropFirst() {
+                            path.addLine(to: positions[vertex.raw])
+                        }
+                        path.closeSubpath()
+                    }
+                }
+                context.stroke(outlines, with: highlightColor, lineWidth: lineWidth * 3)
+            }
+        }
+    }
+}
+
+extension GraphicsContext3D {
+    /// A screen-space dot: a tiny segment drawn with round caps.
+    mutating func dot(at position: SIMD3<Float>, color: Color, diameter: Float) {
+        let path = Path3D { path in
+            path.move(to: position)
+            path.addLine(to: position + SIMD3<Float>(repeating: 1e-5))
+        }
+        stroke(path, with: color, style: StrokeStyle(lineWidth: CGFloat(diameter), lineCap: .round))
+    }
+}
+
+/// Renders a `GraphicsContext3D` over a transparent background.
+struct WireframeRenderView: View {
+    let context: GraphicsContext3D
+    let camera: WireframeCamera
+
+    var body: some View {
+        RenderView { _, drawableSize in
+            let aspect = drawableSize.height > 0 ? Float(drawableSize.width / drawableSize.height) : 1
+            try RenderPass(label: "Wireframe") {
+                GraphicsContext3DRenderPipeline(
+                    context: context,
+                    viewProjection: camera.projectionMatrix(aspectRatio: aspect) * camera.viewMatrix,
+                    viewport: SIMD2<Float>(Float(drawableSize.width), Float(drawableSize.height))
+                )
+            }
+        }
+        .metalClearColor(MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0))
+        .metalDepthStencilPixelFormat(.depth32Float)
+    }
+}
+
 // MARK: - Static Preview
 
 /// A static wireframe preview of a mesh (no interaction).
@@ -27,26 +141,10 @@ struct MeshPreviewView: View {
     let mesh: Mesh
 
     var body: some View {
-        Canvas { context, size in
-            let fov = PerspectiveProjection(verticalAngleOfView: .degrees(45))
-            let projectionMatrix = fov.projectionMatrix(width: Float(size.width), height: Float(size.height))
-            let viewMatrix = float4x4(translation: [0, 0, 4]).inverse
-
-            let renderer = SoftwareRenderer(
-                viewMatrix: viewMatrix,
-                projectionMatrix: projectionMatrix,
-                viewportSize: size
-            )
-
-            mesh.draw(
-                in: &context,
-                renderer: renderer,
-                fillColor: .clear,
-                strokeColor: .black,
-                lineWidth: 0.5,
-                backfaceCull: false
-            )
-        }
+        WireframeRenderView(
+            context: mesh.wireframeContext(color: .black, lineWidth: 1),
+            camera: WireframeCamera(viewMatrix: float4x4(translation: [0, 0, 4]).inverse)
+        )
     }
 }
 
@@ -73,104 +171,79 @@ struct MeshInteractiveView: View {
         self._selection = selection
     }
 
-    var body: some View {
-        Canvas { context, size in
-            let renderer = makeRenderer(size: size)
-
-            mesh.draw(
-                in: &context,
-                renderer: renderer,
-                fillColor: .clear,
-                strokeColor: .black,
-                lineWidth: 0.5,
-                backfaceCull: false,
-                highlightedFaces: highlightedFaces,
-                highlightStrokeColor: Color(red: 1, green: 0, blue: 1)
-            )
-
-            // Draw selection overlay
-            if let selection {
-                switch selection {
-                case .vertex(let idx):
-                    if let pt = renderer.project(mesh.positions[idx]) {
-                        let rect = CGRect(x: pt.x - 4, y: pt.y - 4, width: 8, height: 8)
-                        context.fill(Path(ellipseIn: rect), with: .color(.red))
-                    }
-
-                case .edges(let edges):
-                    for edge in edges {
-                        if let ptA = renderer.project(mesh.positions[edge.a]),
-                           let ptB = renderer.project(mesh.positions[edge.b]) {
-                            var path = Path()
-                            path.move(to: ptA)
-                            path.addLine(to: ptB)
-                            context.stroke(path, with: .color(.red), lineWidth: 2)
-                        }
-                    }
-                }
-            }
-
-            // Draw vertex dots
-            if showVertexDots {
-                for pos in mesh.positions {
-                    if let pt = renderer.project(pos) {
-                        let rect = CGRect(x: pt.x - 2, y: pt.y - 2, width: 4, height: 4)
-                        context.fill(Path(ellipseIn: rect), with: .color(.black.opacity(0.4)))
-                    }
-                }
-            }
-        }
-        .onTapGesture { location in
-            hitTest(at: location)
-        }
-        .accessibilityAddTraits(.isButton)
-        .onGeometryChange(for: CGSize.self, of: \.size) { viewSize = $0 }
-        .interactiveCamera(
-            rotation: $cameraRotation,
-            distance: $cameraDistance,
-            target: $cameraTarget
-        )
+    private var camera: WireframeCamera {
+        let viewMatrix = (float4x4(translation: cameraTarget) * float4x4(cameraRotation) * float4x4(translation: [0, 0, cameraDistance])).inverse
+        return WireframeCamera(viewMatrix: viewMatrix)
     }
 
-    private func makeRenderer(size: CGSize) -> SoftwareRenderer {
-        let s = size == .zero ? viewSize : size
-        let fov = PerspectiveProjection(verticalAngleOfView: .degrees(45))
-        let projectionMatrix = fov.projectionMatrix(width: Float(s.width), height: Float(s.height))
-        let rotationMatrix = float4x4(cameraRotation)
-        let viewMatrix = (float4x4(translation: cameraTarget) * rotationMatrix * float4x4(translation: [0, 0, cameraDistance])).inverse
-        return SoftwareRenderer(viewMatrix: viewMatrix, projectionMatrix: projectionMatrix, viewportSize: s)
+    private var context: GraphicsContext3D {
+        var context = mesh.wireframeContext(color: .black.opacity(0.3), lineWidth: 1, highlightedFaces: highlightedFaces)
+        if showVertexDots {
+            for position in mesh.positions {
+                context.dot(at: position, color: .black.opacity(0.4), diameter: 8)
+            }
+        }
+        switch selection {
+        case .vertex(let index):
+            context.dot(at: mesh.positions[index], color: .red, diameter: 16)
+
+        case .edges(let edges):
+            let path = Path3D { path in
+                for edge in edges {
+                    path.move(to: mesh.positions[edge.a])
+                    path.addLine(to: mesh.positions[edge.b])
+                }
+            }
+            context.stroke(path, with: .red, lineWidth: 4)
+
+        case nil:
+            break
+        }
+        return context
+    }
+
+    var body: some View {
+        WireframeRenderView(context: context, camera: camera)
+            .contentShape(Rectangle())
+            .onTapGesture { location in
+                hitTest(at: location)
+            }
+            .accessibilityAddTraits(.isButton)
+            .onGeometryChange(for: CGSize.self, of: \.size) { viewSize = $0 }
+            .interactiveCamera(
+                rotation: $cameraRotation,
+                distance: $cameraDistance,
+                target: $cameraTarget
+            )
     }
 
     private func hitTest(at location: CGPoint) {
-        let renderer = makeRenderer(size: viewSize)
+        let camera = camera
 
-        // Vertices first
-        var bestVertexDist: CGFloat = .infinity
-        var bestVertexIdx: Int?
-        for (idx, pos) in mesh.positions.enumerated() {
-            guard let pt = renderer.project(pos) else { continue }
-            let dist = hypot(pt.x - location.x, pt.y - location.y)
-            if dist < hitThreshold, dist < bestVertexDist {
-                bestVertexDist = dist
-                bestVertexIdx = idx
+        var bestVertexDistance: CGFloat = .infinity
+        var bestVertexIndex: Int?
+        for (index, position) in mesh.positions.enumerated() {
+            guard let point = camera.project(position, viewSize: viewSize) else { continue }
+            let distance = hypot(point.x - location.x, point.y - location.y)
+            if distance < hitThreshold, distance < bestVertexDistance {
+                bestVertexDistance = distance
+                bestVertexIndex = index
             }
         }
-        if let idx = bestVertexIdx {
-            selection = .vertex(idx)
+        if let index = bestVertexIndex {
+            selection = .vertex(index)
             return
         }
 
-        // Edges
-        let edges = mesh.topology.undirectedEdges()
-        var bestEdgeDist: CGFloat = .infinity
+        var bestEdgeDistance: CGFloat = .infinity
         var bestEdge: MeshEdge?
-        for (vA, vB) in edges {
-            guard let ptA = renderer.project(mesh.positions[vA.raw]),
-                  let ptB = renderer.project(mesh.positions[vB.raw]) else { continue }
-            let dist = pointToSegmentDistance(point: location, segA: ptA, segB: ptB)
-            if dist < hitThreshold, dist < bestEdgeDist {
-                bestEdgeDist = dist
-                bestEdge = MeshEdge(vA.raw, vB.raw)
+        for (vertexA, vertexB) in mesh.topology.undirectedEdges() {
+            guard let pointA = camera.project(mesh.positions[vertexA.raw], viewSize: viewSize),
+                  let pointB = camera.project(mesh.positions[vertexB.raw], viewSize: viewSize) else { continue }
+            let distance = pointToSegmentDistance(point: location, segmentA: pointA, segmentB: pointB)
+            if distance < hitThreshold, distance < bestEdgeDistance {
+                bestEdgeDistance = distance
+                bestEdge = MeshEdge(vertexA.raw, vertexB.raw)
             }
         }
         if let edge = bestEdge {
@@ -181,16 +254,14 @@ struct MeshInteractiveView: View {
         selection = nil
     }
 
-    private func pointToSegmentDistance(point: CGPoint, segA: CGPoint, segB: CGPoint) -> CGFloat {
-        let dx = segB.x - segA.x
-        let dy = segB.y - segA.y
-        let lenSq = dx * dx + dy * dy
-        guard lenSq > 0 else {
-            return hypot(point.x - segA.x, point.y - segA.y)
+    private func pointToSegmentDistance(point: CGPoint, segmentA: CGPoint, segmentB: CGPoint) -> CGFloat {
+        let dx = segmentB.x - segmentA.x
+        let dy = segmentB.y - segmentA.y
+        let lengthSquared = dx * dx + dy * dy
+        guard lengthSquared > 0 else {
+            return hypot(point.x - segmentA.x, point.y - segmentA.y)
         }
-        let t = max(0, min(1, ((point.x - segA.x) * dx + (point.y - segA.y) * dy) / lenSq))
-        let projX = segA.x + t * dx
-        let projY = segA.y + t * dy
-        return hypot(point.x - projX, point.y - projY)
+        let t = max(0, min(1, ((point.x - segmentA.x) * dx + (point.y - segmentA.y) * dy) / lengthSquared))
+        return hypot(point.x - (segmentA.x + t * dx), point.y - (segmentA.y + t * dy))
     }
 }
