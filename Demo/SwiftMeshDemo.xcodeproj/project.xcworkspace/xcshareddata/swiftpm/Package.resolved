@@ -60,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/MetalSupport",
       "state" : {
-        "branch" : "main",
-        "revision" : "667d86e694e2f9d599c757152bbdf0d46cab63fe"
+        "revision" : "667d86e694e2f9d599c757152bbdf0d46cab63fe",
+        "version" : "1.0.7"
       }
     },
     {
