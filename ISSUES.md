@@ -3498,12 +3498,13 @@ Mesh.bounds (Sources/SwiftMesh/Mesh.swift:205) computes min/max by hand and retu
 ## 169: Use GeometryLite3D upperLeft3x3 in mesh transforms
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:xs, area:topology
 created: 2026-10-15T14:35:41Z
-updated: 2026-10-15T14:36:45Z
+updated: 2026-10-15T14:40:41Z
+closed: 2026-10-15T14:40:41Z
 +++
 
 Mesh.transform(by:) (Mesh.swift:339) and MetalMesh.transformed(by:) (MetalMesh+Transform.swift:17) build the upper-left 3x3 by hand. Use float4x4.upperLeft3x3 from GeometryLite3D. Keep the near-singular determinant guard; GL3D's normalMatrix has no guard, so do not swap that in directly. Also replace SIMD3(p.x, p.y, p.z) / SIMD4(p.x, p.y, p.z, 1) with .xyz in Mesh.transform.

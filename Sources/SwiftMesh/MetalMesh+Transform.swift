@@ -14,7 +14,7 @@ public extension MetalMesh {
         guard let device = vertexBuffers.values.first?.device else {
             return self
         }
-        let upperLeft = simd_float3x3(matrix.columns.0.xyz, matrix.columns.1.xyz, matrix.columns.2.xyz)
+        let upperLeft = matrix.upperLeft3x3
         let normalMatrix = abs(upperLeft.determinant) > 1e-8 ? upperLeft.inverse.transpose : upperLeft
 
         let attributes = vertexAttributeData().map { data -> VertexAttributeData in

@@ -326,23 +326,11 @@ public extension Mesh {
 
     /// Apply a 4×4 transform to positions and direction attributes.
     mutating func transform(by matrix: simd_float4x4) {
-        let upperLeft = simd_float3x3(
-            SIMD3<Float>(matrix.columns.0.x, matrix.columns.0.y, matrix.columns.0.z),
-            SIMD3<Float>(matrix.columns.1.x, matrix.columns.1.y, matrix.columns.1.z),
-            SIMD3<Float>(matrix.columns.2.x, matrix.columns.2.y, matrix.columns.2.z)
-        )
-        let normalMatrix: simd_float3x3 = {
-            let det = upperLeft.determinant
-            guard abs(det) > 1e-8 else {
-                return upperLeft
-            }
-            return upperLeft.inverse.transpose
-        }()
+        let upperLeft = matrix.upperLeft3x3
+        let normalMatrix = abs(upperLeft.determinant) > 1e-8 ? upperLeft.inverse.transpose : upperLeft
 
         for i in positions.indices {
-            let p = positions[i]
-            let transformed = matrix * SIMD4<Float>(p.x, p.y, p.z, 1)
-            positions[i] = SIMD3<Float>(transformed.x, transformed.y, transformed.z)
+            positions[i] = (matrix * SIMD4(positions[i], 1)).xyz
         }
         transformDirectionAttributes { direction in
             let transformed = upperLeft * direction
