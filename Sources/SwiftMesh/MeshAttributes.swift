@@ -10,8 +10,7 @@ public extension Mesh {
 
         for face in topology.faces {
             let normal = faceNormal(face.id)
-            let heLoop = topology.halfEdgeLoop(for: face.id)
-            for heID in heLoop {
+            for heID in topology.cornerLoops(for: face.id).joined() {
                 normals[heID.raw] = normal
             }
         }
@@ -28,9 +27,8 @@ public extension Mesh {
 
         for face in topology.faces {
             let normal = faceNormal(face.id)
-            let vertexIDs = topology.vertexLoop(for: face.id)
-            for vid in vertexIDs {
-                vertexNormals[vid.raw] += normal
+            for corner in topology.cornerLoops(for: face.id).joined() {
+                vertexNormals[topology.halfEdges[corner.raw].origin.raw] += normal
             }
         }
 
@@ -96,8 +94,7 @@ public extension Mesh {
     func withSphericalUVs() -> Mesh {
         var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
 
-        for face in topology.faces {
-            let corners = topology.halfEdgeLoop(for: face.id)
+        for corners in topology.faces.flatMap({ topology.cornerLoops(for: $0.id) }) {
             var cornerUs: [Double?] = []
             for corner in corners {
                 let position = SIMD3<Double>(positions[topology.halfEdges[corner.raw].origin.raw])
@@ -115,6 +112,13 @@ public extension Mesh {
         var result = self
         result.textureCoordinates = uvs
         return result
+    }
+}
+
+extension HalfEdgeTopology {
+    /// The outer loop of `face` followed by its hole loops, as half-edge IDs.
+    func cornerLoops(for face: FaceID) -> [[HalfEdgeID]] {
+        [halfEdgeLoop(for: face)] + faces[face.raw].holeEdges.map { collectHalfEdgeLoop(startEdge: $0) }
     }
 }
 
@@ -202,8 +206,7 @@ public extension Mesh {
         let length = along.upperBound - along.lowerBound
         var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
 
-        for face in topology.faces {
-            let corners = topology.halfEdgeLoop(for: face.id)
+        for corners in topology.faces.flatMap({ topology.cornerLoops(for: $0.id) }) {
             var cornerUs: [Double?] = []
             for corner in corners {
                 let position = axis.permute(positions[topology.halfEdges[corner.raw].origin.raw])
@@ -245,7 +248,7 @@ public extension Mesh {
                 axis = .z
                 direction = normal.z < 0 ? -1 : 1
             }
-            for corner in topology.halfEdgeLoop(for: face.id) {
+            for corner in topology.cornerLoops(for: face.id).joined() {
                 let position = positions[topology.halfEdges[corner.raw].origin.raw]
                 uvs[corner.raw] = planarUV(position, axis: axis, direction: direction, lo: lo, size: size)
             }

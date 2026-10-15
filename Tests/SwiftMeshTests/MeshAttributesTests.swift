@@ -182,3 +182,43 @@ struct MeshAttributesTests {
         #expect(mesh.validate().isEmpty)
     }
 }
+
+@Suite("Mesh Attributes on faces with holes")
+struct MeshAttributesHoleTests {
+    // A square face in the XY plane with a square hole, so the hole corners are not on the outer loop.
+    static let squareWithHole = Mesh(positions: [
+        SIMD3(0, 0, 0), SIMD3(4, 0, 0), SIMD3(4, 4, 0), SIMD3(0, 4, 0),
+        SIMD3(1, 1, 0), SIMD3(1, 3, 0), SIMD3(3, 3, 0), SIMD3(3, 1, 0)
+    ], faces: [.init(outer: [0, 1, 2, 3], holes: [[4, 5, 6, 7]])])
+
+    static func faceCorners(_ mesh: Mesh) -> [Int] {
+        mesh.topology.halfEdges.filter { $0.face != nil }.map(\.id.raw)
+    }
+
+    @Test("withFlatNormals sets hole corners")
+    func flatNormalsHoleCorners() {
+        let mesh = Self.squareWithHole.withFlatNormals()
+        #expect(Self.faceCorners(mesh).count == 8)
+        for corner in Self.faceCorners(mesh) {
+            #expect(abs(mesh.normals![corner].z - 1) < 1e-5)
+        }
+    }
+
+    @Test("withSmoothNormals sets hole corners")
+    func smoothNormalsHoleCorners() {
+        let mesh = Self.squareWithHole.withSmoothNormals()
+        for corner in Self.faceCorners(mesh) {
+            #expect(abs(mesh.normals![corner].z - 1) < 1e-5)
+        }
+    }
+
+    @Test("Box UVs set hole corners")
+    func boxUVsHoleCorners() {
+        let mesh = Self.squareWithHole.withBoxUVs()
+        let hole = Self.faceCorners(mesh).filter { mesh.topology.halfEdges[$0].origin.raw >= 4 }
+        #expect(hole.count == 4)
+        for corner in hole {
+            #expect(mesh.textureCoordinates![corner] != .zero)
+        }
+    }
+}

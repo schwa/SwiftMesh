@@ -3533,12 +3533,13 @@ Zero-length-safe normalize is duplicated: private MetalMesh.normalized (MetalMes
 ## 171: withFlatNormals and withSmoothNormals skip the hole corners of faces with holes
 
 +++
-status: open
+status: closed
 priority: medium
 kind: bug
 labels: effort:s, area:topology
 created: 2026-10-15T19:31:12Z
-updated: 2026-10-15T23:36:00Z
+updated: 2026-10-15T23:37:34Z
+closed: 2026-10-15T23:37:34Z
 +++
 
 withFlatNormals() and withSmoothNormals() only walk the outer loop of each face (halfEdgeLoop/vertexLoop). Corners on hole loops keep zero normals. Extruded text shows it: Mesh.extrudedText("SceneGraph", fontName: "Helvetica-Bold", depth: 0.1) has 296 of 6186 vertices with zero normals after MetalMesh triangulation, all in glyphs with holes (e, a, p). Texture coordinate generation may have the same gap. MetalSprocketsSceneGraph works around it (its #101) by triangulating before adding normals.
