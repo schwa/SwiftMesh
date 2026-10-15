@@ -3514,12 +3514,13 @@ Mesh.transform(by:) (Mesh.swift:339) and MetalMesh.transformed(by:) (MetalMesh+T
 ## 170: Consolidate safe-normalize helper
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:xs, area:topology
 created: 2026-10-15T14:35:41Z
-updated: 2026-10-15T14:36:45Z
+updated: 2026-10-15T14:41:29Z
+closed: 2026-10-15T14:41:29Z
 +++
 
 Zero-length-safe normalize is duplicated: private MetalMesh.normalized (MetalMesh+Transform.swift:51) and twice inline in Mesh.transform(by:). GL3D's SIMD3.normalized does not guard zero length. Add one shared internal helper and use it everywhere.

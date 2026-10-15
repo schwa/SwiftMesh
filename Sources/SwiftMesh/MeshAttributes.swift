@@ -36,10 +36,7 @@ public extension Mesh {
 
         // Normalize
         for idx in vertexNormals.indices {
-            let len = simd_length(vertexNormals[idx])
-            if len > 0 {
-                vertexNormals[idx] /= len
-            }
+            vertexNormals[idx] = vertexNormals[idx].normalized(or: vertexNormals[idx])
         }
 
         // Write per-corner normals from the averaged vertex normals

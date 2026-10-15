@@ -6,6 +6,12 @@ import Testing
 struct MeshTests {
     // MARK: - Construction
 
+    @Test("Safe normalize falls back on zero length")
+    func safeNormalize() {
+        #expect(SIMD3<Float>(0, 3, 4).normalized(or: .zero) == [0, 0.6, 0.8])
+        #expect(SIMD3<Float>.zero.normalized(or: [0, 0, 1]) == [0, 0, 1])
+    }
+
     @Test("Init from positions and face index arrays")
     func initIndexed() {
         let mesh = Mesh(positions: [

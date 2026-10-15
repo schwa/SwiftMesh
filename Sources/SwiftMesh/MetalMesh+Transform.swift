@@ -23,10 +23,10 @@ public extension MetalMesh {
                 return data.mappingXYZ { (matrix * SIMD4($0, 1)).xyz }
 
             case .normal:
-                return data.mappingXYZ { Self.normalized(normalMatrix * $0) }
+                return data.mappingXYZ { (normalMatrix * $0).normalized(or: .zero) }
 
             case .tangent, .bitangent:
-                return data.mappingXYZ { Self.normalized(upperLeft * $0) }
+                return data.mappingXYZ { (upperLeft * $0).normalized(or: .zero) }
 
             default:
                 return data
@@ -46,11 +46,6 @@ public extension MetalMesh {
         result.opposites = opposites
         result.vertToHalfedge = vertToHalfedge
         return result
-    }
-
-    private static func normalized(_ value: SIMD3<Float>) -> SIMD3<Float> {
-        let length = simd_length(value)
-        return length > 0 ? value / length : value
     }
 }
 

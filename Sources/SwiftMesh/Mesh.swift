@@ -163,8 +163,7 @@ public extension Mesh {
             normal.y += (current.z - next.z) * (current.x + next.x)
             normal.z += (current.x - next.x) * (current.y + next.y)
         }
-        let len = simd_length(normal)
-        return len > 0 ? normal / len : SIMD3<Float>(0, 0, 1)
+        return normal.normalized(or: [0, 0, 1])
     }
 
     /// Compute the centroid of a face.
@@ -275,9 +274,7 @@ public extension Mesh {
             direction
         } normalTransform: { normal in
             let inverseScale = SIMD3<Float>(1 / factor.x, 1 / factor.y, 1 / factor.z)
-            let transformed = normal * inverseScale
-            let len = simd_length(transformed)
-            return len > 0 ? transformed / len : normal
+            return (normal * inverseScale).normalized(or: normal)
         }
     }
 
@@ -307,13 +304,9 @@ public extension Mesh {
             positions[i] = matrix * positions[i]
         }
         transformDirectionAttributes { direction in
-            let transformed = matrix * direction
-            let len = simd_length(transformed)
-            return len > 0 ? transformed / len : direction
+            (matrix * direction).normalized(or: direction)
         } normalTransform: { normal in
-            let transformed = matrix * normal
-            let len = simd_length(transformed)
-            return len > 0 ? transformed / len : normal
+            (matrix * normal).normalized(or: normal)
         }
     }
 
@@ -333,13 +326,9 @@ public extension Mesh {
             positions[i] = (matrix * SIMD4(positions[i], 1)).xyz
         }
         transformDirectionAttributes { direction in
-            let transformed = upperLeft * direction
-            let len = simd_length(transformed)
-            return len > 0 ? transformed / len : direction
+            (upperLeft * direction).normalized(or: direction)
         } normalTransform: { normal in
-            let transformed = normalMatrix * normal
-            let len = simd_length(transformed)
-            return len > 0 ? transformed / len : normal
+            (normalMatrix * normal).normalized(or: normal)
         }
     }
 
