@@ -3476,3 +3476,48 @@ Plan:
 - Update PlanarChartsTests, SwiftMeshBenchmarks, and the README line about BinPacking.
 
 ---
+
+## 168: Mesh.bounds should return BoundingBox3D
+
++++
+status: open
+priority: low
+kind: task
+labels: effort:xs, area:topology
+created: 2026-10-15T14:35:41Z
+updated: 2026-10-15T14:36:45Z
++++
+
+Mesh.bounds (Sources/SwiftMesh/Mesh.swift:205) computes min/max by hand and returns a (min, max) tuple. GeometryLite3D's BoundingBox3D has an init from points, and MetalMesh.bounds already returns BoundingBox3D. Switch Mesh.bounds to BoundingBox3D and update callers (fitToExtents etc.).
+
+---
+
+## 169: Use GeometryLite3D upperLeft3x3 in mesh transforms
+
++++
+status: open
+priority: low
+kind: task
+labels: effort:xs, area:topology
+created: 2026-10-15T14:35:41Z
+updated: 2026-10-15T14:36:45Z
++++
+
+Mesh.transform(by:) (Mesh.swift:339) and MetalMesh.transformed(by:) (MetalMesh+Transform.swift:17) build the upper-left 3x3 by hand. Use float4x4.upperLeft3x3 from GeometryLite3D. Keep the near-singular determinant guard; GL3D's normalMatrix has no guard, so do not swap that in directly. Also replace SIMD3(p.x, p.y, p.z) / SIMD4(p.x, p.y, p.z, 1) with .xyz in Mesh.transform.
+
+---
+
+## 170: Consolidate safe-normalize helper
+
++++
+status: open
+priority: low
+kind: task
+labels: effort:xs, area:topology
+created: 2026-10-15T14:35:41Z
+updated: 2026-10-15T14:36:45Z
++++
+
+Zero-length-safe normalize is duplicated: private MetalMesh.normalized (MetalMesh+Transform.swift:51) and twice inline in Mesh.transform(by:). GL3D's SIMD3.normalized does not guard zero length. Add one shared internal helper and use it everywhere.
+
+---
