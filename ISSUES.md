@@ -3155,6 +3155,8 @@ updated: 2026-10-13T20:53:15Z
 
 Mesh(metalMesh:) (formerly MetalMesh.toMesh(), renamed in #163) reads only position, normal, texcoord(0), tangent (as float3), bitangent and color(0). It ignores other attributes: texcoord and color sets above 0, float4 tangents, joint indices and weights, and custom attributes. It also drops morphTargets and skin, and it fails a precondition on non-triangle submeshes. Mesh has no place to store most of this data, so a MetalMesh -> Mesh -> MetalMesh round trip loses it.
 
+- `2026-10-15T14:37:45Z`: Reviewed Mesh(metalMesh:). Punting: fixing this needs a design decision because Mesh has no storage for extra UV/color sets, float4 tangent handedness, joints/weights, morph targets, or skin. Unblocker: should Mesh gain generic per-corner/per-vertex attribute storage (plus morph/skin), or should Mesh(metalMesh:) just document the loss and handle non-triangle submeshes gracefully instead of trapping?
+
 ---
 
 ## 153: Shape generators use different texture coordinate conventions
@@ -3480,12 +3482,13 @@ Plan:
 ## 168: Mesh.bounds should return BoundingBox3D
 
 +++
-status: open
+status: closed
 priority: low
 kind: task
 labels: effort:xs, area:topology
 created: 2026-10-15T14:35:41Z
-updated: 2026-10-15T14:36:45Z
+updated: 2026-10-15T14:40:17Z
+closed: 2026-10-15T14:40:17Z
 +++
 
 Mesh.bounds (Sources/SwiftMesh/Mesh.swift:205) computes min/max by hand and returns a (min, max) tuple. GeometryLite3D's BoundingBox3D has an init from points, and MetalMesh.bounds already returns BoundingBox3D. Switch Mesh.bounds to BoundingBox3D and update callers (fitToExtents etc.).

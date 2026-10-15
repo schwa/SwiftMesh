@@ -51,8 +51,9 @@ public extension Mesh {
         if attributes.contains(.textureCoordinates) {
             // Each face maps to the full [0,1]×[0,1] square, upright seen from outside: side faces have +Y up, the
             // top face -Z up and the bottom face +Z up.
-            let (low, high) = mesh.bounds
-            let center = (low + high) / 2
+            let bounds = mesh.bounds
+            let center = bounds.center
+            let size = bounds.size
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)
             for face in mesh.topology.faces {
                 let normal = mesh.faceNormal(face.id)
@@ -60,8 +61,8 @@ public extension Mesh {
                 let right = simd_cross(up, normal)
                 for corner in mesh.topology.halfEdgeLoop(for: face.id) {
                     let offset = mesh.positions[mesh.topology.halfEdges[corner.raw].origin.raw] - center
-                    let x = simd_dot(offset, right) / max(simd_dot(abs(right), high - low), .ulpOfOne)
-                    let y = simd_dot(offset, up) / max(simd_dot(abs(up), high - low), .ulpOfOne)
+                    let x = simd_dot(offset, right) / max(simd_dot(abs(right), size), .ulpOfOne)
+                    let y = simd_dot(offset, up) / max(simd_dot(abs(up), size), .ulpOfOne)
                     uvs[corner.raw] = SIMD2(0.5 + x, 0.5 - y)
                 }
             }

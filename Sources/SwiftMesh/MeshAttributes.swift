@@ -183,8 +183,8 @@ public extension Mesh {
     /// The two axes perpendicular to `axis` are mapped to U and V, normalized to the mesh's bounding box. Seen from
     /// the positive end of `axis`, u runs right and v runs down; seen from the negative end the texture is mirrored.
     func withPlanarUVs(axis: ProjectionAxis = .z) -> Mesh {
-        let (lo, hi) = bounds
-        let size = hi - lo
+        let lo = bounds.min
+        let size = bounds.size
         var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
         for halfEdge in topology.halfEdges {
             uvs[halfEdge.id.raw] = planarUV(positions[halfEdge.origin.raw], axis: axis, direction: 1, lo: lo, size: size)
@@ -200,7 +200,7 @@ public extension Mesh {
     /// from outside. v runs from 0 at the positive end of the bounding box to 1 at the negative end. A face that
     /// crosses the seam gets u past 1 instead of wrapping.
     func withCylindricalUVs(axis: ProjectionAxis = .y) -> Mesh {
-        let (lo, hi) = bounds
+        let (lo, hi) = (bounds.min, bounds.max)
         let along = axis.permute(lo)[1]...axis.permute(hi)[1]
         let length = along.upperBound - along.lowerBound
         var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
@@ -229,8 +229,8 @@ public extension Mesh {
     /// Each face is projected onto the side of the bounding box its normal points at most (triplanar projection), so
     /// textures are not mirrored on any side. UVs are normalized to the mesh's bounding box.
     func withBoxUVs() -> Mesh {
-        let (lo, hi) = bounds
-        let size = hi - lo
+        let lo = bounds.min
+        let size = bounds.size
         var uvs = [SIMD2<Float>](repeating: .zero, count: topology.halfEdges.count)
 
         for face in topology.faces {

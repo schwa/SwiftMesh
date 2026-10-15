@@ -100,8 +100,8 @@ struct DecimationTests {
     func preservesBounds() {
         let mesh = Mesh.icoSphere(extents: [2, 2, 2], subdivisions: 2, attributes: [])
         let simplified = mesh.decimated(targetFaceCount: 40)
-        let (origMin, origMax) = mesh.bounds
-        let (simpMin, simpMax) = simplified.bounds
+        let (origMin, origMax) = (mesh.bounds.min, mesh.bounds.max)
+        let (simpMin, simpMax) = (simplified.bounds.min, simplified.bounds.max)
         // Bounds should be roughly similar (within 20%)
         let origSize = origMax - origMin
         let simpSize = simpMax - simpMin

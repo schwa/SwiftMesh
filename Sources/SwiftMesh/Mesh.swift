@@ -1,3 +1,4 @@
+import GeometryLite3D
 import simd
 
 /// A mesh combining half-edge topology with SoA vertex/corner attributes.
@@ -201,18 +202,9 @@ public extension Mesh {
         return issues
     }
 
-    /// The axis-aligned bounding box of the mesh as (min, max).
-    var bounds: (min: SIMD3<Float>, max: SIMD3<Float>) {
-        guard let first = positions.first else {
-            return (.zero, .zero)
-        }
-        var lo = first
-        var hi = first
-        for p in positions.dropFirst() {
-            lo = simd_min(lo, p)
-            hi = simd_max(hi, p)
-        }
-        return (lo, hi)
+    /// The axis-aligned bounding box of the mesh. Zero-sized at the origin when the mesh has no positions.
+    var bounds: BoundingBox3D {
+        BoundingBox3D(points: positions) ?? BoundingBox3D(min: .zero, max: .zero)
     }
 
     /// Uniformly scale and translate positions so the bounding box fits within
@@ -221,9 +213,8 @@ public extension Mesh {
     /// Axes with zero extent in the target are ignored (positions on that axis
     /// are left unchanged). This allows 2D shapes to pass `SIMD3(w, h, 0)`.
     mutating func fitToExtents(_ extents: SIMD3<Float>) {
-        let (lo, hi) = bounds
-        let currentSize = hi - lo
-        let currentCenter = (lo + hi) / 2
+        let currentSize = bounds.size
+        let currentCenter = bounds.center
 
         // Compute per-axis scale, ignoring axes with zero current or target extent
         var scale: SIMD3<Float> = [1, 1, 1]
@@ -244,9 +235,8 @@ public extension Mesh {
     /// Aspect ratio is preserved — the longest axis of the bounding box
     /// matches the diameter.
     mutating func fitToDiameter(_ diameter: Float) {
-        let (lo, hi) = bounds
-        let currentSize = hi - lo
-        let currentCenter = (lo + hi) / 2
+        let currentSize = bounds.size
+        let currentCenter = bounds.center
         let maxExtent = max(currentSize.x, max(currentSize.y, currentSize.z))
         guard maxExtent > 0 else { return }
         let scale = diameter / maxExtent
