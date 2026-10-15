@@ -897,6 +897,8 @@ Make Mesh generic over scalar type (Float vs Double). Positions, normals, UVs et
 
 - `2026-04-15T17:03:09Z`: Related: #58 (CSG in Double), #59 (Float/Double conversion). #58 and #59 depend on this.
 - `2026-10-12T00:13:27Z`: Decision: deferred — revisit later. (#59 stays blocked on this.)
+- `2026-10-15T14:45:05Z`: Decision: make Mesh generic over its scalar type (Mesh<Scalar>). Do not add a separate DoubleMesh type. Breaking API changes are accepted. Note: GeometryLite3D is Float-only (BoundingBox3D, upperLeft3x3, etc.), so Float-specific helpers will need generic or Double equivalents.
+- `2026-10-15T14:46:51Z`: Depends on GeometryLite3D #27 (generic BoundingBox3D) and #28 (double4x4 matrix helpers).
 
 ---
 
@@ -925,15 +927,16 @@ Run CSG BSP internals in Double precision to reduce vertex drift from plane spli
 status: open
 priority: medium
 kind: feature
-labels: effort:m, blocked
+labels: effort:m, blocked, deferred
 created: 2026-04-15T07:09:54Z
-updated: 2026-10-11T22:13:41Z
+updated: 2026-10-15T14:43:13Z
 +++
 
 Add conversion between Float and Double precision meshes. MetalMesh only works with Float, so need a way to downconvert Double meshes for GPU use.
 
 - `2026-04-15T17:03:09Z`: Depends on #57 (generic Mesh over scalar type). Related: #58.
 - `2026-10-11T22:13:41Z`: Punting: blocked on #57 — there is no Double-precision Mesh type to convert between yet. #58 was done without it (CSG uses Double internally, Float at the API). Unblocker: split/land #57, or decide on a standalone DoubleMesh type instead.
+- `2026-10-15T14:45:06Z`: Decision on #57: make Mesh generic, not a standalone DoubleMesh. #59 stays blocked on #57; conversion becomes Mesh<Double> <-> Mesh<Float>.
 
 ---
 
@@ -2848,9 +2851,9 @@ All face triangulation now uses the robust triangulator (#133). SwiftEarcut is o
 status: open
 priority: medium
 kind: feature
-labels: effort:l, area:primitives
+labels: effort:l, area:primitives, deferred
 created: 2026-10-12T16:25:33Z
-updated: 2026-10-13T00:25:40Z
+updated: 2026-10-15T14:43:13Z
 +++
 
 Add a CatmullRomSpline type: control points in, interpolating curve out. Use the centripetal variant (alpha = 0.5) by default to avoid cusps and self-intersections. Support open and closed curves, and sample by segment count.
@@ -2867,9 +2870,9 @@ Later: lathe/revolve profiles and smoothing 2D loops before extrusion.
 status: open
 priority: medium
 kind: enhancement
-labels: effort:m, area:subdivision
+labels: effort:m, area:subdivision, deferred
 created: 2026-10-12T16:26:54Z
-updated: 2026-10-13T00:25:40Z
+updated: 2026-10-15T14:43:13Z
 +++
 
 catmullClarkSubdivided and loopSubdivided drop normals, UVs, tangents, and colors. Interpolate them like Blender/OpenSubdiv: smooth UVs across faces but keep UV seams, and recompute or interpolate normals. Use the internal CornerAttributes helpers.
@@ -2884,9 +2887,9 @@ catmullClarkSubdivided and loopSubdivided drop normals, UVs, tangents, and color
 status: open
 priority: low
 kind: feature
-labels: effort:m, area:subdivision
+labels: effort:m, area:subdivision, deferred
 created: 2026-10-12T16:26:54Z
-updated: 2026-10-13T00:25:40Z
+updated: 2026-10-15T14:43:13Z
 +++
 
 Add per-edge crease weights (0 = smooth, 1 = sharp, fractional = semi-sharp) to Catmull-Clark and Loop subdivision, like Blender's edge crease. Sharp edges use the boundary rules; semi-sharp edges are sharp for the first N iterations.
@@ -2899,9 +2902,9 @@ Add per-edge crease weights (0 = smooth, 1 = sharp, fractional = semi-sharp) to 
 status: open
 priority: low
 kind: feature
-labels: effort:m, area:subdivision
+labels: effort:m, area:subdivision, deferred
 created: 2026-10-12T16:26:54Z
-updated: 2026-10-13T00:25:41Z
+updated: 2026-10-15T14:43:13Z
 +++
 
 Add an option to move vertices onto the Catmull-Clark/Loop limit surface after subdivision, like Blender's 'Use Limit Surface'. This stops the mesh shrinking at low iteration counts. Limit normals can be computed exactly at the same time.
@@ -3148,9 +3151,9 @@ Use case: glTF skins (inverseBindMatrices, joints) for MetalSprocketsGLTF / Meta
 status: open
 priority: low
 kind: enhancement
-labels: effort:l, area:metal
+labels: effort:l, area:metal, deferred
 created: 2026-10-13T00:42:29Z
-updated: 2026-10-13T20:53:15Z
+updated: 2026-10-15T14:43:13Z
 +++
 
 Mesh(metalMesh:) (formerly MetalMesh.toMesh(), renamed in #163) reads only position, normal, texcoord(0), tangent (as float3), bitangent and color(0). It ignores other attributes: texcoord and color sets above 0, float4 tangents, joint indices and weights, and custom attributes. It also drops morphTargets and skin, and it fails a precondition on non-triangle submeshes. Mesh has no place to store most of this data, so a MetalMesh -> Mesh -> MetalMesh round trip loses it.
