@@ -316,7 +316,7 @@ public extension Mesh {
 
 public extension Mesh {
     /// A UV sphere (or ellipsoid) with quad faces (and triangle caps at the poles).
-    static func sphere(extents: SIMD3<Float> = [1, 1, 1], latitudeSegments: Int = 16, longitudeSegments: Int = 32, attributes: MeshAttributes = .default) -> Mesh {
+    static func sphere(extents: SIMD3<Float> = [1, 1, 1], latitudeSegments: Int = 16, longitudeSegments: Int = 32, attributes: MeshAttributes = .smooth) -> Mesh {
         let radii = extents / 2
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
@@ -466,7 +466,7 @@ public extension Mesh {
     ///   - extents: Width, height, and depth of the bounding box the sphere fills.
     ///   - attributes: Which attributes to generate.
     ///   - subdivisions: Number of subdivision iterations (0 = icosahedron, each step ×4 faces).
-    static func icoSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 3, attributes: MeshAttributes = .default) -> Mesh {
+    static func icoSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 3, attributes: MeshAttributes = .smooth) -> Mesh {
         // Start from icosahedron vertices on the unit sphere
         let phi: Float = (1.0 + sqrt(5.0)) / 2.0
         var positions: [SIMD3<Float>] = [
@@ -536,7 +536,7 @@ public extension Mesh {
     ///   - extents: Width, height, and depth of the bounding box the sphere fills.
     ///   - subdivisions: Number of subdivisions per cube face edge (minimum 1).
     ///   - attributes: Which attributes to generate.
-    static func cubeSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 8, attributes: MeshAttributes = .default) -> Mesh {
+    static func cubeSphere(extents: SIMD3<Float> = [1, 1, 1], subdivisions: Int = 8, attributes: MeshAttributes = .smooth) -> Mesh {
         let segs = max(1, subdivisions)
         let radii = extents / 2
 
@@ -589,7 +589,7 @@ public extension Mesh {
     }
 
     /// A torus with quad faces.
-    static func torus(majorSegments: Int = 32, minorSegments: Int = 16, majorRadius: Float = 0.3, minorRadius: Float = 0.15, attributes: MeshAttributes = .default) -> Mesh {
+    static func torus(majorSegments: Int = 32, minorSegments: Int = 16, majorRadius: Float = 0.3, minorRadius: Float = 0.15, attributes: MeshAttributes = .smooth) -> Mesh {
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 
@@ -649,7 +649,7 @@ public extension Mesh {
     }
 
     /// A cylinder with quad sides and optional n-gon caps.
-    static func cylinder(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
+    static func cylinder(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .smooth) -> Mesh {
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 
@@ -733,7 +733,7 @@ public extension Mesh {
     ///
     /// The dome faces upward (+Y). Extents control the bounding box of the full
     /// hemisphere including the flat base.
-    static func hemisphere(extents: SIMD3<Float> = [1, 1, 1], segments: Int = 32, latitudeSegments: Int = 8, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
+    static func hemisphere(extents: SIMD3<Float> = [1, 1, 1], segments: Int = 32, latitudeSegments: Int = 8, capped: Bool = true, attributes: MeshAttributes = .smooth) -> Mesh {
         let radii = extents / 2
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
@@ -859,7 +859,7 @@ public extension Mesh {
     /// The capsule is oriented along the Y axis. `height` is the total height
     /// including the two hemispherical caps. `radius` is the radius of the
     /// cylinder and caps.
-    static func capsule(segments: Int = 32, height: Float = 1.0, radius: Float = 0.25, latitudeSegments: Int = 8, attributes: MeshAttributes = .default) -> Mesh {
+    static func capsule(segments: Int = 32, height: Float = 1.0, radius: Float = 0.25, latitudeSegments: Int = 8, attributes: MeshAttributes = .smooth) -> Mesh {
         let cylinderHeight = max(0, height - 2 * radius)
         let halfCylinder = cylinderHeight / 2
         var positions: [SIMD3<Float>] = []
@@ -1079,7 +1079,7 @@ public extension Mesh {
     }
 
     /// A cone with triangle sides and an optional n-gon base cap.
-    static func cone(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
+    static func cone(segments: Int = 32, height: Float = 1.0, radius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .smooth) -> Mesh {
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 
@@ -1145,7 +1145,7 @@ public extension Mesh {
     /// A conical frustum (truncated cone) with quad sides and optional n-gon caps.
     ///
     /// When `topRadius` is 0 this degenerates to a regular cone.
-    static func conicalFrustum(segments: Int = 32, height: Float = 1.0, topRadius: Float = 0.25, bottomRadius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .default) -> Mesh {
+    static func conicalFrustum(segments: Int = 32, height: Float = 1.0, topRadius: Float = 0.25, bottomRadius: Float = 0.5, capped: Bool = true, attributes: MeshAttributes = .smooth) -> Mesh {
         var positions: [SIMD3<Float>] = []
         var faces: [[Int]] = []
 
@@ -1284,7 +1284,7 @@ public extension Mesh {
     ///
     /// The mesh is uniformly scaled to fit within `diameter` and centered
     /// at the origin, preserving aspect ratio.
-    static func teapot(diameter: Float = 1, attributes: MeshAttributes = .default) -> Mesh {
+    static func teapot(diameter: Float = 1, attributes: MeshAttributes = .smooth) -> Mesh {
         guard let url = Bundle.module.url(forResource: "teapot", withExtension: "obj") else {
             fatalError("teapot.obj not found in bundle")
         }

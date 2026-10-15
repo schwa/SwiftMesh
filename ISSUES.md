@@ -3549,12 +3549,13 @@ withFlatNormals() and withSmoothNormals() only walk the outer loop of each face 
 ## 172: Curved primitives default to flat normals
 
 +++
-status: open
+status: closed
 priority: low
 kind: enhancement
 labels: effort:s, area:primitives
 created: 2026-10-15T22:04:20Z
-updated: 2026-10-15T23:36:00Z
+updated: 2026-10-15T23:40:24Z
+closed: 2026-10-15T23:40:24Z
 +++
 
 Every shape generator defaults to attributes: .default, which is [.flatNormals, .textureCoordinates]. For curved shapes (sphere, capsule, torus, cylinder, cone, conicalFrustum) that gives faceted shading unless the caller knows to pass [.smoothNormals, .textureCoordinates].
