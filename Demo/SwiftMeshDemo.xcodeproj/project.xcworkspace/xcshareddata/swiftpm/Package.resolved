@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/GeometryLite2D",
       "state" : {
-        "revision" : "1c080f9aa195a5045eaca5ff283e036f95f5e560",
-        "version" : "0.0.2"
+        "revision" : "938d2bf1276508f51b1e028153c7cc3c25648e40",
+        "version" : "0.0.3"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/GeometryLite3D",
       "state" : {
-        "revision" : "24bdeff9cd1fb224160022443de7846f9076856e",
-        "version" : "0.2.0"
+        "revision" : "0eddc584482eec5a991c8caff2ec1c864299e377",
+        "version" : "0.2.2"
       }
     },
     {
@@ -25,7 +25,7 @@
       "location" : "https://github.com/schwa/Interaction3D",
       "state" : {
         "branch" : "main",
-        "revision" : "27b21448ec476503562205dd250ff273ed0599b8"
+        "revision" : "9bc6c85de11da1156e0b72edd28015945fdedc4d"
       }
     },
     {
@@ -52,7 +52,7 @@
       "location" : "https://github.com/schwa/MetalSprocketsAddons",
       "state" : {
         "branch" : "main",
-        "revision" : "1e1813488d306c28ac7b1a50276fbfabe4f996bd"
+        "revision" : "de5d8918aac95a3b44947a9f097d78dc89185ea6"
       }
     },
     {
@@ -69,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/SpaceMouse",
       "state" : {
-        "branch" : "main",
-        "revision" : "52a4dac46dbf2704e00010523274ada3a4d5c4e2"
+        "revision" : "b5182a7d024b4e8206b4ff21842867d4cabc5fe3",
+        "version" : "0.0.1"
       }
     },
     {
@@ -94,10 +94,10 @@
     {
       "identity" : "swift-collections",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-collections",
+      "location" : "https://github.com/apple/swift-collections.git",
       "state" : {
-        "revision" : "3b69cedbaa49957e97c092ae400bb57602ef941f",
-        "version" : "1.7.2"
+        "revision" : "35a1edcb8ebd2bfe251d587f0b69e62af28f508c",
+        "version" : "1.7.3"
       }
     },
     {
@@ -123,8 +123,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/SwiftEarcut",
       "state" : {
-        "revision" : "ebb45ca2e575a2ba43b50e2b5c13f7bc3ffa289d",
-        "version" : "0.0.1"
+        "revision" : "216a6dea8c9804dd6157b7dc25cb4ed0adb525dd",
+        "version" : "0.0.2"
       }
     },
     {
@@ -132,8 +132,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/SwiftFormats",
       "state" : {
-        "revision" : "0f0929852e7709fcd2a006efda19925ee773d752",
-        "version" : "0.3.7"
+        "revision" : "073633367a7d69e206693377082ef36570345022",
+        "version" : "0.3.8"
       }
     }
   ],
