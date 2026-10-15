@@ -793,8 +793,8 @@ struct MetalMeshTests {
         #expect(metalMesh.submeshes[1].indexBufferOffset == 0)
         #expect(metalMesh.submeshes[1].indices == [2, 3])
         #expect(metalMesh.submeshes[1].primitiveType == .line)
-        #expect(metalMesh.submeshes[0].bounds == BoundingBox(min: [0, 0, 0], max: [1, 1, 0]))
-        #expect(metalMesh.bounds == BoundingBox(min: [0, 0, 0], max: [1, 1, 2]))
+        #expect(metalMesh.submeshes[0].bounds == BoundingBox3D(min: [0, 0, 0], max: [1, 1, 0]))
+        #expect(metalMesh.bounds == BoundingBox3D(min: [0, 0, 0], max: [1, 1, 2]))
 
         let base = metalMesh.vertexBuffer.contents() + 44
         #expect(base.loadUnaligned(fromByteOffset: 12 + 12, as: Float.self) == -1)

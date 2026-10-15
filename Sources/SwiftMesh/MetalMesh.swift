@@ -27,10 +27,10 @@ public struct MetalMesh {
         /// How indices assemble into primitives. Converting back to ``Mesh`` requires `.triangle`.
         public var primitiveType: MTLPrimitiveType
         /// Bounds of the vertices this submesh references, or nil if unknown.
-        public var bounds: BoundingBox?
+        public var bounds: BoundingBox3D?
 
         /// Creates a submesh over an existing index buffer.
-        public init(label: String? = nil, indexBuffer: MTLBuffer, indexBufferOffset: Int = 0, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle, bounds: BoundingBox? = nil) {
+        public init(label: String? = nil, indexBuffer: MTLBuffer, indexBufferOffset: Int = 0, indexCount: Int, indexType: MTLIndexType = .uint32, primitiveType: MTLPrimitiveType = .triangle, bounds: BoundingBox3D? = nil) {
             self.label = label
             self.indexBuffer = indexBuffer
             self.indexBufferOffset = indexBufferOffset
@@ -82,7 +82,7 @@ public struct MetalMesh {
     /// The triangle groups that make up the mesh.
     public var submeshes: [Submesh]
     /// Bounds of all vertices, or nil if unknown.
-    public var bounds: BoundingBox?
+    public var bounds: BoundingBox3D?
     /// Morph targets for the vertices, or nil if the mesh has none.
     public var morphTargets: MorphTargets?
     /// Skin binding data for the joint index and weight attributes, or nil if the mesh is not skinned.

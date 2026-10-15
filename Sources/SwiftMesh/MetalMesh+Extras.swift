@@ -83,9 +83,9 @@ public extension MetalMesh {
         }
     }
 
-    internal static func bounds(of positions: [SIMD3<Float>]) -> BoundingBox? {
+    internal static func bounds(of positions: [SIMD3<Float>]) -> BoundingBox3D? {
         guard let first = positions.first else { return nil }
-        var box = BoundingBox(min: first, max: first)
+        var box = BoundingBox3D(min: first, max: first)
         for position in positions {
             box.min = simd.min(box.min, position)
             box.max = simd.max(box.max, position)
@@ -93,9 +93,9 @@ public extension MetalMesh {
         return box
     }
 
-    internal static func bounds(of positions: [SIMD3<Float>], indices: [UInt32]) -> BoundingBox? {
+    internal static func bounds(of positions: [SIMD3<Float>], indices: [UInt32]) -> BoundingBox3D? {
         guard let first = indices.first else { return nil }
-        var box = BoundingBox(min: positions[Int(first)], max: positions[Int(first)])
+        var box = BoundingBox3D(min: positions[Int(first)], max: positions[Int(first)])
         for index in indices {
             box.min = simd.min(box.min, positions[Int(index)])
             box.max = simd.max(box.max, positions[Int(index)])
