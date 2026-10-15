@@ -3529,3 +3529,38 @@ closed: 2026-10-15T14:41:29Z
 Zero-length-safe normalize is duplicated: private MetalMesh.normalized (MetalMesh+Transform.swift:51) and twice inline in Mesh.transform(by:). GL3D's SIMD3.normalized does not guard zero length. Add one shared internal helper and use it everywhere.
 
 ---
+
+## 171: withFlatNormals and withSmoothNormals skip the hole corners of faces with holes
+
++++
+status: open
+priority: medium
+kind: bug
+labels: effort:s, area:topology
+created: 2026-10-15T19:31:12Z
+updated: 2026-10-15T23:36:00Z
++++
+
+withFlatNormals() and withSmoothNormals() only walk the outer loop of each face (halfEdgeLoop/vertexLoop). Corners on hole loops keep zero normals. Extruded text shows it: Mesh.extrudedText("SceneGraph", fontName: "Helvetica-Bold", depth: 0.1) has 296 of 6186 vertices with zero normals after MetalMesh triangulation, all in glyphs with holes (e, a, p). Texture coordinate generation may have the same gap. MetalSprocketsSceneGraph works around it (its #101) by triangulating before adding normals.
+
+---
+
+## 172: Curved primitives default to flat normals
+
++++
+status: open
+priority: low
+kind: enhancement
+labels: effort:s, area:primitives
+created: 2026-10-15T22:04:20Z
+updated: 2026-10-15T23:36:00Z
++++
+
+Every shape generator defaults to attributes: .default, which is [.flatNormals, .textureCoordinates]. For curved shapes (sphere, capsule, torus, cylinder, cone, conicalFrustum) that gives faceted shading unless the caller knows to pass [.smoothNormals, .textureCoordinates].
+
+Seen in MetalSprocketsSceneGraph (#118 there): every SceneGraph.Shape torus, capsule and sphere rendered faceted because the shape code called the generators with no attributes.
+
+Expected: curved primitives shade smoothly by default; flat-faced ones (box, quad, polyhedra) stay flat.
+Actual: all primitives get flat normals by default.
+
+---
