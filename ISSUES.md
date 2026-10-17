@@ -3587,3 +3587,30 @@ Proposal: add a public function that takes 2D contours ([[SIMD2<Double>]] or Flo
 Done when: the public API exists, has tests (convex, concave, holes, degenerate), and keeps PolyVert internal.
 
 ---
+
+## 174: Mark hot Mesh/HalfEdgeTopology accessors @inlinable
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: effort:s, area:performance
+created: 2026-10-17T12:25:02Z
++++
+
+Consumers that walk meshes in tight loops pay a cross-module call for trivial accessors. Only `dest(of:)` and `destViaNext(of:)` are `@inlinable` now.
+
+Candidates:
+- `HalfEdgeTopology.VertexID` / `HalfEdgeID` / `FaceID`: `init(raw:)`; consider `@frozen`.
+- `Mesh`: `vertexCount`, `faceCount`, `position(of:)`.
+- `Mesh`: `normals`, `textureCoordinates`, `tangents`, `bitangents`, `colors` pass-throughs. `cornerAttributes` must become `@usableFromInline internal`.
+- `HalfEdgeTopology.vertexLoop(for:)` / `halfEdgeLoop(for:)`. The `collectVertexLoop` / `collectHalfEdgeLoop` helpers must become `@usableFromInline`.
+- `SIMD3<Float>.normalized(or:)`: internal now, used by inlinable code if `faceNormal` gets inlined.
+
+Not candidates: big algorithms (`validate`, `deleteEdge`, `collapseEdge`, booleans, subdivision). Inlining them only bloats client code.
+
+Note: `@inlinable` freezes the body into the ABI. That is acceptable because the package does not build with library evolution.
+
+Check: use SwiftMeshBenchmarks, or a client loop over `topology.halfEdges` / `position(of:)`, in release mode before and after. Default SwiftPM cross-module optimization may already inline some of these, so measure first.
+
+---
