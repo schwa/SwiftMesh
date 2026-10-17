@@ -14,9 +14,9 @@ let package = Package(
         .library(name: "SwiftMeshMikkTSpace", targets: ["SwiftMeshMikkTSpace"])
     ],
     dependencies: [
-        .package(url: "https://github.com/schwa/GeometryLite2D", from: "0.0.2"),
-        .package(url: "https://github.com/schwa/GeometryLite3D", from: "0.2.0"),
-        .package(url: "https://github.com/schwa/MetalSupport", from: "1.0.7")
+        .package(url: "https://github.com/schwa/GeometryLite2D", .upToNextMinor(from: "0.0.4")),
+        .package(url: "https://github.com/schwa/GeometryLite3D", .upToNextMinor(from: "0.2.4")),
+        .package(url: "https://github.com/schwa/MetalSupport", .upToNextMinor(from: "1.0.7"))
     ],
     targets: [
         .target(
