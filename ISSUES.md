@@ -3614,3 +3614,23 @@ Note: `@inlinable` freezes the body into the ABI. That is acceptable because the
 Check: use SwiftMeshBenchmarks, or a client loop over `topology.halfEdges` / `position(of:)`, in release mode before and after. Default SwiftPM cross-module optimization may already inline some of these, so measure first.
 
 ---
+
+## 175: Make generic Mesh2D<ID> specializable across modules
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: effort:s, area:performance
+created: 2026-10-17T12:25:03Z
++++
+
+`Mesh2D<ID: Hashable & Sendable>` is generic. Its public methods are not `@inlinable`, so clients call unspecialized code: hashing `ID` and moving `ID` through witness tables. This matters most in `init(segments:)`, `deleteEdge(label:)` and `undirectedEdges()`.
+
+Options:
+- Mark the public methods `@inlinable`, and mark their private helpers (`collectLoop`, `disconnectHalfEdge`) `@usableFromInline`.
+- Add `@_specialize` for the common `ID` types that clients use.
+
+Check: run a release benchmark of `Mesh2D(segments:)` from a separate module, before and after.
+
+---
