@@ -3566,3 +3566,22 @@ Expected: curved primitives shade smoothly by default; flat-faced ones (box, qua
 Actual: all primitives get flat normals by default.
 
 ---
+
+## 173: Expose public polygon triangulation API
+
++++
+status: new
+priority: low
+kind: enhancement
+created: 2026-10-16T19:37:09Z
++++
+
+The robust ear-clipper triangulate(_ polygons: [[PolyVert]], epsilon:allowConvex:) in Sources/SwiftMesh/Boolean/Triangulator.swift is package-only. Clients that only need to triangulate a polygon (with optional holes) must build a one-face Mesh and call Mesh.triangulate().
+
+MetalSprocketsAddOns wants to drop SwiftEarcut for this (MetalSprocketsAddOns#97).
+
+Proposal: add a public function that takes 2D contours ([[SIMD2<Double>]] or Float; outer CCW, holes CW) and returns triangle indices into the flattened input. Optionally add a 3D variant that projects onto the axis plane closest to the polygon normal, like triangulatedCorners(of:) does. Pick a default epsilon from the bounding-box scale.
+
+Done when: the public API exists, has tests (convex, concave, holes, degenerate), and keeps PolyVert internal.
+
+---
