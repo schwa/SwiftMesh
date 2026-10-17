@@ -17,7 +17,7 @@ public struct Mesh2D<ID: Hashable & Sendable>: Sendable {
     /// Per-vertex positions. Count equals `topology.vertices.count`, indexed by `VertexID.raw`.
     public var positions: [CGPoint]
 
-    /// Per-half-edge segment labels. Count equals `topology.halfEdges.count`, indexed by `HalfEdgeID.raw`.
+    /// Per-half-edge segment labels. Count equals `topology.halfEdgeStorage.count`, indexed by `HalfEdgeID.raw`.
     ///
     /// Twin pairs of half-edges share the same label (they correspond to the same undirected edge).
     public var edgeLabels: [ID]
@@ -26,7 +26,7 @@ public struct Mesh2D<ID: Hashable & Sendable>: Sendable {
     public var faceSignedAreas: [CGFloat?]
 
     /// Creates a 2D mesh from parts. Array counts must match the topology (see each property).
-    public init(topology: HalfEdgeTopology, positions: [CGPoint], edgeLabels: [ID], faceSignedAreas: [CGFloat?]) {
+    @inlinable public init(topology: HalfEdgeTopology, positions: [CGPoint], edgeLabels: [ID], faceSignedAreas: [CGFloat?]) {
         self.topology = topology
         self.positions = positions
         self.edgeLabels = edgeLabels
@@ -46,8 +46,8 @@ public struct Mesh2D<ID: Hashable & Sendable>: Sendable {
     @inlinable public func label(_ e: HalfEdgeID) -> ID { edgeLabels[e.raw] }
 
     @inlinable public func dest(of e: HalfEdgeID) -> VertexID? {
-        guard let t = topology.halfEdges[e.raw].twin else { return nil }
-        return topology.halfEdges[t.raw].origin
+        guard let t = topology.halfEdgeStorage[e.raw].twin else { return nil }
+        return topology.halfEdgeStorage[t.raw].origin
     }
 }
 
@@ -59,7 +59,7 @@ extension Mesh2D {
     /// Each segment becomes a pair of twin half-edges. Edges sharing an endpoint are
     /// sorted CCW by angle at that vertex, then next/prev are wired so each closed cycle
     /// forms a face (with signed area). Boundary loops (open chains) remain unassigned.
-    public init(segments: [Identified<ID, LineSegment>]) {
+    @inlinable public init(segments: [Identified<ID, LineSegment>]) {
         var topology = HalfEdgeTopology()
         var positions: [CGPoint] = []
         var edgeLabels: [ID] = []
@@ -79,7 +79,7 @@ extension Mesh2D {
         }
 
         // 2) Create two half-edges per segment and link twins.
-        topology.halfEdges.reserveCapacity(segments.count * 2)
+        topology.halfEdgeStorage.reserveCapacity(segments.count * 2)
         edgeLabels.reserveCapacity(segments.count * 2)
         angles.reserveCapacity(segments.count * 2)
 
@@ -87,20 +87,20 @@ extension Mesh2D {
             let a = vID(for: s.value.start)
             let b = vID(for: s.value.end)
 
-            let e0 = HalfEdgeID(raw: topology.halfEdges.count)
+            let e0 = HalfEdgeID(raw: topology.halfEdgeStorage.count)
             let ang0 = positions[a.raw].angle(to: positions[b.raw])
-            topology.halfEdges.append(HalfEdgeTopology.HalfEdge(id: e0, origin: a, twin: nil, next: nil, prev: nil, face: nil))
+            topology.halfEdgeStorage.append(HalfEdgeTopology.HalfEdge(id: e0, origin: a, twin: nil, next: nil, prev: nil, face: nil))
             edgeLabels.append(s.id)
             angles.append(ang0)
 
-            let e1 = HalfEdgeID(raw: topology.halfEdges.count)
+            let e1 = HalfEdgeID(raw: topology.halfEdgeStorage.count)
             let ang1 = positions[b.raw].angle(to: positions[a.raw])
-            topology.halfEdges.append(HalfEdgeTopology.HalfEdge(id: e1, origin: b, twin: nil, next: nil, prev: nil, face: nil))
+            topology.halfEdgeStorage.append(HalfEdgeTopology.HalfEdge(id: e1, origin: b, twin: nil, next: nil, prev: nil, face: nil))
             edgeLabels.append(s.id)
             angles.append(ang1)
 
-            topology.halfEdges[e0.raw].twin = e1
-            topology.halfEdges[e1.raw].twin = e0
+            topology.halfEdgeStorage[e0.raw].twin = e1
+            topology.halfEdgeStorage[e1.raw].twin = e0
 
             if topology.vertices[a.raw].edge == nil { topology.vertices[a.raw].edge = e0 }
             if topology.vertices[b.raw].edge == nil { topology.vertices[b.raw].edge = e1 }
@@ -108,7 +108,7 @@ extension Mesh2D {
 
         // 3) For each vertex, sort outgoing edges CCW by cached angle.
         var outgoing: [[HalfEdgeID]] = Array(repeating: [], count: topology.vertices.count)
-        for he in topology.halfEdges {
+        for he in topology.halfEdgeStorage {
             outgoing[he.origin.raw].append(he.id)
         }
         for i in 0..<outgoing.count {
@@ -121,52 +121,52 @@ extension Mesh2D {
         // 4) Wire next/prev so the face-on-left invariant holds.
         //    For half-edge e with twin t ending at v: next(e) is the outgoing edge
         //    immediately after t in CCW order at v.
-        for e in topology.halfEdges.indices {
-            guard let twin = topology.halfEdges[e].twin else { continue }
-            let twinOrigin = topology.halfEdges[twin.raw].origin
+        for e in topology.halfEdgeStorage.indices {
+            guard let twin = topology.halfEdgeStorage[e].twin else { continue }
+            let twinOrigin = topology.halfEdgeStorage[twin.raw].origin
             let list = outgoing[twinOrigin.raw]
             guard let idx = list.firstIndex(of: twin) else { continue }
             let nextIdx = (idx + 1) % list.count
             let ne = list[nextIdx]
             // Skip degenerate successor (would create a 2-edge cycle).
             if ne == twin { continue }
-            topology.halfEdges[e].next = ne
-            topology.halfEdges[ne.raw].prev = topology.halfEdges[e].id
+            topology.halfEdgeStorage[e].next = ne
+            topology.halfEdgeStorage[ne.raw].prev = topology.halfEdgeStorage[e].id
         }
 
         // 5) Face labeling: traverse unvisited closed cycles via next pointers.
-        var faceForEdge: [Bool] = Array(repeating: false, count: topology.halfEdges.count)
+        var faceForEdge: [Bool] = Array(repeating: false, count: topology.halfEdgeStorage.count)
         var faceSignedAreas: [CGFloat?] = []
 
-        for eIdx in topology.halfEdges.indices {
+        for eIdx in topology.halfEdgeStorage.indices {
             if faceForEdge[eIdx] { continue }
             var loop: [HalfEdgeID] = []
-            var e = topology.halfEdges[eIdx].id
+            var e = topology.halfEdgeStorage[eIdx].id
             var seen = Set<HalfEdgeID>()
             var ok = true
             while !seen.contains(e) {
                 seen.insert(e)
                 loop.append(e)
-                guard let n = topology.halfEdges[e.raw].next else { ok = false; break }
+                guard let n = topology.halfEdgeStorage[e.raw].next else { ok = false; break }
                 e = n
             }
             guard ok, e == loop.first! else { continue }
 
-            let fID = FaceID(raw: topology.faces.count)
+            let fID = FaceID(raw: topology.faceStorage.count)
             for heID in loop {
-                topology.halfEdges[heID.raw].face = fID
+                topology.halfEdgeStorage[heID.raw].face = fID
                 faceForEdge[heID.raw] = true
             }
 
             var pts: [CGPoint] = []
             pts.reserveCapacity(loop.count)
             for heID in loop {
-                let o = topology.halfEdges[heID.raw].origin
+                let o = topology.halfEdgeStorage[heID.raw].origin
                 pts.append(positions[o.raw])
             }
             let area = Polygon(pts).signedArea
 
-            topology.faces.append(HalfEdgeTopology.Face(id: fID, edge: loop.first, holeEdges: []))
+            topology.faceStorage.append(HalfEdgeTopology.Face(id: fID, edge: loop.first, holeEdges: []))
             faceSignedAreas.append(area)
         }
 
@@ -181,7 +181,7 @@ extension Mesh2D where ID == Int {
     ///
     /// Vertex indices are preserved (mesh vertex N = points[N]).
     /// The label for each half-edge is the undirected edge index (sequential, shared by twin pairs).
-    public init(points: [CGPoint], faces faceDefinitions: [HalfEdgeTopology.FaceDefinition]) {
+    @inlinable public init(points: [CGPoint], faces faceDefinitions: [HalfEdgeTopology.FaceDefinition]) {
         var topology = HalfEdgeTopology()
         var edgeLabels: [Int] = []
         var faceSignedAreas: [CGFloat?] = []
@@ -195,12 +195,12 @@ extension Mesh2D where ID == Int {
 
         func buildLoop(_ loop: [Int], faceID fID: FaceID) -> HalfEdgeID? {
             guard loop.count >= 3 else { return nil }
-            let firstHEIdx = topology.halfEdges.count
+            let firstHEIdx = topology.halfEdgeStorage.count
 
             for i in 0..<loop.count {
                 let originIdx = loop[i]
                 let destIdx = loop[(i + 1) % loop.count]
-                let heID = HalfEdgeID(raw: topology.halfEdges.count)
+                let heID = HalfEdgeID(raw: topology.halfEdgeStorage.count)
 
                 let forwardKey = originIdx * n + destIdx
                 let reverseKey = destIdx * n + originIdx
@@ -210,13 +210,13 @@ extension Mesh2D where ID == Int {
                 if let twinID = edgeMap[reverseKey] {
                     segID = edgeLabels[twinID.raw]
                     twin = twinID
-                    topology.halfEdges[twinID.raw].twin = heID
+                    topology.halfEdgeStorage[twinID.raw].twin = heID
                 } else {
                     segID = undirectedEdgeCount
                     undirectedEdgeCount += 1
                 }
 
-                topology.halfEdges.append(HalfEdgeTopology.HalfEdge(id: heID, origin: VertexID(raw: originIdx), twin: twin, next: nil, prev: nil, face: fID))
+                topology.halfEdgeStorage.append(HalfEdgeTopology.HalfEdge(id: heID, origin: VertexID(raw: originIdx), twin: twin, next: nil, prev: nil, face: fID))
                 edgeLabels.append(segID)
 
                 edgeMap[forwardKey] = heID
@@ -231,15 +231,15 @@ extension Mesh2D where ID == Int {
                 let heIdx = firstHEIdx + i
                 let nextIdx = firstHEIdx + (i + 1) % loop.count
                 let prevIdx = firstHEIdx + (i + loop.count - 1) % loop.count
-                topology.halfEdges[heIdx].next = HalfEdgeID(raw: nextIdx)
-                topology.halfEdges[heIdx].prev = HalfEdgeID(raw: prevIdx)
+                topology.halfEdgeStorage[heIdx].next = HalfEdgeID(raw: nextIdx)
+                topology.halfEdgeStorage[heIdx].prev = HalfEdgeID(raw: prevIdx)
             }
 
             return HalfEdgeID(raw: firstHEIdx)
         }
 
         for def in faceDefinitions {
-            let fID = FaceID(raw: topology.faces.count)
+            let fID = FaceID(raw: topology.faceStorage.count)
 
             guard let outerEdge = buildLoop(def.outer, faceID: fID) else { continue }
 
@@ -248,7 +248,7 @@ extension Mesh2D where ID == Int {
             let outerPts = def.outer.map { points[$0] }
             let area = Polygon(outerPts).signedArea
 
-            topology.faces.append(HalfEdgeTopology.Face(id: fID, edge: outerEdge, holeEdges: holeEdges))
+            topology.faceStorage.append(HalfEdgeTopology.Face(id: fID, edge: outerEdge, holeEdges: holeEdges))
             faceSignedAreas.append(area)
         }
 
@@ -260,29 +260,29 @@ extension Mesh2D where ID == Int {
 
 extension Mesh2D {
     /// Whether this face has clockwise winding (negative signed area), indicating a hole.
-    public func isHole(_ face: FaceID) -> Bool {
+    @inlinable public func isHole(_ face: FaceID) -> Bool {
         guard let area = faceSignedAreas[face.raw] else { return false }
         return area < 0
     }
 
     /// Signed area of the outer boundary of this face (if computed).
-    public func signedArea(_ face: FaceID) -> CGFloat? {
+    @inlinable public func signedArea(_ face: FaceID) -> CGFloat? {
         faceSignedAreas[face.raw]
     }
 
     /// Outer boundary of `face` as points.
-    public func polygon(for face: FaceID) -> [CGPoint] {
-        guard let start = topology.faces[face.raw].edge else { return [] }
+    @inlinable public func polygon(for face: FaceID) -> [CGPoint] {
+        guard let start = topology.faceStorage[face.raw].edge else { return [] }
         return collectLoop(startEdge: start)
     }
 
     /// Hole boundaries of `face` as arrays of points.
-    public func holePolygons(for face: FaceID) -> [[CGPoint]] {
-        topology.faces[face.raw].holeEdges.map { collectLoop(startEdge: $0) }
+    @inlinable public func holePolygons(for face: FaceID) -> [[CGPoint]] {
+        topology.faceStorage[face.raw].holeEdges.map { collectLoop(startEdge: $0) }
     }
 
     /// Whether the face is convex (all interior cross-products same sign).
-    public func isConvex(_ face: FaceID) -> Bool {
+    @inlinable public func isConvex(_ face: FaceID) -> Bool {
         let pts = polygon(for: face)
         guard pts.count >= 3 else { return false }
         let n = pts.count
@@ -306,24 +306,24 @@ extension Mesh2D {
 
     /// Closed loops formed by boundary half-edges (those with no twin).
     /// Each loop is an array of points tracing one connected boundary.
-    public func boundaryLoops() -> [[CGPoint]] {
+    @inlinable public func boundaryLoops() -> [[CGPoint]] {
         var visited = Set<HalfEdgeID>()
         var loops: [[CGPoint]] = []
 
-        for he in topology.halfEdges where he.twin == nil {
+        for he in topology.halfEdgeStorage where he.twin == nil {
             if visited.contains(he.id) { continue }
             var loop: [CGPoint] = []
             var current = he.id
             while !visited.contains(current) {
                 visited.insert(current)
-                let edge = topology.halfEdges[current.raw]
+                let edge = topology.halfEdgeStorage[current.raw]
                 loop.append(positions[edge.origin.raw])
                 guard let next = edge.next else { break }
                 // Walk across interior edges until we hit the next boundary edge.
                 var walker = next
-                var safety = topology.halfEdges.count
-                while topology.halfEdges[walker.raw].twin != nil, safety > 0 {
-                    guard let twinNext = topology.halfEdges[topology.halfEdges[walker.raw].twin!.raw].next else {
+                var safety = topology.halfEdgeStorage.count
+                while topology.halfEdgeStorage[walker.raw].twin != nil, safety > 0 {
+                    guard let twinNext = topology.halfEdgeStorage[topology.halfEdgeStorage[walker.raw].twin!.raw].next else {
                         break
                     }
                     walker = twinNext
@@ -339,10 +339,10 @@ extension Mesh2D {
 
     /// All unique undirected edges as (vertexA, vertexB, label) triples.
     /// Each undirected edge appears exactly once.
-    public func undirectedEdges() -> [(VertexID, VertexID, ID)] {
+    @inlinable public func undirectedEdges() -> [(VertexID, VertexID, ID)] {
         var seen = Set<Int>()
         var result: [(VertexID, VertexID, ID)] = []
-        for he in topology.halfEdges {
+        for he in topology.halfEdgeStorage {
             let heIdx = he.id.raw
             let twinIdx = he.twin?.raw ?? heIdx
             let canonical = min(heIdx, twinIdx)
@@ -351,9 +351,9 @@ extension Mesh2D {
 
             let origin = he.origin
             if let twinID = he.twin {
-                result.append((origin, topology.halfEdges[twinID.raw].origin, edgeLabels[heIdx]))
+                result.append((origin, topology.halfEdgeStorage[twinID.raw].origin, edgeLabels[heIdx]))
             } else if let nextID = he.next {
-                result.append((origin, topology.halfEdges[nextID.raw].origin, edgeLabels[heIdx]))
+                result.append((origin, topology.halfEdgeStorage[nextID.raw].origin, edgeLabels[heIdx]))
             }
         }
         return result
@@ -361,13 +361,13 @@ extension Mesh2D {
 
     // MARK: - Internals
 
-    private func collectLoop(startEdge: HalfEdgeID) -> [CGPoint] {
+    @inlinable func collectLoop(startEdge: HalfEdgeID) -> [CGPoint] {
         var pts: [CGPoint] = []
         var e = startEdge
         var visited = Set<HalfEdgeID>()
         while !visited.contains(e) {
             visited.insert(e)
-            let he = topology.halfEdges[e.raw]
+            let he = topology.halfEdgeStorage[e.raw]
             pts.append(positions[he.origin.raw])
             guard let n = he.next else { break }
             e = n
@@ -384,9 +384,9 @@ extension Mesh2D where ID: Equatable {
     /// If the edge is interior (shared by two faces), the two faces are merged.
     /// If the edge is boundary (one face), it is removed from that face.
     /// The half-edges are disconnected in place (indices remain stable but disconnected).
-    public mutating func deleteEdge(label: ID) {
+    @inlinable public mutating func deleteEdge(label: ID) {
         var heIndices: [Int] = []
-        for i in topology.halfEdges.indices where edgeLabels[i] == label {
+        for i in topology.halfEdgeStorage.indices where edgeLabels[i] == label {
             heIndices.append(i)
         }
         guard !heIndices.isEmpty else { return }
@@ -394,24 +394,24 @@ extension Mesh2D where ID: Equatable {
         let heA = heIndices[0]
         let heB = heIndices.count > 1 ? heIndices[1] : nil
 
-        let prevA = topology.halfEdges[heA].prev
-        let nextA = topology.halfEdges[heA].next
-        let faceA = topology.halfEdges[heA].face
+        let prevA = topology.halfEdgeStorage[heA].prev
+        let nextA = topology.halfEdgeStorage[heA].next
+        let faceA = topology.halfEdgeStorage[heA].face
 
         // Rewire around heA.
         if let p = prevA, let n = nextA {
-            topology.halfEdges[p.raw].next = n
-            topology.halfEdges[n.raw].prev = p
+            topology.halfEdgeStorage[p.raw].next = n
+            topology.halfEdgeStorage[n.raw].prev = p
         }
 
         if let heB {
-            let prevB = topology.halfEdges[heB].prev
-            let nextB = topology.halfEdges[heB].next
-            let faceB = topology.halfEdges[heB].face
+            let prevB = topology.halfEdgeStorage[heB].prev
+            let nextB = topology.halfEdgeStorage[heB].next
+            let faceB = topology.halfEdgeStorage[heB].face
 
             if let p = prevB, let n = nextB {
-                topology.halfEdges[p.raw].next = n
-                topology.halfEdges[n.raw].prev = p
+                topology.halfEdgeStorage[p.raw].next = n
+                topology.halfEdgeStorage[n.raw].prev = p
             }
 
             // Interior edge: merge faces. Keep faceA, reassign faceB's half-edges to faceA.
@@ -421,8 +421,8 @@ extension Mesh2D where ID: Equatable {
                     var visited = Set<HalfEdgeID>()
                     while !visited.contains(e) {
                         visited.insert(e)
-                        topology.halfEdges[e.raw].face = fA
-                        guard let n = topology.halfEdges[e.raw].next else { break }
+                        topology.halfEdgeStorage[e.raw].face = fA
+                        guard let n = topology.halfEdgeStorage[e.raw].next else { break }
                         e = n
                         if e == startB { break }
                     }
@@ -430,51 +430,51 @@ extension Mesh2D where ID: Equatable {
 
                 // Stitch the two loops together.
                 if let pA = prevA, let nB = nextB {
-                    topology.halfEdges[pA.raw].next = nB
-                    topology.halfEdges[nB.raw].prev = pA
+                    topology.halfEdgeStorage[pA.raw].next = nB
+                    topology.halfEdgeStorage[nB.raw].prev = pA
                 }
                 if let pB = prevB, let nA = nextA {
-                    topology.halfEdges[pB.raw].next = nA
-                    topology.halfEdges[nA.raw].prev = pB
+                    topology.halfEdgeStorage[pB.raw].next = nA
+                    topology.halfEdgeStorage[nA.raw].prev = pB
                 }
 
                 if let nA = nextA {
-                    topology.faces[fA.raw].edge = nA
+                    topology.faceStorage[fA.raw].edge = nA
                 }
-                topology.faces[fB.raw].edge = nil
+                topology.faceStorage[fB.raw].edge = nil
 
                 let pts = polygon(for: fA)
                 faceSignedAreas[fA.raw] = pts.count >= 3 ? Polygon(pts).signedArea : nil
             } else if let fA = faceA, let n = nextA {
-                topology.faces[fA.raw].edge = n
+                topology.faceStorage[fA.raw].edge = n
             }
 
             disconnectHalfEdge(heB)
         } else if let fA = faceA, let n = nextA {
-            topology.faces[fA.raw].edge = n
+            topology.faceStorage[fA.raw].edge = n
         }
 
         disconnectHalfEdge(heA)
 
         // Update vertex edge pointers if they pointed to deleted half-edges.
-        let originA = topology.halfEdges[heA].origin
+        let originA = topology.halfEdgeStorage[heA].origin
         if topology.vertices[originA.raw].edge?.raw == heA {
             // swiftlint:disable:next trailing_closure
-            topology.vertices[originA.raw].edge = topology.halfEdges.first(where: { $0.origin == originA && $0.next != nil })?.id
+            topology.vertices[originA.raw].edge = topology.halfEdgeStorage.first(where: { $0.origin == originA && $0.next != nil })?.id
         }
         if let heB {
-            let originB = topology.halfEdges[heB].origin
+            let originB = topology.halfEdgeStorage[heB].origin
             if topology.vertices[originB.raw].edge?.raw == heB {
                 // swiftlint:disable:next trailing_closure
-                topology.vertices[originB.raw].edge = topology.halfEdges.first(where: { $0.origin == originB && $0.next != nil })?.id
+                topology.vertices[originB.raw].edge = topology.halfEdgeStorage.first(where: { $0.origin == originB && $0.next != nil })?.id
             }
         }
     }
 
-    private mutating func disconnectHalfEdge(_ idx: Int) {
-        topology.halfEdges[idx].twin = nil
-        topology.halfEdges[idx].next = nil
-        topology.halfEdges[idx].prev = nil
-        topology.halfEdges[idx].face = nil
+    @inlinable mutating func disconnectHalfEdge(_ idx: Int) {
+        topology.halfEdgeStorage[idx].twin = nil
+        topology.halfEdgeStorage[idx].next = nil
+        topology.halfEdgeStorage[idx].prev = nil
+        topology.halfEdgeStorage[idx].face = nil
     }
 }

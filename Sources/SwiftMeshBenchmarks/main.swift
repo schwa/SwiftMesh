@@ -1,6 +1,7 @@
 // swiftlint:disable force_try
 import BinPacking
 import Foundation
+import Geometry
 import Metal
 import simd
 import SwiftMesh
@@ -38,6 +39,52 @@ benchmarks.append(Benchmark(name: "topology.build.icoSphere5") {
     let faces = mesh.topology.faces.map { HalfEdgeTopology.FaceDefinition(outer: mesh.topology.vertexLoop(for: $0.id).map(\.raw)) }
     let vertexCount = mesh.vertexCount
     return { _ = HalfEdgeTopology(vertexCount: vertexCount, faces: faces) }
+})
+
+// Client-side accessor loops (measure cross-module call overhead)
+benchmarks.append(Benchmark(name: "client.walk.faceLoops.icoSphere5") {
+    let mesh = Mesh.icoSphere(subdivisions: 5, attributes: [.smoothNormals])
+    return {
+        var sum = SIMD3<Float>.zero
+        for face in mesh.topology.faces {
+            for vertex in mesh.topology.vertexLoop(for: face.id) {
+                sum += mesh.position(of: vertex)
+            }
+        }
+        precondition(sum.x.isFinite)
+    }
+})
+benchmarks.append(Benchmark(name: "client.walk.halfEdges.icoSphere5") {
+    let mesh = Mesh.icoSphere(subdivisions: 5, attributes: [.smoothNormals])
+    return {
+        var sum = SIMD3<Float>.zero
+        for index in 0..<mesh.topology.halfEdges.count {
+            let edge = HalfEdgeTopology.HalfEdgeID(raw: index)
+            if let dest = mesh.topology.destViaNext(of: edge) {
+                sum += mesh.position(of: dest) + mesh.normals![index]
+            }
+        }
+        precondition(sum.x.isFinite)
+    }
+})
+
+// Mesh2D: a 40x40 grid of unit segments, built from a client module.
+benchmarks.append(Benchmark(name: "mesh2D.segments.grid40") {
+    let size = 40
+    var segments: [Identified<Int, LineSegment>] = []
+    for row in 0...size {
+        for column in 0..<size {
+            segments.append(Identified(id: segments.count, value: LineSegment(CGPoint(x: column, y: row), CGPoint(x: column + 1, y: row))))
+            segments.append(Identified(id: segments.count, value: LineSegment(CGPoint(x: row, y: column), CGPoint(x: row, y: column + 1))))
+        }
+    }
+    return {
+        var mesh = Mesh2D(segments: segments)
+        for label in stride(from: 0, to: segments.count, by: 7) {
+            mesh.deleteEdge(label: label)
+        }
+        precondition(!mesh.undirectedEdges().isEmpty)
+    }
 })
 
 // CSG

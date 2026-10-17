@@ -9,17 +9,23 @@ import Foundation
 /// attribute storage (positions, normals, UVs, etc.) to form a mesh.
 public struct HalfEdgeTopology: Sendable, Equatable {
     /// A vertex index. `raw` indexes ``vertices`` and per-vertex arrays such as `Mesh.positions`.
-    public struct VertexID: Hashable, Sendable { public let raw: Int; public init(raw: Int) { self.raw = raw } }
+    public struct VertexID: Hashable, Sendable { public let raw: Int; @inlinable public init(raw: Int) { self.raw = raw } }
     /// A half-edge index. `raw` indexes ``halfEdges`` and per-corner attribute arrays.
-    public struct HalfEdgeID: Hashable, Sendable { public let raw: Int; public init(raw: Int) { self.raw = raw } }
+    public struct HalfEdgeID: Hashable, Sendable { public let raw: Int; @inlinable public init(raw: Int) { self.raw = raw } }
     /// A face index. `raw` indexes ``faces`` and per-face data.
-    public struct FaceID: Hashable, Sendable { public let raw: Int; public init(raw: Int) { self.raw = raw } }
+    public struct FaceID: Hashable, Sendable { public let raw: Int; @inlinable public init(raw: Int) { self.raw = raw } }
 
     /// A vertex and one of its outgoing half-edges.
     public struct Vertex: Sendable, Equatable {
         public let id: VertexID
         /// An outgoing half-edge, or `nil` if the vertex is unused or tombstoned.
         public var edge: HalfEdgeID?
+
+        @usableFromInline
+        init(id: VertexID, edge: HalfEdgeID?) {
+            self.id = id
+            self.edge = edge
+        }
     }
 
     /// A directed edge belonging to one face loop. Its destination is `next`'s origin.
@@ -37,6 +43,16 @@ public struct HalfEdgeTopology: Sendable, Equatable {
         public var prev: HalfEdgeID?
         /// The face on the half-edge's left, which owns this loop.
         public var face: FaceID?
+
+        @usableFromInline
+        init(id: HalfEdgeID, origin: VertexID, twin: HalfEdgeID?, next: HalfEdgeID?, prev: HalfEdgeID?, face: FaceID?) {
+            self.id = id
+            self.origin = origin
+            self.twin = twin
+            self.next = next
+            self.prev = prev
+            self.face = face
+        }
     }
 
     /// A face: one outer loop and any number of hole loops.
@@ -46,16 +62,36 @@ public struct HalfEdgeTopology: Sendable, Equatable {
         public var edge: HalfEdgeID?
         /// One half-edge on each hole loop.
         public var holeEdges: [HalfEdgeID] = []
+
+        @usableFromInline
+        init(id: FaceID, edge: HalfEdgeID?, holeEdges: [HalfEdgeID] = []) {
+            self.id = id
+            self.edge = edge
+            self.holeEdges = holeEdges
+        }
     }
 
     /// All vertices, indexed by `VertexID.raw`.
     public var vertices: [Vertex] = []
-    // `halfEdges` and `faces` are `internal(set)` so construction code in sibling
-    // files (currently `Mesh2D.swift`) can build topology in-place. External
-    // callers see them as read-only; internal callers must preserve invariants
-    // (twin/next/prev wiring, face-on-left).
-    public internal(set) var halfEdges: [HalfEdge] = []
-    public internal(set) var faces: [Face] = []
+    // `halfEdges` and `faces` are read-only to clients. Internal callers may edit them in place
+    // but must keep the invariants (twin/next/prev wiring, face-on-left). The storage is
+    // `@usableFromInline` so inlinable code (e.g. `Mesh2D`) can build topology.
+    @usableFromInline var halfEdgeStorage: [HalfEdge] = []
+    @usableFromInline var faceStorage: [Face] = []
+
+    /// All half-edges, indexed by `HalfEdgeID.raw`.
+    public internal(set) var halfEdges: [HalfEdge] {
+        @inlinable get { halfEdgeStorage }
+        _modify { yield &halfEdgeStorage }
+        set { halfEdgeStorage = newValue }
+    }
+
+    /// All faces, indexed by `FaceID.raw`.
+    public internal(set) var faces: [Face] {
+        @inlinable get { faceStorage }
+        _modify { yield &faceStorage }
+        set { faceStorage = newValue }
+    }
 
     /// Creates an empty topology.
     public init() {}
@@ -416,7 +452,7 @@ extension HalfEdgeTopology {
 
 extension HalfEdgeTopology {
     /// Return the ordered boundary of `face` as vertex IDs.
-    public func vertexLoop(for face: FaceID) -> [VertexID] {
+    @inlinable public func vertexLoop(for face: FaceID) -> [VertexID] {
         guard let start = faces[face.raw].edge else {
             return []
         }
@@ -424,7 +460,7 @@ extension HalfEdgeTopology {
     }
 
     /// Return the ordered boundary of `face` as half-edge IDs.
-    public func halfEdgeLoop(for face: FaceID) -> [HalfEdgeID] {
+    @inlinable public func halfEdgeLoop(for face: FaceID) -> [HalfEdgeID] {
         guard let start = faces[face.raw].edge else {
             return []
         }
@@ -432,7 +468,7 @@ extension HalfEdgeTopology {
     }
 
     /// Return the hole boundaries of `face` as arrays of vertex IDs.
-    public func holeVertexLoops(for face: FaceID) -> [[VertexID]] {
+    @inlinable public func holeVertexLoops(for face: FaceID) -> [[VertexID]] {
         faces[face.raw].holeEdges.map { collectVertexLoop(startEdge: $0) }
     }
 
@@ -757,13 +793,13 @@ extension HalfEdgeTopology {
 
     // MARK: - Internals
 
-    func collectVertexLoop(startEdge: HalfEdgeID) -> [VertexID] {
+    @inlinable func collectVertexLoop(startEdge: HalfEdgeID) -> [VertexID] {
         collectHalfEdgeLoop(startEdge: startEdge).map { halfEdges[$0.raw].origin }
     }
 
     /// The closed loop through `startEdge`, or `[]` if it doesn't return to the start (broken
     /// wiring or a walk that cycles elsewhere) or has fewer than 3 edges.
-    func collectHalfEdgeLoop(startEdge: HalfEdgeID) -> [HalfEdgeID] {
+    @inlinable func collectHalfEdgeLoop(startEdge: HalfEdgeID) -> [HalfEdgeID] {
         // Walk until back at the start. A walk longer than the half-edge count can't be a
         // simple loop through the start, so it is broken; no visited set needed.
         var ids: [HalfEdgeID] = []

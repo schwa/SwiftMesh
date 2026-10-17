@@ -5,12 +5,13 @@ import simd
 /// Arrays are indexed by corner (half-edge) index. Every operation applies to each present
 /// attribute, so adding a new attribute only touches this type and the forwarding accessors on
 /// ``Mesh``. Direction attributes (normals, tangents, bitangents) are renormalized after blending.
+@usableFromInline
 struct CornerAttributes: Sendable, Equatable {
-    var normals: [SIMD3<Float>]?
-    var textureCoordinates: [SIMD2<Float>]?
-    var tangents: [SIMD3<Float>]?
-    var bitangents: [SIMD3<Float>]?
-    var colors: [SIMD4<Float>]?
+    @usableFromInline var normals: [SIMD3<Float>]?
+    @usableFromInline var textureCoordinates: [SIMD2<Float>]?
+    @usableFromInline var tangents: [SIMD3<Float>]?
+    @usableFromInline var bitangents: [SIMD3<Float>]?
+    @usableFromInline var colors: [SIMD4<Float>]?
 
     init(normals: [SIMD3<Float>]? = nil, textureCoordinates: [SIMD2<Float>]? = nil, tangents: [SIMD3<Float>]? = nil, bitangents: [SIMD3<Float>]? = nil, colors: [SIMD4<Float>]? = nil) {
         self.normals = normals

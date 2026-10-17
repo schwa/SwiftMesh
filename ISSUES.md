@@ -3591,11 +3591,13 @@ Done when: the public API exists, has tests (convex, concave, holes, degenerate)
 ## 174: Mark hot Mesh/HalfEdgeTopology accessors @inlinable
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 labels: effort:s, area:performance
 created: 2026-10-17T12:25:02Z
+updated: 2026-10-17T12:36:01Z
+closed: 2026-10-17T12:36:01Z
 +++
 
 Consumers that walk meshes in tight loops pay a cross-module call for trivial accessors. Only `dest(of:)` and `destViaNext(of:)` are `@inlinable` now.
@@ -3618,11 +3620,13 @@ Check: use SwiftMeshBenchmarks, or a client loop over `topology.halfEdges` / `po
 ## 175: Make generic Mesh2D<ID> specializable across modules
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 labels: effort:s, area:performance
 created: 2026-10-17T12:25:03Z
+updated: 2026-10-17T12:36:01Z
+closed: 2026-10-17T12:36:01Z
 +++
 
 `Mesh2D<ID: Hashable & Sendable>` is generic. Its public methods are not `@inlinable`, so clients call unspecialized code: hashing `ID` and moving `ID` through witness tables. This matters most in `init(segments:)`, `deleteEdge(label:)` and `undirectedEdges()`.

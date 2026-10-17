@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/GeometryLite2D",
       "state" : {
-        "revision" : "938d2bf1276508f51b1e028153c7cc3c25648e40",
-        "version" : "0.0.3"
+        "revision" : "542e05566f76d4248f95a43d13c1ff771acb32fd",
+        "version" : "0.0.4"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/GeometryLite3D",
       "state" : {
-        "revision" : "0eddc584482eec5a991c8caff2ec1c864299e377",
-        "version" : "0.2.2"
+        "revision" : "4a1c76400e564b76140a14d14a7e6d6279908faf",
+        "version" : "0.2.4"
       }
     },
     {

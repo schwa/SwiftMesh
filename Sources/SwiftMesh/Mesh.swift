@@ -18,36 +18,36 @@ public struct Mesh: Sendable, Equatable {
     // MARK: - Per-corner attributes (indexed by HalfEdgeID.raw)
 
     /// Storage for every per-corner attribute. Operations edit this as one unit.
-    var cornerAttributes: CornerAttributes
+    @usableFromInline var cornerAttributes: CornerAttributes
 
     /// Per-corner normals. When nil, normals are not assigned.
     public var normals: [SIMD3<Float>]? {
-        get { cornerAttributes.normals }
-        set { cornerAttributes.normals = newValue }
+        @inlinable get { cornerAttributes.normals }
+        @inlinable set { cornerAttributes.normals = newValue }
     }
 
     /// Per-corner texture coordinates. When nil, UVs are not assigned.
     public var textureCoordinates: [SIMD2<Float>]? {
-        get { cornerAttributes.textureCoordinates }
-        set { cornerAttributes.textureCoordinates = newValue }
+        @inlinable get { cornerAttributes.textureCoordinates }
+        @inlinable set { cornerAttributes.textureCoordinates = newValue }
     }
 
     /// Per-corner tangents. When nil, tangents are not assigned.
     public var tangents: [SIMD3<Float>]? {
-        get { cornerAttributes.tangents }
-        set { cornerAttributes.tangents = newValue }
+        @inlinable get { cornerAttributes.tangents }
+        @inlinable set { cornerAttributes.tangents = newValue }
     }
 
     /// Per-corner bitangents. When nil, bitangents are not assigned.
     public var bitangents: [SIMD3<Float>]? {
-        get { cornerAttributes.bitangents }
-        set { cornerAttributes.bitangents = newValue }
+        @inlinable get { cornerAttributes.bitangents }
+        @inlinable set { cornerAttributes.bitangents = newValue }
     }
 
     /// Per-corner colors. When nil, colors are not assigned.
     public var colors: [SIMD4<Float>]? {
-        get { cornerAttributes.colors }
-        set { cornerAttributes.colors = newValue }
+        @inlinable get { cornerAttributes.colors }
+        @inlinable set { cornerAttributes.colors = newValue }
     }
 
     // MARK: - Submeshes
@@ -118,10 +118,10 @@ public struct Mesh: Sendable, Equatable {
 
 public extension Mesh {
     /// Number of vertices.
-    var vertexCount: Int { topology.vertices.count }
+    @inlinable var vertexCount: Int { topology.vertices.count }
 
     /// Number of faces.
-    var faceCount: Int { topology.faces.count }
+    @inlinable var faceCount: Int { topology.faces.count }
 
     /// Number of unique undirected edges.
     var edgeCount: Int { topology.undirectedEdges().count }
@@ -131,12 +131,12 @@ public extension Mesh {
     var isManifold: Bool { topology.isManifold }
 
     /// Position of a vertex.
-    func position(of vertex: HalfEdgeTopology.VertexID) -> SIMD3<Float> {
+    @inlinable func position(of vertex: HalfEdgeTopology.VertexID) -> SIMD3<Float> {
         positions[vertex.raw]
     }
 
     /// Positions of a face's boundary vertices.
-    func facePositions(_ face: HalfEdgeTopology.FaceID) -> [SIMD3<Float>] {
+    @inlinable func facePositions(_ face: HalfEdgeTopology.FaceID) -> [SIMD3<Float>] {
         topology.vertexLoop(for: face).map { positions[$0.raw] }
     }
 
