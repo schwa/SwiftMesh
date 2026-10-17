@@ -3570,10 +3570,12 @@ Actual: all primitives get flat normals by default.
 ## 173: Expose public polygon triangulation API
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 created: 2026-10-16T19:37:09Z
+updated: 2026-10-17T03:46:32Z
+closed: 2026-10-17T03:46:32Z
 +++
 
 The robust ear-clipper triangulate(_ polygons: [[PolyVert]], epsilon:allowConvex:) in Sources/SwiftMesh/Boolean/Triangulator.swift is package-only. Clients that only need to triangulate a polygon (with optional holes) must build a one-face Mesh and call Mesh.triangulate().
