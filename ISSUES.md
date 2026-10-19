@@ -3744,12 +3744,13 @@ Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a si
 ## 181: Faster TriangleBVH build and queries
 
 +++
-status: new
+status: closed
 priority: low
 kind: enhancement
 labels: area:performance, effort:m
 created: 2026-10-19T15:47:53Z
-updated: 2026-10-19T15:48:18Z
+updated: 2026-10-19T18:27:00Z
+closed: 2026-10-19T18:27:00Z
 +++
 
 TriangleBVH is correct but not tuned. Release numbers on icoSphere5 (20,480 triangles), from SwiftMeshBenchmarks bvh.*:
@@ -3795,7 +3796,7 @@ Acceptance: the fast path is within 1e-3 of the exact winding number on a cube, 
 status: new
 priority: medium
 kind: enhancement
-labels: effort:m,area:performance
+labels: effort:m, area:performance
 created: 2026-10-19T15:59:59Z
 +++
 

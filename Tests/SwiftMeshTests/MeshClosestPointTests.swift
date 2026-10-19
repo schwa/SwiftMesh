@@ -53,7 +53,8 @@ struct MeshClosestPointTests {
             let brute = try #require(sphere.closestPoint(to: point))
             let fast = try #require(sphere.closestPoint(to: point, bvh: bvh))
             #expect(abs(brute.distance - fast.distance) < 1e-5)
-            #expect(simd_distance(brute.point, fast.point) < 1e-4)
+            // The closest point is not unique when several triangles tie, so check it lies at the reported distance.
+            #expect(abs(simd_distance(fast.point, point) - fast.distance) < 1e-5)
             // Radius 0.5; the tessellation sits up to ~0.005 inside the true sphere.
             #expect(abs(fast.distance - abs(simd_length(point) - 0.5)) < 0.01)
             #expect(simd_dot(fast.normal, fast.point) > 0)

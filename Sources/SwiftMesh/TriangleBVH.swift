@@ -1,3 +1,4 @@
+import Foundation
 import GeometryLite3D
 import simd
 
@@ -37,28 +38,82 @@ public struct TriangleBVH: Sendable {
         public var barycentrics: SIMD3<Float>
     }
 
+    /// 32 bytes. The `w` lanes hold bit patterns: `lower.w` is the first triangle (leaf) or the right child
+    /// (internal; the left child is the next node), `upper.w` the leaf's triangle count (0 for internal nodes).
     struct Node: Sendable {
-        var min: SIMD3<Float>
-        var max: SIMD3<Float>
-        /// Leaf: first triangle. Internal: index of the right child (the left child is the next node).
-        var offset: Int
-        /// Number of triangles in a leaf; 0 for an internal node.
-        var triangleCount: Int
+        var lower: SIMD4<Float>
+        var upper: SIMD4<Float>
 
-        var isLeaf: Bool { triangleCount != 0 }
+        init(min: SIMD3<Float>, max: SIMD3<Float>, offset: Int, triangleCount: Int) {
+            lower = SIMD4(min, Float(bitPattern: UInt32(offset)))
+            upper = SIMD4(max, Float(bitPattern: UInt32(triangleCount)))
+        }
+
+        var min: SIMD3<Float> { SIMD3(lower.x, lower.y, lower.z) }
+        var max: SIMD3<Float> { SIMD3(upper.x, upper.y, upper.z) }
+        var offset: Int {
+            get { Int(lower.w.bitPattern) }
+            set { lower.w = Float(bitPattern: UInt32(newValue)) }
+        }
+        var triangleCount: Int {
+            get { Int(upper.w.bitPattern) }
+            set { upper.w = Float(bitPattern: UInt32(newValue)) }
+        }
+        var isLeaf: Bool { upper.w.bitPattern != 0 }
     }
 
     /// Triangles in BVH order. Query results index into this array.
     public private(set) var triangles: [Triangle]
-    private(set) var nodes: [Node] = []
+    private(set) var wideNodes: [WideNode] = []
+    /// Per triangle in BVH order: vertex a and the edges b - a and c - a.
+    private(set) var vertexA: [SIMD3<Float>] = []
+    private(set) var edgeAB: [SIMD3<Float>] = []
+    private(set) var edgeAC: [SIMD3<Float>] = []
+    /// Leaf triangles in groups of four for SIMD tests.
+    private(set) var blocks: [TriangleBlock] = []
+    private(set) var blockDots: [BlockDots] = []
+    /// Traversal stack size for this tree; small enough to stay off the heap for typical trees.
+    private(set) var stackCapacity = 0
 
     static let maximumLeafSize = 4
+    /// Traversal stacks are fixed-size, so the tree depth is capped.
+    static let maximumDepth = 60
 
     public init(mesh: Mesh) {
+        // Faces are independent, so chunks are gathered in parallel and joined in face order.
+        let faceCount = mesh.topology.faces.count
+        let chunkSize = 2_048
+        let chunkCount = (faceCount + chunkSize - 1) / chunkSize
+        var chunks = [[Triangle]](repeating: [], count: chunkCount)
+        chunks.withUnsafeMutableBufferPointer { buffer in
+            // Each task writes only its own chunk.
+            nonisolated(unsafe) let chunks = buffer
+            DispatchQueue.concurrentPerform(iterations: chunkCount) { chunk in
+                let start = chunk * chunkSize
+                chunks[chunk] = Self.triangles(of: mesh, faces: start..<Swift.min(start + chunkSize, faceCount))
+            }
+        }
+        self.init(triangles: Array(chunks.joined()))
+    }
+
+    private static func triangles(of mesh: Mesh, faces: Range<Int>) -> [Triangle] {
         var triangles: [Triangle] = []
-        for face in mesh.topology.faces {
+        triangles.reserveCapacity(faces.count)
+        let halfEdges = mesh.topology.halfEdges
+        let positions = mesh.positions
+        for face in mesh.topology.faces[faces] {
+            // Fast path for a plain triangle: walk the loop directly instead of collecting it into an array.
+            if face.holeEdges.isEmpty, let first = face.edge, let second = halfEdges[first.raw].next,
+               let third = halfEdges[second.raw].next, halfEdges[third.raw].next == first {
+                triangles.append(Triangle(
+                    positions[halfEdges[first.raw].origin.raw],
+                    positions[halfEdges[second.raw].origin.raw],
+                    positions[halfEdges[third.raw].origin.raw],
+                    face: face.id
+                ))
+                continue
+            }
             for corners in mesh.triangulatedCorners(of: face.id) {
-                let halfEdges = mesh.topology.halfEdges
                 triangles.append(Triangle(
                     mesh.positions[halfEdges[corners.0.raw].origin.raw],
                     mesh.positions[halfEdges[corners.1.raw].origin.raw],
@@ -67,7 +122,7 @@ public struct TriangleBVH: Sendable {
                 ))
             }
         }
-        self.init(triangles: triangles)
+        return triangles
     }
 
     public init(triangles: [Triangle]) {
@@ -75,130 +130,278 @@ public struct TriangleBVH: Sendable {
         guard !triangles.isEmpty else {
             return
         }
-        let centroids = triangles.map { ($0.a + $0.b + $0.c) / 3 }
-        var order = Array(triangles.indices)
-        nodes.reserveCapacity(2 * triangles.count / Self.maximumLeafSize + 1)
-        build(range: 0..<order.count, order: &order, centroids: centroids)
-        self.triangles = order.map { triangles[$0] }
+        var builder = Builder(triangles: triangles)
+        builder.build(range: 0..<triangles.count, depth: 0)
+        self.triangles = builder.order.map { triangles[$0] }
+        vertexA = self.triangles.map(\.a)
+        edgeAB = self.triangles.map { $0.b - $0.a }
+        edgeAC = self.triangles.map { $0.c - $0.a }
+        let depth: Int
+        (wideNodes, blocks, depth) = collapse(builder.nodes)
+        stackCapacity = Self.stackCapacity(depth: depth)
+        blockDots = blocks.map(BlockDots.init)
     }
 
-    private mutating func build(range: Range<Int>, order: inout [Int], centroids: [SIMD3<Float>]) {
-        var boxMin = SIMD3<Float>(repeating: .infinity)
-        var boxMax = SIMD3<Float>(repeating: -.infinity)
-        var centroidMin = SIMD3<Float>(repeating: .infinity)
-        var centroidMax = SIMD3<Float>(repeating: -.infinity)
-        for index in order[range] {
-            let triangle = triangles[index]
-            boxMin = simd_min(boxMin, simd_min(triangle.a, simd_min(triangle.b, triangle.c)))
-            boxMax = simd_max(boxMax, simd_max(triangle.a, simd_max(triangle.b, triangle.c)))
-            centroidMin = simd_min(centroidMin, centroids[index])
-            centroidMax = simd_max(centroidMax, centroids[index])
-        }
-        let nodeIndex = nodes.count
-        nodes.append(Node(min: boxMin, max: boxMax, offset: range.lowerBound, triangleCount: range.count))
+    /// Top-down build with a binned surface area heuristic (SAH).
+    struct Builder {
+        static let binCount = 32
+        /// Cost of visiting a node, relative to testing one triangle.
+        static let traversalCost: Float = 2
 
-        let extent = centroidMax - centroidMin
-        guard range.count > Self.maximumLeafSize, simd_reduce_max(extent) > 0 else {
-            return
-        }
-        let axis = extent.x >= extent.y ? (extent.x >= extent.z ? 0 : 2) : (extent.y >= extent.z ? 1 : 2)
-        order[range].sort { centroids[$0][axis] < centroids[$1][axis] }
-        let middle = (range.lowerBound + range.upperBound) / 2
+        var boxMin: [SIMD3<Float>]
+        var boxMax: [SIMD3<Float>]
+        var centroids: [SIMD3<Float>]
+        var order: [Int]
+        var nodes: [Node] = []
+        var binLower = [SIMD3<Float>](repeating: .zero, count: 3 * binCount)
+        var binUpper = [SIMD3<Float>](repeating: .zero, count: 3 * binCount)
+        var binCounts = [Int](repeating: 0, count: 3 * binCount)
+        var rightCost = [Float](repeating: 0, count: binCount)
 
-        nodes[nodeIndex].triangleCount = 0
-        build(range: range.lowerBound..<middle, order: &order, centroids: centroids)
-        nodes[nodeIndex].offset = nodes.count
-        build(range: middle..<range.upperBound, order: &order, centroids: centroids)
-    }
-
-    /// The closest point on any triangle to `point`, or nil when there are no triangles.
-    public func closestPoint(to point: SIMD3<Float>) -> ClosestPoint? {
-        guard !nodes.isEmpty else {
-            return nil
+        init(triangles: [Triangle]) {
+            boxMin = triangles.map { simd_min($0.a, simd_min($0.b, $0.c)) }
+            boxMax = triangles.map { simd_max($0.a, simd_max($0.b, $0.c)) }
+            centroids = zip(boxMin, boxMax).map { ($0 + $1) * 0.5 }
+            order = Array(triangles.indices)
+            nodes.reserveCapacity(2 * triangles.count / 2 + 1)
         }
-        var best: ClosestPoint?
-        var bestDistanceSquared = Float.infinity
-        var stack = [0]
-        while let nodeIndex = stack.popLast() {
-            let node = nodes[nodeIndex]
-            guard Self.distanceSquared(from: point, toBoxMin: node.min, max: node.max) < bestDistanceSquared else {
-                continue
+
+        /// Cost of testing `count` triangles: they are tested four at a time, so a partly filled block costs a full one.
+        static func testCost(_ count: Int) -> Float {
+            Float((count + 3) / 4 * 4)
+        }
+
+        static func halfArea(_ lower: SIMD3<Float>, _ upper: SIMD3<Float>) -> Float {
+            let size = simd_max(upper - lower, .zero)
+            return size.x * size.y + size.y * size.z + size.z * size.x
+        }
+
+        mutating func build(range: Range<Int>, depth: Int) {
+            var lower = SIMD3<Float>(repeating: .infinity)
+            var upper = SIMD3<Float>(repeating: -.infinity)
+            var centroidLower = SIMD3<Float>(repeating: .infinity)
+            var centroidUpper = SIMD3<Float>(repeating: -.infinity)
+            for position in range {
+                let index = order[position]
+                lower = simd_min(lower, boxMin[index])
+                upper = simd_max(upper, boxMax[index])
+                centroidLower = simd_min(centroidLower, centroids[index])
+                centroidUpper = simd_max(centroidUpper, centroids[index])
             }
-            if node.isLeaf {
-                for index in node.offset..<(node.offset + node.triangleCount) {
-                    let triangle = triangles[index]
-                    let candidate = GeometryLite3D.closestPoint(onTriangle: triangle.a, triangle.b, triangle.c, to: point)
-                    let distanceSquared = simd_distance_squared(candidate.point, point)
-                    if distanceSquared < bestDistanceSquared {
-                        bestDistanceSquared = distanceSquared
-                        best = ClosestPoint(point: candidate.point, distance: 0, triangle: index, barycentrics: candidate.barycentrics)
+            let nodeIndex = nodes.count
+            nodes.append(Node(min: lower, max: upper, offset: range.lowerBound, triangleCount: range.count))
+
+            let extent = centroidUpper - centroidLower
+            guard range.count > 1, depth < TriangleBVH.maximumDepth, simd_reduce_max(extent) > 0 else {
+                return
+            }
+
+            // Bin centroids on every axis and find the cheapest split.
+            let binCount = Self.binCount
+            // Zero scale on flat axes puts every centroid in bin 0 there (those axes are not split).
+            let scale = (SIMD3<Float>(repeating: Float(binCount)) / extent).replacing(with: 0, where: extent .<= 0)
+            var bestCost = Float.infinity
+            var bestAxis = 0
+            var bestSplit = 0
+            // Reusable scratch bins for all three axes (slot = axis * binCount + bin), filled in one pass.
+            for slot in 0..<(3 * binCount) {
+                binLower[slot] = SIMD3(repeating: .infinity)
+                binUpper[slot] = SIMD3(repeating: -.infinity)
+                binCounts[slot] = 0
+            }
+            for position in range {
+                let index = order[position]
+                let lowerBox = boxMin[index]
+                let upperBox = boxMax[index]
+                let centroid = centroids[index]
+                for axis in 0..<3 {
+                    let slot = axis * binCount + Swift.min(binCount - 1, Int((centroid[axis] - centroidLower[axis]) * scale[axis]))
+                    binCounts[slot] += 1
+                    binLower[slot] = simd_min(binLower[slot], lowerBox)
+                    binUpper[slot] = simd_max(binUpper[slot], upperBox)
+                }
+            }
+            for axis in 0..<3 where extent[axis] > 0 {
+                let base = axis * binCount
+                // Sweep from the right, then from the left.
+                var sweepLower = SIMD3<Float>(repeating: .infinity)
+                var sweepUpper = SIMD3<Float>(repeating: -.infinity)
+                var sweepCount = 0
+                for bin in stride(from: binCount - 1, to: 0, by: -1) {
+                    sweepLower = simd_min(sweepLower, binLower[base + bin])
+                    sweepUpper = simd_max(sweepUpper, binUpper[base + bin])
+                    sweepCount += binCounts[base + bin]
+                    rightCost[bin] = Self.halfArea(sweepLower, sweepUpper) * Self.testCost(sweepCount)
+                }
+                sweepLower = SIMD3(repeating: .infinity)
+                sweepUpper = SIMD3(repeating: -.infinity)
+                sweepCount = 0
+                for split in 1..<binCount {
+                    sweepLower = simd_min(sweepLower, binLower[base + split - 1])
+                    sweepUpper = simd_max(sweepUpper, binUpper[base + split - 1])
+                    sweepCount += binCounts[base + split - 1]
+                    guard sweepCount > 0, sweepCount < range.count else {
+                        continue
+                    }
+                    let cost = Self.halfArea(sweepLower, sweepUpper) * Self.testCost(sweepCount) + rightCost[split]
+                    if cost < bestCost {
+                        bestCost = cost
+                        bestAxis = axis
+                        bestSplit = split
                     }
                 }
-            } else {
-                let left = nodeIndex + 1
-                let right = node.offset
-                let leftDistance = Self.distanceSquared(from: point, toBoxMin: nodes[left].min, max: nodes[left].max)
-                let rightDistance = Self.distanceSquared(from: point, toBoxMin: nodes[right].min, max: nodes[right].max)
-                // Push the farther child first so the nearer one is searched first.
-                if leftDistance < rightDistance {
-                    stack.append(right)
-                    stack.append(left)
-                } else {
-                    stack.append(left)
-                    stack.append(right)
-                }
             }
-        }
-        best?.distance = bestDistanceSquared.squareRoot()
-        return best
-    }
 
-    /// The nearest triangle hit along `ray`, or nil when the ray misses.
-    public func intersect(ray: Ray3D, cullBackFaces: Bool = false) -> RayHit? {
-        guard !nodes.isEmpty else {
-            return nil
-        }
-        let inverseDirection = 1 / ray.direction
-        var best: RayHit?
-        var bestDistance = Float.infinity
-        var stack = [0]
-        while let nodeIndex = stack.popLast() {
-            let node = nodes[nodeIndex]
-            guard let entry = Self.slabEntry(ray: ray, inverseDirection: inverseDirection, boxMin: node.min, max: node.max), entry <= bestDistance else {
-                continue
+            let leafCost = Self.testCost(range.count)
+            let splitCost = Self.traversalCost + bestCost / Self.halfArea(lower, upper)
+            if range.count <= TriangleBVH.maximumLeafSize, leafCost <= splitCost {
+                return
             }
-            if node.isLeaf {
-                for index in node.offset..<(node.offset + node.triangleCount) {
-                    let triangle = triangles[index]
-                    if let hit = ray.intersect(triangle: triangle.a, triangle.b, triangle.c, cullBackFaces: cullBackFaces), hit.distance < bestDistance {
-                        bestDistance = hit.distance
-                        best = RayHit(distance: hit.distance, triangle: index, barycentrics: hit.barycentrics)
+
+            var middle: Int
+            if bestCost.isFinite {
+                // Partition by bin.
+                var left = range.lowerBound
+                var right = range.upperBound - 1
+                while left <= right {
+                    let index = order[left]
+                    let bin = Swift.min(binCount - 1, Int((centroids[index][bestAxis] - centroidLower[bestAxis]) * scale[bestAxis]))
+                    if bin < bestSplit {
+                        left += 1
+                    } else {
+                        order.swapAt(left, right)
+                        right -= 1
                     }
                 }
+                middle = left
             } else {
-                stack.append(node.offset)
-                stack.append(nodeIndex + 1)
+                middle = range.lowerBound
+            }
+            if middle == range.lowerBound || middle == range.upperBound {
+                // All centroids fell in one bin: split at the median of the longest axis.
+                let axis = extent.x >= extent.y ? (extent.x >= extent.z ? 0 : 2) : (extent.y >= extent.z ? 1 : 2)
+                let centroids = centroids
+                order[range].sort { centroids[$0][axis] < centroids[$1][axis] }
+                middle = (range.lowerBound + range.upperBound) / 2
+            }
+
+            nodes[nodeIndex].triangleCount = 0
+            let leftRange = range.lowerBound..<middle
+            let rightRange = middle..<range.upperBound
+            if depth < Self.parallelDepth, range.count >= Self.parallelMinimumCount {
+                buildInParallel(nodeIndex: nodeIndex, leftRange: leftRange, rightRange: rightRange, depth: depth + 1)
+                return
+            }
+            build(range: leftRange, depth: depth + 1)
+            nodes[nodeIndex].offset = nodes.count
+            build(range: rightRange, depth: depth + 1)
+        }
+
+        /// Top levels split into up to 2^parallelDepth subtrees that build at the same time.
+        static let parallelDepth = 3
+        static let parallelMinimumCount = 4_096
+
+        /// Builds the two children on separate copies of the builder, then appends their nodes in pre-order.
+        /// Each copy only reorders its own range of `order`, so the ranges are copied back without overlap.
+        private mutating func buildInParallel(nodeIndex: Int, leftRange: Range<Int>, rightRange: Range<Int>, depth: Int) {
+            var children = [self, self]
+            for index in children.indices {
+                children[index].nodes = []
+            }
+            let ranges = [leftRange, rightRange]
+            children.withUnsafeMutableBufferPointer { buffer in
+                // Each task writes only its own element.
+                nonisolated(unsafe) let builders = buffer
+                DispatchQueue.concurrentPerform(iterations: 2) { child in
+                    builders[child].build(range: ranges[child], depth: depth)
+                }
+            }
+            for (child, range) in zip(children, ranges) {
+                if range == rightRange {
+                    nodes[nodeIndex].offset = nodes.count
+                }
+                let base = nodes.count
+                for var node in child.nodes {
+                    if !node.isLeaf {
+                        node.offset += base
+                    }
+                    nodes.append(node)
+                }
+                order.replaceSubrange(range, with: child.order[range])
             }
         }
-        return best
     }
 
-    static func distanceSquared(from point: SIMD3<Float>, toBoxMin boxMin: SIMD3<Float>, max boxMax: SIMD3<Float>) -> Float {
-        let offset = simd_max(simd_max(boxMin - point, point - boxMax), .zero)
-        return simd_length_squared(offset)
-    }
-
-    /// Distance along the ray where it enters the box (0 when the origin is inside), or nil on a miss.
-    static func slabEntry(ray: Ray3D, inverseDirection: SIMD3<Float>, boxMin: SIMD3<Float>, max boxMax: SIMD3<Float>) -> Float? {
-        let t0 = (boxMin - ray.origin) * inverseDirection
-        let t1 = (boxMax - ray.origin) * inverseDirection
-        // 0 * infinity gives NaN when an axis-parallel ray starts on a slab plane; that axis then does not limit the ray.
-        let unbounded = (t0 .!= t0) .| (t1 .!= t1)
-        let near = simd_reduce_max(simd_min(t0, t1).replacing(with: -.infinity, where: unbounded))
-        let far = simd_reduce_min(simd_max(t0, t1).replacing(with: .infinity, where: unbounded))
-        guard far >= Swift.max(near, 0) else {
+    /// Möller–Trumbore, matching `Ray3D.intersect(triangle:cullBackFaces:)`. Returns distance and barycentric u, v.
+    @inline(__always)
+    static func intersectTriangle(origin: SIMD3<Float>, direction: SIMD3<Float>, _ a: SIMD3<Float>, _ edge1: SIMD3<Float>, _ edge2: SIMD3<Float>, cullBackFaces: Bool) -> (Float, Float, Float)? {
+        let epsilon: Float = 1e-12
+        let p = simd_cross(direction, edge2)
+        let determinant = simd_dot(edge1, p)
+        if cullBackFaces {
+            if determinant < epsilon {
+                return nil
+            }
+        } else if abs(determinant) < epsilon {
             return nil
         }
-        return Swift.max(near, 0)
+        let inverseDeterminant = 1 / determinant
+        let s = origin - a
+        let u = simd_dot(s, p) * inverseDeterminant
+        if u < 0 || u > 1 {
+            return nil
+        }
+        let q = simd_cross(s, edge1)
+        let v = simd_dot(direction, q) * inverseDeterminant
+        if v < 0 || u + v > 1 {
+            return nil
+        }
+        let distance = simd_dot(edge2, q) * inverseDeterminant
+        if distance < 0 {
+            return nil
+        }
+        return (distance, u, v)
+    }
+
+    /// Ericson, Real-Time Collision Detection 5.1.5, matching GeometryLite3D's `closestPoint(onTriangle:)`.
+    @inline(__always)
+    static func closestPointOnTriangle(_ a: SIMD3<Float>, _ ab: SIMD3<Float>, _ ac: SIMD3<Float>, to p: SIMD3<Float>) -> (SIMD3<Float>, SIMD3<Float>) {
+        let ap = p - a
+        let d1 = simd_dot(ab, ap)
+        let d2 = simd_dot(ac, ap)
+        if d1 <= 0, d2 <= 0 {
+            return (a, [1, 0, 0])
+        }
+        let bp = ap - ab
+        let d3 = simd_dot(ab, bp)
+        let d4 = simd_dot(ac, bp)
+        if d3 >= 0, d4 <= d3 {
+            return (a + ab, [0, 1, 0])
+        }
+        let vc = d1 * d4 - d3 * d2
+        if vc <= 0, d1 >= 0, d3 <= 0 {
+            let v = d1 / (d1 - d3)
+            return (a + v * ab, [1 - v, v, 0])
+        }
+        let cp = ap - ac
+        let d5 = simd_dot(ab, cp)
+        let d6 = simd_dot(ac, cp)
+        if d6 >= 0, d5 <= d6 {
+            return (a + ac, [0, 0, 1])
+        }
+        let vb = d5 * d2 - d1 * d6
+        if vb <= 0, d2 >= 0, d6 <= 0 {
+            let w = d2 / (d2 - d6)
+            return (a + w * ac, [1 - w, 0, w])
+        }
+        let va = d3 * d6 - d5 * d4
+        if va <= 0, d4 - d3 >= 0, d5 - d6 >= 0 {
+            let w = (d4 - d3) / ((d4 - d3) + (d5 - d6))
+            return (a + ab + w * (ac - ab), [0, 1 - w, w])
+        }
+        let denominator = va + vb + vc
+        let v = vb / denominator
+        let w = vc / denominator
+        return (a + ab * v + ac * w, [1 - v - w, v, w])
     }
 }
