@@ -3738,20 +3738,31 @@ Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a si
 
 ---
 
-## 181: Faster TriangleBVH build
+## 181: Faster TriangleBVH build and queries
 
 +++
 status: new
 priority: low
 kind: enhancement
-labels: effort:s, area:performance
+labels: area:performance, effort:m
 created: 2026-10-19T15:47:53Z
+updated: 2026-10-19T15:48:18Z
 +++
 
-TriangleBVH(mesh:) takes 10.8 ms for icoSphere5 (20,480 triangles) in release (bench: bvh.build.icoSphere5). The Manifold-derived Collider builds the same mesh in 1.6 ms.
+TriangleBVH is correct but not tuned. Release numbers on icoSphere5 (20,480 triangles), from SwiftMeshBenchmarks bvh.*:
+- build: 10.8 ms. The Manifold-derived Collider builds the same mesh in 1.6 ms.
+- closest point: ~4.9 µs per query (37x brute force). A 128^3 SDF bake (#180) is ~2.1M queries, ~10 s on one thread.
+- ray: ~0.5 µs per query.
 
-The build fully sorts the triangle range on the split axis at every level (O(n log² n)). Use a partial partition around the median (nth_element style) or binned SAH instead. Binned SAH may also make queries faster. Also measure how much time triangulatedCorners takes.
+Build ideas: the build fully sorts the range on the split axis at every level (O(n log² n)); use a partial median partition (nth_element style) or binned SAH. Measure time in triangulatedCorners.
 
-Acceptance: bvh.build.icoSphere5 is several times faster; bvh.closestPoint and bvh.ray are not slower; TriangleBVHTests pass.
+Query ideas:
+- Binned SAH for tighter nodes and less overlap.
+- Cache-friendly layout: compact nodes (e.g. 32 bytes), triangles stored as SoA or with precomputed edges.
+- Closest point: use a fixed-size stack instead of an Array; compute each child's box distance once.
+- Ray: order children by ray direction sign; precompute Möller–Trumbore edge vectors.
+- Wider nodes (4-wide, SIMD box tests) if the above is not enough.
+
+Acceptance: bvh.build, bvh.closestPoint and bvh.ray are each clearly faster (target 2x or more for queries); TriangleBVHTests pass.
 
 ---
