@@ -3723,13 +3723,14 @@ Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a si
 ## 180: Signed distance, and baking a signed distance field to a grid
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:triangle-mesh, effort:m
 depends: 176, 178, 179
 created: 2026-10-19T15:22:20Z
-updated: 2026-10-19T15:22:54Z
+updated: 2026-10-19T15:58:21Z
+closed: 2026-10-19T15:58:21Z
 +++
 
 Combine closest point (#178) and the inside test (#179) into a signed distance (negative inside), and bake it on a regular 3D grid: given bounds (from #176, padded) and a resolution, return the distances as a flat [Float] in x-fastest order with the grid's origin and spacing. CPU only and renderer independent; clients upload it as a 3D texture.
@@ -3766,5 +3767,24 @@ Query ideas:
 - Wider nodes (4-wide, SIMD box tests) if the above is not enough.
 
 Acceptance: bvh.build, bvh.closestPoint and bvh.ray are each clearly faster (target 2x or more for queries); TriangleBVHTests pass.
+
+---
+
+## 182: Fast generalized winding number with the BVH
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:m, area:performance
+depends: 177
+created: 2026-10-19T15:54:34Z
++++
+
+Mesh.windingNumber(at:) sums the solid angle of every triangle, so each query is O(n). A 128^3 SDF bake (#180) on a 20,480-triangle mesh needs about 40 billion solid-angle evaluations.
+
+Add the hierarchical approximation of Barill et al. 2018 (Fast Winding Numbers for Soups and Clouds): store each TriangleBVH node's area-weighted normal sum (dipole term) and center. For a point far from a node (distance > beta * node radius, beta ~2), use the node's far-field term instead of descending; near nodes fall back to exact solid angles.
+
+Acceptance: the fast path is within 1e-3 of the exact winding number on a cube, torus, sphere and an open cube for random points; a benchmark against the exact sum on icoSphere5 shows a large speedup (target 50x or more for 1,000 queries); existing WindingNumberTests pass.
 
 ---

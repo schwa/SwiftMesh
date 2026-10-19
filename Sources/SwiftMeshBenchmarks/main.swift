@@ -219,6 +219,14 @@ benchmarks.append(Benchmark(name: "bvh.ray.1000.icoSphere5.bruteForce") {
     }
 })
 
+for resolution in [32, 64, 128] {
+    benchmarks.append(Benchmark(name: "sdf.bake.icoSphere5.\(resolution)") {
+        let mesh = Mesh.icoSphere(subdivisions: 5, attributes: [])
+        let bvh = TriangleBVH(mesh: mesh)
+        return { _ = mesh.signedDistanceField(resolution: SIMD3(repeating: resolution), padding: 0.1, bvh: bvh) }
+    })
+}
+
 // Robust Boolean broad phase: edges of a rotated icoSphere4 against a face BVH of icoSphere5.
 benchmarks.append(Benchmark(name: "collider.build.icoSphere5") {
     let mesh = try! BooleanMesh(mesh: .icoSphere(subdivisions: 5, attributes: []))
