@@ -3662,11 +3662,13 @@ Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a si
 ## 177: Bounding volume hierarchy for triangle queries
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:performance, effort:m
 created: 2026-10-19T15:22:20Z
+updated: 2026-10-19T15:47:53Z
+closed: 2026-10-19T15:47:53Z
 +++
 
 Add a BVH over a mesh's triangles (built from the triangulated faces), as the base for closest-point, distance, and ray queries. Without it, each query tests every triangle: baking a 128^3 distance grid against a 10,000-triangle mesh is about 20 billion triangle tests.
@@ -3733,5 +3735,23 @@ Combine closest point (#178) and the inside test (#179) into a signed distance (
 Acceptance: a baked sphere matches the analytic signed distance within one grid cell; signs are right inside and outside a cube; the grid layout is documented.
 
 Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a signed distance field from a SwiftMesh mesh so particles can collide with arbitrary geometry. Also useful for picking, snapping, and physics elsewhere in the MetalSprockets ecosystem.
+
+---
+
+## 181: Faster TriangleBVH build
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: effort:s, area:performance
+created: 2026-10-19T15:47:53Z
++++
+
+TriangleBVH(mesh:) takes 10.8 ms for icoSphere5 (20,480 triangles) in release (bench: bvh.build.icoSphere5). The Manifold-derived Collider builds the same mesh in 1.6 ms.
+
+The build fully sorts the triangle range on the split axis at every level (O(n log² n)). Use a partial partition around the median (nth_element style) or binned SAH instead. Binned SAH may also make queries faster. Also measure how much time triangulatedCorners takes.
+
+Acceptance: bvh.build.icoSphere5 is several times faster; bvh.closestPoint and bvh.ray are not slower; TriangleBVHTests pass.
 
 ---

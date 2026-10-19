@@ -41,7 +41,7 @@ let package = Package(
             dependencies: ["SwiftMesh"]
         ),
         .target(name: "BinPacking"),
-        .executableTarget(name: "SwiftMeshBenchmarks", dependencies: ["SwiftMesh", "SwiftMeshIO", "BinPacking", .product(name: "Geometry", package: "GeometryLite2D")]),
+        .executableTarget(name: "SwiftMeshBenchmarks", dependencies: ["SwiftMesh", "SwiftMeshIO", "BinPacking", .product(name: "Geometry", package: "GeometryLite2D"), .product(name: "GeometryLite3D", package: "GeometryLite3D")]),
         .testTarget(name: "SwiftMeshTests", dependencies: ["SwiftMesh", "BinPacking"], resources: [.copy("Resources/ManifoldPolygons")]),
         .testTarget(name: "SwiftMeshIOTests", dependencies: ["SwiftMeshIO"]),
         .testTarget(name: "BinPackingTests", dependencies: ["BinPacking"])

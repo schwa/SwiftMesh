@@ -2,6 +2,7 @@
 import BinPacking
 import Foundation
 import Geometry
+import GeometryLite3D
 import Metal
 import simd
 import SwiftMesh
@@ -163,6 +164,58 @@ benchmarks.append(Benchmark(name: "binPacking.maxRects.roomPlan745") {
     return {
         var packer = MaxRectsPacker<Int>(binSize: [4_096, 4_096], padding: 2)
         _ = packer.pack(sizes)
+    }
+})
+
+// Triangle BVH: 1,000 closest-point and ray queries against icoSphere5 (20,480 triangles), with brute-force baselines.
+let bvhQueryPoints = randomPoints(1_000).map { $0 * 1.5 }
+let bvhRays = zip(randomPoints(1_000, seed: 2), randomPoints(1_000, seed: 3)).map { Ray3D(origin: $0 * 2, direction: $1 * 0.3 - $0 * 2) }
+benchmarks.append(Benchmark(name: "bvh.build.icoSphere5") {
+    let mesh = Mesh.icoSphere(subdivisions: 5, attributes: [])
+    return { _ = TriangleBVH(mesh: mesh) }
+})
+benchmarks.append(Benchmark(name: "bvh.closestPoint.1000.icoSphere5") {
+    let bvh = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: []))
+    return {
+        var sum: Float = 0
+        for point in bvhQueryPoints {
+            sum += bvh.closestPoint(to: point)?.distance ?? 0
+        }
+        precondition(sum.isFinite)
+    }
+})
+benchmarks.append(Benchmark(name: "bvh.closestPoint.1000.icoSphere5.bruteForce") {
+    let triangles = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: [])).triangles
+    return {
+        var sum: Float = 0
+        for point in bvhQueryPoints {
+            var best = Float.infinity
+            for triangle in triangles {
+                best = min(best, simd_distance_squared(closestPoint(onTriangle: triangle.a, triangle.b, triangle.c, to: point).point, point))
+            }
+            sum += best.squareRoot()
+        }
+        precondition(sum.isFinite)
+    }
+})
+benchmarks.append(Benchmark(name: "bvh.ray.1000.icoSphere5") {
+    let bvh = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: []))
+    return {
+        var hits = 0
+        for ray in bvhRays where bvh.intersect(ray: ray) != nil {
+            hits += 1
+        }
+        precondition(hits > 0)
+    }
+})
+benchmarks.append(Benchmark(name: "bvh.ray.1000.icoSphere5.bruteForce") {
+    let triangles = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: [])).triangles
+    return {
+        var hits = 0
+        for ray in bvhRays where triangles.contains(where: { ray.intersect(triangle: $0.a, $0.b, $0.c) != nil }) {
+            hits += 1
+        }
+        precondition(hits > 0)
     }
 })
 
