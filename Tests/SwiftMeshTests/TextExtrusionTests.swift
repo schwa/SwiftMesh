@@ -19,7 +19,7 @@ struct TextExtrusionTests {
     @Test("Text is upright, starts at the origin, and spans the depth")
     func orientation() {
         let mesh = Mesh.extrudedText("T", size: 10, depth: 2, attributes: [])
-        let (low, high) = (mesh.bounds.min, mesh.bounds.max)
+        let (low, high) = (mesh.bounds!.min, mesh.bounds!.max)
         #expect(low.z == 0)
         #expect(high.z == 2)
         #expect(low.y > -0.5) // baseline at y = 0, T has no descender

@@ -15,7 +15,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/schwa/GeometryLite2D", .upToNextMinor(from: "0.0.4")),
-        .package(url: "https://github.com/schwa/GeometryLite3D", .upToNextMinor(from: "0.2.4")),
+        .package(url: "https://github.com/schwa/GeometryLite3D", .upToNextMinor(from: "0.2.5")),
         .package(url: "https://github.com/schwa/MetalSupport", .upToNextMinor(from: "1.0.7"))
     ],
     targets: [

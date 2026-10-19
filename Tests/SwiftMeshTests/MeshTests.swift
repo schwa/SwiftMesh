@@ -12,6 +12,26 @@ struct MeshTests {
         #expect(SIMD3<Float>.zero.normalized(or: [0, 0, 1]) == [0, 0, 1])
     }
 
+    @Test("Bounds of a cube")
+    func cubeBounds() throws {
+        let bounds = try #require(Mesh.cube(extents: [2, 4, 6]).bounds)
+        #expect(bounds.min == [-1, -2, -3])
+        #expect(bounds.max == [1, 2, 3])
+    }
+
+    @Test("Bounds of an asymmetric mesh")
+    func asymmetricBounds() throws {
+        let mesh = Mesh(positions: [[1, -2, 5], [3, 0, 4], [2, 7, -1]], faces: [[0, 1, 2]])
+        let bounds = try #require(mesh.bounds)
+        #expect(bounds.min == [1, -2, -1])
+        #expect(bounds.max == [3, 7, 5])
+    }
+
+    @Test("Empty mesh has no bounds")
+    func emptyBounds() {
+        #expect(Mesh(positions: [], faces: [[Int]]()).bounds == nil)
+    }
+
     @Test("Init from positions and face index arrays")
     func initIndexed() {
         let mesh = Mesh(positions: [

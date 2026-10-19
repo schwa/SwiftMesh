@@ -317,7 +317,7 @@ struct MetalMeshView: View {
             prepared.textureCoordinates = overlay.textureCoordinates(for: prepared)
         }
         // Lift mesh so its bottom sits on the ground plane
-        meshYOffset = -prepared.bounds.min.y
+        meshYOffset = -(prepared.bounds?.min.y ?? 0)
         metalMesh = MetalMesh(mesh: prepared, device: device, label: "MetalMeshView")
     }
 

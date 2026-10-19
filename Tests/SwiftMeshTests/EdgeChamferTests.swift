@@ -8,7 +8,7 @@ struct EdgeChamferTests {
         #expect(mesh.validate().isEmpty)
         #expect(mesh.isManifold)
         #expect(!mesh.topology.hasInconsistentFaceWinding)
-        let center = (mesh.bounds.min + mesh.bounds.max) / 2
+        let center = (mesh.bounds!.min + mesh.bounds!.max) / 2
         for face in mesh.topology.faces {
             #expect(simd_dot(mesh.faceNormal(face.id), mesh.faceCentroid(face.id) - center) > 0)
         }

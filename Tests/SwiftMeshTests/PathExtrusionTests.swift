@@ -11,8 +11,8 @@ struct PathExtrusionTests {
         #expect(mesh.faceCount == 6)
         #expect(mesh.validate().isEmpty)
         #expect(mesh.isManifold)
-        #expect(mesh.bounds.min == [0, -1, 0])
-        #expect(mesh.bounds.max == [2, 0, 0.5])
+        #expect(mesh.bounds!.min == [0, -1, 0])
+        #expect(mesh.bounds!.max == [2, 0, 0.5])
         let center = mesh.center
         for face in mesh.topology.faces {
             #expect(simd_dot(mesh.faceNormal(face.id), mesh.faceCentroid(face.id) - center) > 0)

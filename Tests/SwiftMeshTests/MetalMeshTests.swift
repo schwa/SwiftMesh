@@ -310,12 +310,12 @@ struct MetalMeshTests {
 
         let meshes = try [Mesh](mdlAsset: asset, device: device)
         #expect(meshes.count == 2)
-        #expect(simd_distance((meshes[0].bounds.min + meshes[0].bounds.max) / 2, .zero) < 1e-5)
-        #expect(simd_distance((meshes[1].bounds.min + meshes[1].bounds.max) / 2, [10, 5, 0]) < 1e-5)
-        #expect(simd_distance(meshes[1].bounds.max - meshes[1].bounds.min, [2, 2, 2]) < 1e-5)
+        #expect(simd_distance((meshes[0].bounds!.min + meshes[0].bounds!.max) / 2, .zero) < 1e-5)
+        #expect(simd_distance((meshes[1].bounds!.min + meshes[1].bounds!.max) / 2, [10, 5, 0]) < 1e-5)
+        #expect(simd_distance(meshes[1].bounds!.max - meshes[1].bounds!.min, [2, 2, 2]) < 1e-5)
 
         let local = try [Mesh](mdlAsset: asset, device: device, applyingTransforms: false)
-        #expect(simd_distance((local[1].bounds.min + local[1].bounds.max) / 2, .zero) < 1e-5)
+        #expect(simd_distance((local[1].bounds!.min + local[1].bounds!.max) / 2, .zero) < 1e-5)
     }
 
     @Test("MDLMesh to MetalMesh keeps every attribute without going through Mesh")

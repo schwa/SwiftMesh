@@ -38,7 +38,7 @@ struct PrimitiveDefaultNormalsTests {
         #expect(meshes.allSatisfy { $0.1.textureCoordinates != nil })
 
         let cone = Mesh.cone(capped: false)
-        #expect(!Self.hasFacetedVertex(cone, ignoringY: cone.bounds.max.y))
+        #expect(!Self.hasFacetedVertex(cone, ignoringY: cone.bounds!.max.y))
     }
 
     @Test("Flat-faced primitives default to flat normals", arguments: [

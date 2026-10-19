@@ -3642,11 +3642,13 @@ Check: run a release benchmark of `Mesh2D(segments:)` from a separate module, be
 ## 176: Public bounding box for Mesh
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:triangle-mesh, effort:xs
 created: 2026-10-19T15:22:20Z
+updated: 2026-10-19T15:39:43Z
+closed: 2026-10-19T15:39:43Z
 +++
 
 Mesh has no public bounds. MetalMesh computes them internally (bounds(of:) in MetalMesh+Extras.swift). Add a public bounds (BoundingBox3D or min/max) on Mesh, from its positions.
@@ -3721,7 +3723,7 @@ status: open
 priority: medium
 kind: feature
 labels: area:triangle-mesh, effort:m
-depends: 176,178,179
+depends: 176, 178, 179
 created: 2026-10-19T15:22:20Z
 updated: 2026-10-19T15:22:54Z
 +++

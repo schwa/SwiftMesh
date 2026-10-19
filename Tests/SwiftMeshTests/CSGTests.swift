@@ -168,8 +168,8 @@ struct CSGTests {
     func unionVolumeGrows() {
         let (a, b) = overlappingCubes()
         let result = a.union(b)
-        let boundsA = a.bounds
-        let boundsResult = result.bounds
+        let boundsA = a.bounds!
+        let boundsResult = result.bounds!
         let volumeA = (boundsA.max.x - boundsA.min.x) * (boundsA.max.y - boundsA.min.y) * (boundsA.max.z - boundsA.min.z)
         let volumeResult = (boundsResult.max.x - boundsResult.min.x) * (boundsResult.max.y - boundsResult.min.y) * (boundsResult.max.z - boundsResult.min.z)
         #expect(volumeResult >= volumeA - 0.01)
@@ -179,8 +179,8 @@ struct CSGTests {
     func intersectionBoundsShrink() {
         let (a, b) = overlappingCubes()
         let result = a.intersection(b)
-        let boundsA = a.bounds
-        let boundsResult = result.bounds
+        let boundsA = a.bounds!
+        let boundsResult = result.bounds!
         let sizeA = boundsA.max - boundsA.min
         let sizeResult = boundsResult.max - boundsResult.min
         // Intersection should be smaller or equal on every axis
@@ -193,8 +193,8 @@ struct CSGTests {
     func differenceBoundsWithin() {
         let (a, b) = overlappingCubes()
         let result = a.difference(b)
-        let boundsA = a.bounds
-        let boundsResult = result.bounds
+        let boundsA = a.bounds!
+        let boundsResult = result.bounds!
         #expect(boundsResult.min.x >= boundsA.min.x - 0.01)
         #expect(boundsResult.min.y >= boundsA.min.y - 0.01)
         #expect(boundsResult.min.z >= boundsA.min.z - 0.01)

@@ -21,7 +21,7 @@ struct PrimitiveOrientationTests {
     @Test("Convex solids have faces pointing away from their center", arguments: convexSolids.map(\.0))
     func outwardFaces(name: String) {
         let mesh = Self.convexSolids.first { $0.0 == name }!.1
-        let center = (mesh.bounds.min + mesh.bounds.max) / 2
+        let center = (mesh.bounds!.min + mesh.bounds!.max) / 2
         for face in mesh.topology.faces where face.edge != nil {
             #expect(simd_dot(mesh.faceNormal(face.id), mesh.faceCentroid(face.id) - center) > 0, "\(name) face \(face.id)")
         }

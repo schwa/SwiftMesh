@@ -1,3 +1,4 @@
+import GeometryLite3D
 import Metal
 import MetalKit
 import ModelIO
@@ -51,7 +52,7 @@ public extension Mesh {
         if attributes.contains(.textureCoordinates) {
             // Each face maps to the full [0,1]×[0,1] square, upright seen from outside: side faces have +Y up, the
             // top face -Z up and the bottom face +Z up.
-            let bounds = mesh.bounds
+            let bounds = mesh.bounds ?? BoundingBox3D(min: .zero, max: .zero)
             let center = bounds.center
             let size = bounds.size
             var uvs = [SIMD2<Float>](repeating: .zero, count: mesh.topology.halfEdges.count)

@@ -201,9 +201,9 @@ public extension Mesh {
         return issues
     }
 
-    /// The axis-aligned bounding box of the mesh. Zero-sized at the origin when the mesh has no positions.
-    var bounds: BoundingBox3D {
-        BoundingBox3D(points: positions) ?? BoundingBox3D(min: .zero, max: .zero)
+    /// The axis-aligned bounding box of the positions, or `nil` when the mesh has no positions.
+    var bounds: BoundingBox3D? {
+        BoundingBox3D(points: positions)
     }
 
     /// Uniformly scale and translate positions so the bounding box fits within
@@ -212,6 +212,9 @@ public extension Mesh {
     /// Axes with zero extent in the target are ignored (positions on that axis
     /// are left unchanged). This allows 2D shapes to pass `SIMD3(w, h, 0)`.
     mutating func fitToExtents(_ extents: SIMD3<Float>) {
+        guard let bounds else {
+            return
+        }
         let currentSize = bounds.size
         let currentCenter = bounds.center
 
@@ -234,6 +237,9 @@ public extension Mesh {
     /// Aspect ratio is preserved — the longest axis of the bounding box
     /// matches the diameter.
     mutating func fitToDiameter(_ diameter: Float) {
+        guard let bounds else {
+            return
+        }
         let currentSize = bounds.size
         let currentCenter = bounds.center
         let maxExtent = max(currentSize.x, max(currentSize.y, currentSize.z))
