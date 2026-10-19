@@ -3797,11 +3797,13 @@ Acceptance: the fast path is within 1e-3 of the exact winding number on a cube, 
 ## 183: Profile and speed up signed distance field baking
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, area:performance
 created: 2026-10-19T15:59:59Z
+updated: 2026-10-19T19:33:13Z
+closed: 2026-10-19T19:33:13Z
 +++
 
 Mesh.signedDistanceField(resolution:padding:bvh:) bakes icoSphere5 (20,480 triangles) in release in 42 ms at 32^3, 209 ms at 64^3 and 0.98 s at 128^3 (SwiftMeshBenchmarks sdf.bake.*).
