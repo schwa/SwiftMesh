@@ -3788,3 +3788,23 @@ Add the hierarchical approximation of Barill et al. 2018 (Fast Winding Numbers f
 Acceptance: the fast path is within 1e-3 of the exact winding number on a cube, torus, sphere and an open cube for random points; a benchmark against the exact sum on icoSphere5 shows a large speedup (target 50x or more for 1,000 queries); existing WindingNumberTests pass.
 
 ---
+
+## 183: Profile and speed up signed distance field baking
+
++++
+status: new
+priority: medium
+kind: enhancement
+labels: effort:m,area:performance
+created: 2026-10-19T15:59:59Z
++++
+
+Mesh.signedDistanceField(resolution:padding:bvh:) bakes icoSphere5 (20,480 triangles) in release in 42 ms at 32^3, 209 ms at 64^3 and 0.98 s at 128^3 (SwiftMeshBenchmarks sdf.bake.*).
+
+Profile the bake to find where the time goes, then make it faster. Keep the results exact: the existing SignedDistanceFieldTests must pass unchanged. Approximate modes are out of scope.
+
+Related: #181 (BVH build and queries) and #182 (fast winding number) may help, but this issue should not depend on them.
+
+Acceptance: a short profile summary in the commit or issue; sdf.bake.icoSphere5.128 is clearly faster (target 2x or more); SignedDistanceFieldTests pass.
+
+---
