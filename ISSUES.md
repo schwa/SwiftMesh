@@ -3815,3 +3815,55 @@ Related: #181 (BVH build and queries) and #182 (fast winding number) may help, b
 Acceptance: a short profile summary in the commit or issue; sdf.bake.icoSphere5.128 is clearly faster (target 2x or more); SignedDistanceFieldTests pass.
 
 ---
+
+## 184: Division-free leaf kernel for batch distance queries
+
++++
+status: new
+priority: low
+kind: enhancement
+labels: effort:s, area:performance
+created: 2026-10-19T19:34:34Z
++++
+
+The SDF bake's batch distance query (TriangleBVH+Batch.swift) is now bound by the leaf closest-point kernel, which does five vector divisions per call. A distance-only kernel with per-block precomputed inverses (1/|ab|^2, 1/|ac|^2, 1/|bc|^2, normal and 1/|n|^2) made the bake about 6% faster (autoresearch #90: 26.2 -> 24.6 ms).
+
+It rounds differently from the single-query kernel, so SignedDistanceFieldTests 'Flood-filled signs match a winding test at every sample' fails: it requires bit-equality with signedDistance(at:). Decide whether that test can compare with a tight tolerance (the 'Baked magnitudes are the exact distances' test keeps a 1e-6 relative bound). Also check near-surface accuracy: closed-form edge distances (|ap|^2 - d^2/|e|^2) lose precision to cancellation.
+
+Acceptance: decision on the test; if relaxed, bake measurably faster on sdf.bake.* and the exact-distance test still passes.
+
+---
+
+## 185: Batch closest-point API across all cores
+
++++
+status: new
+priority: low
+kind: feature
+labels: effort:m, area:performance
+created: 2026-10-19T19:34:34Z
++++
+
+TriangleBVH queries are single-point. Single-query speed has plateaued (~150 ns geomean, see #181); per-node cost is near a dependent-load floor. The SDF bake already batches four points per traversal internally (distances(toPointsX:y:z:), internal).
+
+Add a public batch API, e.g. closestPoints(to: [SIMD3<Float>]) -> [ClosestPoint?] and distances(to:), that sorts or tiles the points for coherence, runs four per traversal, and spreads work across cores. Same for ray batches if useful.
+
+Acceptance: results identical to per-point calls; benchmark on 10,000 random points shows a large speedup over a per-point loop; documented ordering of results.
+
+---
+
+## 186: GPU ray queries with Metal acceleration structures
+
++++
+status: new
+priority: low
+kind: feature
+labels: effort:l,area:performance
+created: 2026-10-19T19:34:34Z
++++
+
+For large ray batches (picking many rays, ambient occlusion, visibility), build an MTLPrimitiveAccelerationStructure from the mesh triangles and intersect rays on the GPU. The CPU TriangleBVH stays for single queries.
+
+Acceptance: hits match TriangleBVH.intersect(ray:) on random rays (within float tolerance); benchmark shows when the GPU path beats the CPU for batch size; API makes the device and batch explicit.
+
+---
