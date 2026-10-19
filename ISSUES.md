@@ -3638,3 +3638,98 @@ Options:
 Check: run a release benchmark of `Mesh2D(segments:)` from a separate module, before and after.
 
 ---
+
+## 176: Public bounding box for Mesh
+
++++
+status: open
+priority: medium
+kind: feature
+labels: area:triangle-mesh, effort:xs
+created: 2026-10-19T15:22:20Z
++++
+
+Mesh has no public bounds. MetalMesh computes them internally (bounds(of:) in MetalMesh+Extras.swift). Add a public bounds (BoundingBox3D or min/max) on Mesh, from its positions.
+
+Acceptance: Mesh.bounds matches the extreme positions for a cube and an asymmetric mesh; an empty mesh gives nil.
+
+Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a signed distance field from a SwiftMesh mesh so particles can collide with arbitrary geometry. Also useful for picking, snapping, and physics elsewhere in the MetalSprockets ecosystem.
+
+---
+
+## 177: Bounding volume hierarchy for triangle queries
+
++++
+status: open
+priority: medium
+kind: feature
+labels: area:performance, effort:m
+created: 2026-10-19T15:22:20Z
++++
+
+Add a BVH over a mesh's triangles (built from the triangulated faces), as the base for closest-point, distance, and ray queries. Without it, each query tests every triangle: baking a 128^3 distance grid against a 10,000-triangle mesh is about 20 billion triangle tests.
+
+Acceptance: build a BVH for a mesh; closest-point and ray results match brute force on random queries; queries are much faster than brute force on a large mesh (a simple benchmark or timing test).
+
+Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a signed distance field from a SwiftMesh mesh so particles can collide with arbitrary geometry. Also useful for picking, snapping, and physics elsewhere in the MetalSprockets ecosystem.
+
+---
+
+## 178: Closest point and distance from a point to a mesh
+
++++
+status: open
+priority: medium
+kind: feature
+labels: area:triangle-mesh, effort:m
+depends: 177
+created: 2026-10-19T15:22:20Z
+updated: 2026-10-19T15:22:54Z
++++
+
+Given a point, return the closest point on the mesh surface, its distance, the face it lies on, and the surface normal there. Use the BVH (#177) when available.
+
+Acceptance: correct closest points and distances for points near faces, edges, and vertices of a cube and a sphere; matches brute force on random points.
+
+Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a signed distance field from a SwiftMesh mesh so particles can collide with arbitrary geometry. Also useful for picking, snapping, and physics elsewhere in the MetalSprockets ecosystem.
+
+---
+
+## 179: Inside test by generalized winding number
+
++++
+status: open
+priority: medium
+kind: feature
+labels: area:triangle-mesh, effort:m
+created: 2026-10-19T15:22:20Z
+updated: 2026-10-19T15:22:21Z
++++
+
+Decide whether a point is inside a mesh with the generalized winding number (sum of solid angles of the triangles), which still gives sensible answers for meshes with small holes or inconsistent winding, as scanned and imported meshes often have.
+
+Acceptance: points inside and outside a cube, a torus, and a cube with one face removed are classified correctly (winding number near 1 inside, near 0 outside); a fast path using the BVH (#177) for far-away clusters is optional.
+
+Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a signed distance field from a SwiftMesh mesh so particles can collide with arbitrary geometry. Also useful for picking, snapping, and physics elsewhere in the MetalSprockets ecosystem.
+
+---
+
+## 180: Signed distance, and baking a signed distance field to a grid
+
++++
+status: open
+priority: medium
+kind: feature
+labels: area:triangle-mesh, effort:m
+depends: 176,178,179
+created: 2026-10-19T15:22:20Z
+updated: 2026-10-19T15:22:54Z
++++
+
+Combine closest point (#178) and the inside test (#179) into a signed distance (negative inside), and bake it on a regular 3D grid: given bounds (from #176, padded) and a resolution, return the distances as a flat [Float] in x-fastest order with the grid's origin and spacing. CPU only and renderer independent; clients upload it as a 3D texture.
+
+Acceptance: a baked sphere matches the analytic signed distance within one grid cell; signs are right inside and outside a cube; the grid layout is documented.
+
+Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a signed distance field from a SwiftMesh mesh so particles can collide with arbitrary geometry. Also useful for picking, snapping, and physics elsewhere in the MetalSprockets ecosystem.
+
+---
