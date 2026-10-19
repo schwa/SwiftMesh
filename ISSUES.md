@@ -3703,12 +3703,13 @@ Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a si
 ## 179: Inside test by generalized winding number
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:triangle-mesh, effort:m
 created: 2026-10-19T15:22:20Z
-updated: 2026-10-19T15:22:21Z
+updated: 2026-10-19T15:54:34Z
+closed: 2026-10-19T15:54:34Z
 +++
 
 Decide whether a point is inside a mesh with the generalized winding number (sum of solid angles of the triangles), which still gives sensible answers for meshes with small holes or inconsistent winding, as scanned and imported meshes often have.
