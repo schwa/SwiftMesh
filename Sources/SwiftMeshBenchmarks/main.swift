@@ -195,7 +195,7 @@ func triangleSoup() -> Mesh {
     var positions: [SIMD3<Float>] = []
     var faces: [[Int]] = []
     for index in 0..<20_000 {
-        let v = values[(index * 10)..<(index * 10 + 10)].map { $0 }
+        let v = values[(index * 10)..<(index * 10 + 10)].map(\.self)
         let center = SIMD3(v[0], v[1], v[2]) * 0.5
         let size = 0.01 + 0.1 * abs(v[9]) * abs(v[9])
         positions += [center, center + SIMD3(v[3], v[4], v[5]) * size, center + SIMD3(v[6], v[7], v[8]) * size]
