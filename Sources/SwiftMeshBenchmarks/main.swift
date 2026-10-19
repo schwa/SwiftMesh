@@ -301,12 +301,16 @@ benchmarks.append(Benchmark(name: "bvh.ray.1000.icoSphere5.bruteForce") {
     }
 })
 
-for resolution in [32, 64, 128] {
-    benchmarks.append(Benchmark(name: "sdf.bake.icoSphere5.\(resolution)") {
-        let mesh = Mesh.icoSphere(subdivisions: 5, attributes: [])
-        let bvh = TriangleBVH(mesh: mesh)
-        return { _ = mesh.signedDistanceField(resolution: SIMD3(repeating: resolution), padding: 0.1, bvh: bvh) }
-    })
+// Signed distance bakes on closed meshes of different shape; padding is 5% of the largest extent.
+for (meshName, make) in bvhMeshes where meshName != "soup" {
+    for resolution in [64, 128] {
+        benchmarks.append(Benchmark(name: "sdf.bake.\(meshName).\(resolution)") {
+            let mesh = make()
+            let bvh = TriangleBVH(mesh: mesh)
+            let padding = simd_reduce_max(mesh.bounds!.size) * 0.05
+            return { _ = mesh.signedDistanceField(resolution: SIMD3(repeating: resolution), padding: padding, bvh: bvh) }
+        })
+    }
 }
 
 // Robust Boolean broad phase: edges of a rotated icoSphere4 against a face BVH of icoSphere5.

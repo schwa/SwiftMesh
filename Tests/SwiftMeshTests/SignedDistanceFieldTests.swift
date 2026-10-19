@@ -71,6 +71,20 @@ struct SignedDistanceFieldTests {
         }
     }
 
+    @Test("Baked magnitudes are the exact distances")
+    func exactDistances() throws {
+        let teapot = Mesh.teapot(attributes: [])
+        let field = try #require(teapot.signedDistanceField(resolution: [14, 11, 9], padding: 0.05))
+        for z in 0..<9 {
+            for y in 0..<11 {
+                for x in 0..<14 {
+                    let expected = try #require(teapot.distance(to: field.position(x: x, y: y, z: z)))
+                    #expect(abs(abs(field[x, y, z]) - expected) <= 1e-6 * max(1, expected))
+                }
+            }
+        }
+    }
+
     @Test("Empty mesh bakes nothing")
     func empty() {
         #expect(Mesh(positions: [], faces: [[Int]]()).signedDistanceField(resolution: [2, 2, 2]) == nil)
