@@ -167,23 +167,91 @@ benchmarks.append(Benchmark(name: "binPacking.maxRects.roomPlan745") {
     }
 })
 
-// Triangle BVH: 1,000 closest-point and ray queries against icoSphere5 (20,480 triangles), with brute-force baselines.
-let bvhQueryPoints = randomPoints(1_000).map { $0 * 1.5 }
-let bvhRays = zip(randomPoints(1_000, seed: 2), randomPoints(1_000, seed: 3)).map { Ray3D(origin: $0 * 2, direction: $1 * 0.3 - $0 * 2) }
-benchmarks.append(Benchmark(name: "bvh.build.icoSphere5") {
-    let mesh = Mesh.icoSphere(subdivisions: 5, attributes: [])
-    return { _ = TriangleBVH(mesh: mesh) }
-})
-benchmarks.append(Benchmark(name: "bvh.closestPoint.1000.icoSphere5") {
-    let bvh = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: []))
-    return {
-        var sum: Float = 0
-        for point in bvhQueryPoints {
-            sum += bvh.closestPoint(to: point)?.distance ?? 0
-        }
-        precondition(sum.isFinite)
+// Triangle BVH: build, 1,000 closest-point queries and 1,000 ray queries on meshes of different shape.
+// Query points fill the mesh bounds grown by half their size (inside, near and outside). Rays start anywhere in
+// twice the bounds (some inside) and aim at the central half of the bounds.
+/// Deterministic uniform values in -1...1.
+func uniformValues(_ count: Int, seed: UInt64) -> [Float] {
+    var state = seed
+    return (0..<count).map { _ in
+        state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+        return Float(state >> 40) / Float(1 << 24) * 2 - 1
     }
-})
+}
+
+/// Deterministic points uniform in the cube -1...1.
+func uniformPoints(_ count: Int, seed: UInt64) -> [SIMD3<Float>] {
+    let values = uniformValues(count * 3, seed: seed)
+    return (0..<count).map { SIMD3(values[$0 * 3], values[$0 * 3 + 1], values[$0 * 3 + 2]) }
+}
+
+// In units of half the mesh bounds, around the bounds center.
+let bvhQueryPoints = uniformPoints(1_000, seed: 11).map { $0 * 1.5 }
+let bvhRays = zip(uniformPoints(1_000, seed: 12), uniformPoints(1_000, seed: 13)).map { Ray3D(origin: $0 * 2, direction: $1 * 0.5 - $0 * 2) }
+
+/// 20,000 random triangles of mixed size in the unit cube: overlapping, unstructured geometry.
+func triangleSoup() -> Mesh {
+    let values = uniformValues(20_000 * 10, seed: 7)
+    var positions: [SIMD3<Float>] = []
+    var faces: [[Int]] = []
+    for index in 0..<20_000 {
+        let v = values[(index * 10)..<(index * 10 + 10)].map { $0 }
+        let center = SIMD3(v[0], v[1], v[2]) * 0.5
+        let size = 0.01 + 0.1 * abs(v[9]) * abs(v[9])
+        positions += [center, center + SIMD3(v[3], v[4], v[5]) * size, center + SIMD3(v[6], v[7], v[8]) * size]
+        faces.append([index * 3, index * 3 + 1, index * 3 + 2])
+    }
+    return Mesh(positions: positions, faces: faces)
+}
+
+/// A UV sphere (slivers at the poles) with bumpy radial displacement.
+func bumpySphere() -> Mesh {
+    var mesh = Mesh.sphere(latitudeSegments: 96, longitudeSegments: 192, attributes: [])
+    mesh.positions = mesh.positions.map { position in
+        let bump = 1 + 0.15 * sin(9 * position.x) * sin(11 * position.y) * sin(7 * position.z + 1)
+        return position * bump
+    }
+    return mesh
+}
+
+let bvhMeshes: [(name: String, make: () -> Mesh)] = [
+    ("icoSphere5", { Mesh.icoSphere(subdivisions: 5, attributes: []) }),
+    ("teapot", { Mesh.teapot(attributes: []) }),
+    ("bumpySphere", bumpySphere),
+    ("soup", triangleSoup)
+]
+for (meshName, make) in bvhMeshes {
+    benchmarks.append(Benchmark(name: "bvh.build.\(meshName)") {
+        let mesh = make()
+        return { _ = TriangleBVH(mesh: mesh) }
+    })
+    benchmarks.append(Benchmark(name: "bvh.closestPoint.1000.\(meshName)") {
+        let mesh = make()
+        let bvh = TriangleBVH(mesh: mesh)
+        let bounds = mesh.bounds!
+        let points = bvhQueryPoints.map { bounds.center + $0 * bounds.size * 0.5 }
+        return {
+            var sum: Float = 0
+            for point in points {
+                sum += bvh.closestPoint(to: point)?.distance ?? 0
+            }
+            precondition(sum.isFinite)
+        }
+    })
+    benchmarks.append(Benchmark(name: "bvh.ray.1000.\(meshName)") {
+        let mesh = make()
+        let bvh = TriangleBVH(mesh: mesh)
+        let bounds = mesh.bounds!
+        let rays = bvhRays.map { Ray3D(origin: bounds.center + $0.origin * bounds.size * 0.5, direction: $0.direction * bounds.size) }
+        return {
+            var distance: Float = 0
+            for ray in rays {
+                distance += bvh.intersect(ray: ray)?.distance ?? 0
+            }
+            precondition(distance > 0)
+        }
+    })
+}
 benchmarks.append(Benchmark(name: "bvh.closestPoint.1000.icoSphere5.bruteForce") {
     let triangles = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: [])).triangles
     return {
@@ -196,16 +264,6 @@ benchmarks.append(Benchmark(name: "bvh.closestPoint.1000.icoSphere5.bruteForce")
             sum += best.squareRoot()
         }
         precondition(sum.isFinite)
-    }
-})
-benchmarks.append(Benchmark(name: "bvh.ray.1000.icoSphere5") {
-    let bvh = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: []))
-    return {
-        var hits = 0
-        for ray in bvhRays where bvh.intersect(ray: ray) != nil {
-            hits += 1
-        }
-        precondition(hits > 0)
     }
 })
 benchmarks.append(Benchmark(name: "bvh.ray.1000.icoSphere5.bruteForce") {
