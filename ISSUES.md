@@ -3682,13 +3682,14 @@ Needed by MetalSprocketsParticles for mesh and SDF colliders (its #2): bake a si
 ## 178: Closest point and distance from a point to a mesh
 
 +++
-status: open
+status: closed
 priority: medium
 kind: feature
 labels: area:triangle-mesh, effort:m
 depends: 177
 created: 2026-10-19T15:22:20Z
-updated: 2026-10-19T15:22:54Z
+updated: 2026-10-19T15:53:20Z
+closed: 2026-10-19T15:53:20Z
 +++
 
 Given a point, return the closest point on the mesh surface, its distance, the face it lies on, and the surface normal there. Use the BVH (#177) when available.
