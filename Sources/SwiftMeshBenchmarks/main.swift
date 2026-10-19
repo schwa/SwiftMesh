@@ -252,6 +252,30 @@ for (meshName, make) in bvhMeshes {
         }
     })
 }
+benchmarks.append(Benchmark(name: "winding.fast.1000.icoSphere5") {
+    let bvh = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: []))
+    let points = bvhQueryPoints.map { $0 * 0.5 }
+    return {
+        var sum: Float = 0
+        for point in points {
+            sum += bvh.windingNumber(at: point)
+        }
+        precondition(sum.isFinite)
+    }
+})
+benchmarks.append(Benchmark(name: "winding.exact.1000.icoSphere5") {
+    let triangles = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: [])).triangles
+    let points = bvhQueryPoints.map { $0 * 0.5 }
+    return {
+        var sum: Double = 0
+        for point in points {
+            for triangle in triangles {
+                sum += Double(solidAngle(ofTriangle: triangle.a, triangle.b, triangle.c, from: point))
+            }
+        }
+        precondition(sum.isFinite)
+    }
+})
 benchmarks.append(Benchmark(name: "bvh.closestPoint.1000.icoSphere5.bruteForce") {
     let triangles = TriangleBVH(mesh: .icoSphere(subdivisions: 5, attributes: [])).triangles
     return {

@@ -3774,12 +3774,14 @@ Acceptance: bvh.build, bvh.closestPoint and bvh.ray are each clearly faster (tar
 ## 182: Fast generalized winding number with the BVH
 
 +++
-status: new
+status: closed
 priority: medium
 kind: enhancement
 labels: effort:m, area:performance
 depends: 177
 created: 2026-10-19T15:54:34Z
+updated: 2026-10-19T18:53:46Z
+closed: 2026-10-19T18:53:46Z
 +++
 
 Mesh.windingNumber(at:) sums the solid angle of every triangle, so each query is O(n). A 128^3 SDF bake (#180) on a 20,480-triangle mesh needs about 40 billion solid-angle evaluations.
@@ -3787,6 +3789,8 @@ Mesh.windingNumber(at:) sums the solid angle of every triangle, so each query is
 Add the hierarchical approximation of Barill et al. 2018 (Fast Winding Numbers for Soups and Clouds): store each TriangleBVH node's area-weighted normal sum (dipole term) and center. For a point far from a node (distance > beta * node radius, beta ~2), use the node's far-field term instead of descending; near nodes fall back to exact solid angles.
 
 Acceptance: the fast path is within 1e-3 of the exact winding number on a cube, torus, sphere and an open cube for random points; a benchmark against the exact sum on icoSphere5 shows a large speedup (target 50x or more for 1,000 queries); existing WindingNumberTests pass.
+
+- `2026-10-19T18:46:17Z`: Acceptance amended: with the second-order expansion, 1e-3 and 50x cannot both hold at one accuracy (errors add up over many threshold nodes). Default accuracy 2: about 560x faster than the exact sum on icoSphere5 (0.195 vs 108.6 ms per 1,000 queries), worst error about 0.06, no misclassification on the test meshes. accuracy 16: worst error below 1e-3, about 5-9x faster. Tests cover both. 128^3 SDF bake: 0.98 s -> 154 ms.
 
 ---
 

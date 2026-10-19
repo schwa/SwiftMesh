@@ -72,6 +72,8 @@ public struct TriangleBVH: Sendable {
     /// Leaf triangles in groups of four for SIMD tests.
     private(set) var blocks: [TriangleBlock] = []
     private(set) var blockDots: [BlockDots] = []
+    /// Binary nodes with winding-number expansions, for `windingNumber(at:accuracy:)`.
+    private(set) var windingNodes: [WindingNode] = []
     /// Traversal stack size for this tree; small enough to stay off the heap for typical trees.
     private(set) var stackCapacity = 0
 
@@ -140,6 +142,7 @@ public struct TriangleBVH: Sendable {
         (wideNodes, blocks, depth) = collapse(builder.nodes)
         stackCapacity = Self.stackCapacity(depth: depth)
         blockDots = blocks.map(BlockDots.init)
+        windingNodes = Self.windingNodes(builder.nodes, triangles: self.triangles)
     }
 
     /// Top-down build with a binned surface area heuristic (SAH).
