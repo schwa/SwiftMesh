@@ -3858,12 +3858,31 @@ Acceptance: results identical to per-point calls; benchmark on 10,000 random poi
 status: new
 priority: low
 kind: feature
-labels: effort:l,area:performance
+labels: effort:l, area:performance
 created: 2026-10-19T19:34:34Z
 +++
 
 For large ray batches (picking many rays, ambient occlusion, visibility), build an MTLPrimitiveAccelerationStructure from the mesh triangles and intersect rays on the GPU. The CPU TriangleBVH stays for single queries.
 
 Acceptance: hits match TriangleBVH.intersect(ray:) on random rays (within float tolerance); benchmark shows when the GPU path beats the CPU for batch size; API makes the device and batch explicit.
+
+---
+
+## 187: PLY reading and writing (move PLYReader from MetalSprocketsGaussianSplats)
+
++++
+status: open
+priority: low
+kind: feature
+labels: area:io, effort:m
+created: 2026-10-20T02:22:18Z
+updated: 2026-10-20T02:22:19Z
++++
+
+MetalSprocketsGaussianSplats has a general PLY parser (Sources/Splats/PLYReader.swift: ASCII and both binary byte orders, any elements and properties, list properties). It lives in the Splats target, which pulls in MetalSprockets, shaders, SwiftZipReader, and zstd, so other packages cannot use it cheaply.
+
+Move it here (it depends only on Foundation and UniformTypeIdentifiers) and add a PLY writer (header plus packed little-endian binary). Use it for Mesh PLY loading and saving (positions, optional normals and colors, faces). MetalSprocketsGaussianSplats then depends on SwiftMesh for it.
+
+Needed by MetalSprocketsParticles #177 (point caches and custom particle meshes as PLY files in effect packages).
 
 ---
