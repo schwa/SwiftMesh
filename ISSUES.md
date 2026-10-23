@@ -924,12 +924,12 @@ Run CSG BSP internals in Double precision to reduce vertex drift from plane spli
 ## 59: Float/Double mesh conversion
 
 +++
-status: open
+status: blocked
 priority: medium
 kind: feature
-labels: effort:m, blocked, deferred
+labels: effort:m, deferred
 created: 2026-04-15T07:09:54Z
-updated: 2026-10-15T14:43:13Z
+updated: 2026-10-23T14:31:24Z
 +++
 
 Add conversion between Float and Double precision meshes. MetalMesh only works with Float, so need a way to downconvert Double meshes for GPU use.
