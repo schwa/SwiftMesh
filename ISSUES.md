@@ -3886,3 +3886,24 @@ Move it here (it depends only on Foundation and UniformTypeIdentifiers) and add 
 Needed by MetalSprocketsParticles #177 (point caches and custom particle meshes as PLY files in effect packages).
 
 ---
+
+## 188: MetalMesh requires an MTLDevice at construction
+
++++
+status: closed
+priority: medium
+kind: enhancement
+created: 2026-11-10T17:45:40Z
+updated: 2026-11-10T17:50:18Z
+closed: 2026-11-10T17:50:18Z
++++
+
+Every way to make a `MetalMesh` (`init(mesh:device:)`, `init(device:attributes:submeshes:)`, Model I/O conversion) allocates its vertex and index `MTLBuffer`s immediately, so a `MetalMesh` cannot exist without a device.
+
+Downstream (SceneSprockets #354, #358, #360) wants scene construction to be device-free, with GPU resources made later by the RenderView that draws the scene. Because `MetalMesh` has no device-independent form that can be uploaded later, every scene node has to be given a device when it is built.
+
+Also: CPU-side readers (`positions()`, `vertexAttributeData()`, `Submesh.indices`) read back from the `MTLBuffer` contents, so the CPU data only exists inside the GPU buffers.
+
+- `2026-11-10T17:50:18Z`: Won't fix: MetalMesh is a GPU type and is meant to need a device.
+
+---
