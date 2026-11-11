@@ -230,7 +230,7 @@ struct HalfEdgeTopologyEdgeDeletionTests {
         topo.vertices[topo.halfEdges[twin.raw].origin.raw].edge = twin
         topo.deleteEdge(shared.id)
         for vertex in topo.vertices {
-            let edge = try? #require(vertex.edge)
+            let edge = vertex.edge
             #expect(edge.map { topo.halfEdges[$0.raw].next != nil && topo.halfEdges[$0.raw].origin == vertex.id } == true)
         }
     }

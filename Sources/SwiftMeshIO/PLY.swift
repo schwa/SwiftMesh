@@ -42,7 +42,7 @@ public enum PLY {
         let bytes = [UInt8](data)
         let (header, bodyStart) = try parseHeader(bytes)
         var reader: any ValueReader = switch header.format {
-        case .ascii: try ASCIIReader(bytes: bytes[bodyStart...])
+        case .ascii: ASCIIReader(bytes: bytes[bodyStart...])
         case .binaryLittleEndian: BinaryReader(bytes: bytes, offset: bodyStart, bigEndian: false)
         case .binaryBigEndian: BinaryReader(bytes: bytes, offset: bodyStart, bigEndian: true)
         }
