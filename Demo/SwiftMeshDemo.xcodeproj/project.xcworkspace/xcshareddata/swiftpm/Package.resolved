@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/schwa/GeometryLite3D",
       "state" : {
-        "revision" : "91407ccdf258a3f85f6dbf67f4f63f24af7257f1",
-        "version" : "0.2.5"
+        "revision" : "eac505c27ed43064556a9962efee6c5ff81cbaba",
+        "version" : "0.3.0"
       }
     },
     {
