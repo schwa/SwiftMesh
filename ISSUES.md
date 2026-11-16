@@ -3907,3 +3907,24 @@ Also: CPU-side readers (`positions()`, `vertexAttributeData()`, `Submesh.indices
 - `2026-11-10T17:50:18Z`: Won't fix: MetalMesh is a GPU type and is meant to need a device.
 
 ---
+
+## 189: MetalMesh array initializer crashes on triangle strips with primitive restart indices
+
++++
+status: new
+priority: low
+kind: bug
+created: 2026-11-16T21:55:13Z
++++
+
+MetalMesh(device:attributes:submeshes:) computes each submesh's bounds by reading positions at every index. A .triangleStrip submesh with a primitive restart index (0xFFFFFFFF) crashes with 'Index out of range'.
+
+Repro:
+1. MetalMesh(device: device, attributes: [.positions(fourPositions)], submeshes: [.init(indices: [0, 1, 2, 0xFFFF_FFFF, 1, 2, 3], primitiveType: .triangleStrip)])
+
+Expected: the restart index is skipped; the mesh is made.
+Actual: Swift/ContiguousArrayBuffer.swift:695: Fatal error: Index out of range.
+
+Found while writing a SceneSprockets test for SceneSprockets #404.
+
+---
