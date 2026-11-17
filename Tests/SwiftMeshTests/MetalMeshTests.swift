@@ -776,6 +776,18 @@ struct MetalMeshTests {
         #expect(restored.normals != nil)
     }
 
+    @Test("Array init skips primitive restart indices when computing bounds")
+    func arrayInitPrimitiveRestart() throws {
+        let device = try requireDevice()
+        let positions: [SIMD3<Float>] = [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 2]]
+        let metalMesh = MetalMesh(
+            device: device,
+            attributes: [.positions(positions)],
+            submeshes: [.init(indices: [0, 1, 2, 0xFFFF_FFFF, 1, 2, 3], primitiveType: .triangleStrip)]
+        )
+        #expect(metalMesh.submeshes[0].bounds == BoundingBox3D(min: [0, 0, 0], max: [1, 1, 2]))
+    }
+
     @Test("Array init packs extra attributes and multiple submeshes")
     func arrayInitAttributesAndSubmeshes() throws {
         let device = try requireDevice()

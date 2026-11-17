@@ -3911,10 +3911,12 @@ Also: CPU-side readers (`positions()`, `vertexAttributeData()`, `Submesh.indices
 ## 189: MetalMesh array initializer crashes on triangle strips with primitive restart indices
 
 +++
-status: new
+status: closed
 priority: low
 kind: bug
 created: 2026-11-16T21:55:13Z
+updated: 2026-11-17T01:50:17Z
+closed: 2026-11-17T01:50:17Z
 +++
 
 MetalMesh(device:attributes:submeshes:) computes each submesh's bounds by reading positions at every index. A .triangleStrip submesh with a primitive restart index (0xFFFFFFFF) crashes with 'Index out of range'.

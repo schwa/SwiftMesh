@@ -94,11 +94,20 @@ public extension MetalMesh {
     }
 
     internal static func bounds(of positions: [SIMD3<Float>], indices: [UInt32]) -> BoundingBox3D? {
-        guard let first = indices.first else { return nil }
-        var box = BoundingBox3D(min: positions[Int(first)], max: positions[Int(first)])
+        // Skip primitive restart indices (0xFFFFFFFF, or 0xFFFF widened from 16-bit).
+        var box: BoundingBox3D?
         for index in indices {
-            box.min = simd.min(box.min, positions[Int(index)])
-            box.max = simd.max(box.max, positions[Int(index)])
+            if index == 0xFFFF_FFFF || (index == 0xFFFF && Int(index) >= positions.count) {
+                continue
+            }
+            let position = positions[Int(index)]
+            if var current = box {
+                current.min = simd.min(current.min, position)
+                current.max = simd.max(current.max, position)
+                box = current
+            } else {
+                box = BoundingBox3D(min: position, max: position)
+            }
         }
         return box
     }
